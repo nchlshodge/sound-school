@@ -27,13 +27,13 @@ Then open http://localhost:8765/.
 
 ```
 stems/
-  speech/   two computer-voice sermon readings (included)
-  wwy/      "We Worship You" studio stems (not included)
-  lhc/      "Let's Have Church" live multitrack (not included)
-  isg/      "I'm So Glad I Met Jesus" live multitrack (not included)
+  speech/   two computer-voice sermon readings
+  wwy/      "We Worship You" studio stems
+  lhc/      "Let's Have Church" live multitrack
+  isg/      "I'm So Glad I Met Jesus" live multitrack
 ```
 
-The song multitracks are licensed for our church's own use, so they aren't in this repository. Each song is defined in the `SONGS` array in `index.html`, which lists the channel files it expects (for example `stems/lhc/kick.m4a`). Stems are short excerpts encoded as AAC (`.m4a`).
+The song multitracks are licensed for our church's own use. **Keep this repository private**, and don't publish the stems anywhere public. Each song is defined in the `SONGS` array in `index.html`, which lists the channel files it expects (for example `stems/lhc/kick.m4a`). Stems are short excerpts encoded as AAC (`.m4a`).
 
 To add a song: encode its stems into `stems/<id>/`, then add an entry to `SONGS` with its tempo, channels, reference mix and the bars to use.
 

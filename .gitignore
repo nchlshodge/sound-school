@@ -1,7 +1,1 @@
 .DS_Store
-
-# Song multitracks are licensed for our church's use and aren't redistributed here.
-# Put each song's stems in stems/<song id>/ locally (see README).
-stems/wwy/
-stems/lhc/
-stems/isg/
