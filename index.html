@@ -179,6 +179,13 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .gmeter i{position:absolute;left:0;top:0;bottom:0;width:0;background:#7C8598;border-radius:10px}
 .gmeter i.good{background:#2FA36B}.gmeter i.hot{background:#E0A100}.gmeter i.clip{background:#D9432B}
 .gzone{position:absolute;top:0;bottom:0;background:color-mix(in srgb,#2FA36B 22%,transparent);border-left:2px solid #2FA36B;border-right:2px solid #2FA36B}
+.runbox{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;margin-bottom:10px}
+.runbar{height:10px;background:var(--chip);border-radius:5px;overflow:hidden}.runbar i{display:block;height:100%;width:0;background:var(--u);transition:width .5s linear}
+#run-cue{font-size:18px;margin:8px 0 0}
+.scrow{display:grid;grid-template-columns:118px 1fr;gap:6px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.scrow:last-child{border-bottom:0}.scn b{display:block;font-size:15px}.scn span{font-size:13px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+.scg{grid-column:1/-1;display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:center}.scg b{text-align:right;font-variant-numeric:tabular-nums}
+.gmeter.sm{height:12px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .exgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:560px){.exgrid{grid-template-columns:1fr}}
 .excard{position:relative;background:var(--card);border-radius:18px;box-shadow:var(--shadow);display:flex;align-items:stretch}
@@ -205,6 +212,11 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .meter i.hot{background:#E0A100}.meter i.clip{background:#D9432B}
 .hpf{display:block;margin-top:5px;font:inherit;font-size:13px;font-weight:700;padding:3px 4px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink2);max-width:104px}
 .mute{width:44px;height:44px;border-radius:12px;border:2px solid var(--line);font-weight:800;font-size:15px;color:var(--ink2)}
+.chbtns{display:flex;flex-direction:column;gap:6px}
+.eqbtn{font-size:12px;height:32px}.eqbtn.on{border-color:var(--u);color:var(--u)}
+.eqpanel{display:grid;gap:8px;padding:10px 4px 14px;border-bottom:1px solid var(--line)}
+.eqrow{display:grid;grid-template-columns:96px 1fr 70px;gap:10px;align-items:center;font-size:14px;font-weight:700;color:var(--ink2)}
+.eqrow b{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink)}
 .mute[aria-pressed="true"]{background:#B4421F;border-color:#B4421F;color:#fff}
 .ch.off .chn,.ch.off .fd{opacity:.45}
 .transport{position:sticky;bottom:0;z-index:4;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:12px 0 calc(12px + env(safe-area-inset-bottom));margin-top:14px}
@@ -338,11 +350,35 @@ const SONGS = [
       1:{ bars:[16,32], ch:['acc','gtr2','keys','tracks','chloe'] },
       2:{ bars:[36,52], start:{kick:8,hat:7,bass:9,gtr1:-12,keys:10,b3:'off',tracks:10,chloe:-9,corbin:5,taylor:-8}, traps:{crowd:-4,smpte:-18} },
       3:{ bars:[16,56] } }
+  },
+  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)',
+    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
+         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
+         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
+         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
+    // Our own Sunday (the song just before the welcome, 42–47 min into the Feb 15 service). Balanced around Vox 3,
+    // measured over the full-band song (bars 28–118). Kick and snare are the replacement tracks; the rack tom is mostly spill.
+    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11, mc:0 },
+    // The MC starts talking at bar 153. Until we have permission to use the real MC mic, a stand-in voice speaks there.
+    speaker:{ bar:153, voice:'male', name:'MC (host)' },
+    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
+    win:{ verse:[12,15], gap:[14,16], full:[30,40,50,64,80,96,110] },
+    groups:[ null,
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
+      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
+    missions:{
+      1:{ bars:[12,20], ch:['acc','keys','vox3','vox2'] },
+      2:{ bars:[44,60], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
+      3:{ bars:[12,124] },
+      // Service Run challenge: the whole song (no loop), then the song ending into the MC speaking.
+      4:{ bars:[12,125], run:true },
+      5:{ bars:[104,170], run:true, ch:['kick','snare','snbot','rack','floor','hat','oh','bass','acc','keys','vox3','vox2','md','mc','crowd','click'] } }
   }
 ];
 for(const s of SONGS){
   s.beat=60/s.bpm; s.bar=4*s.beat; s.len=s.clipBars*s.bar; s.ms=Math.round(s.beat*1000);
-  s.name={...Object.fromEntries(s.ch.map(c=>[c.k,c.name])), ...FX_NAME};
+  s.name={...Object.fromEntries(s.ch.map(c=>[c.k,c.name])), ...FX_NAME, ...(s.speaker?{mc:s.speaker.name}:{})};
   s.mix=s.ch.filter(c=>!c.trap).map(c=>c.k); s.traps=s.ch.filter(c=>c.trap).map(c=>c.k);
   s.ref0={...s.ref}; s.ready=false; s.trim=0; s.vtrim=0;
 }
@@ -878,7 +914,7 @@ const FX_TYPES = {
     fx:()=> (c,inp)=>{ const p=c.createStereoPanner(); p.pan.value=0; lfo(c,0.5,0.9,p.pan); inp.connect(p); return p; } }
 };
 // Which instrument each effect usually lives on, per song.
-const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2'}, keys:{wwy:'piano',lhc:'keys',isg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3'} };
+const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys'} };
 const FX_ON = { chorus:['guitar','keys','vocal'], doubler:['vocal'], flanger:['guitar'], phaser:['keys','guitar'], tremolo:['guitar','keys'], rotary:['organ'], drive:['guitar'], pingpong:['vocal','guitar'], tape:['vocal','guitar'], digital:['vocal','guitar'], autopan:['keys'] };
 function fxSource(s, kind){
   const off=pickWin(s, kind==='vocal'?'verse':'full');
@@ -1035,15 +1071,14 @@ const fxComb = ms => (c,inp)=>{ const out=c.createGain(); out.gain.value=db(-4);
 function gainMeterLoop(q){
   const st=q.state, buf=new Float32Array(2048);
   const tick=()=>{
-    const bar=document.getElementById('gm-bar'); if(!bar || !st.an) return;
+    const bar=document.getElementById('gm-bar');
     st.an.getFloatTimeDomainData(buf); let pk=0; for(const x of buf) pk=Math.max(pk,Math.abs(x));
     const d=20*Math.log10(pk*db(st.gainDb)+1e-9); st.hist.push([performance.now(), d]); st.hist=st.hist.filter(h=>performance.now()-h[0]<3000);
     const hold=Math.max(...st.hist.map(h=>h[1]));
     bar.style.width=Math.max(0,Math.min(100,(d+60)/66*100))+'%'; bar.className = d>0?'clip' : d>-6?'hot' : d>-18?'good' : 'low';
     const t=document.getElementById('gm-txt'); if(t) t.textContent = hold<-80 ? 'No signal yet' : `Peaks: ${hold>0?'+':''}${hold.toFixed(0)} dBFS${hold>0?' · CLIPPING':''}`;
-    requestAnimationFrame(tick);
   };
-  requestAnimationFrame(tick);
+  clearInterval(st.timer); st.timer=setInterval(()=>{ if(!document.getElementById('gm-bar') || !st.an){ clearInterval(st.timer); return; } tick(); }, 50);
 }
 const GAIN_ZONE = [-18, -6];
 
@@ -1505,6 +1540,8 @@ const MW_TEXT = [
    ============================================================ */
 const MISSION_TEXT = {
   1:{ title:'Build the verse', brief:'All the faders are down. Start with the lead vocal, then bring the band up around it.' },
+  4:{ title:'The song', brief:'Our own band, start to finish. It builds from a soft opening to the full band at bar 20. Ride the faders and EQ to keep the vocals on top the whole way.' },
+  5:{ title:'Into speaking', brief:'The song ends, the keys hold a pad under Vox 3, and then the MC walks up. Get their mic up before the first word, then tuck the pad underneath.' },
   2:{ title:'Fix the chorus', brief:'The last tech left this chorus a mess, and something is going to the house that shouldn\'t be. Fix it.' },
   3:{ title:'Mix the song', brief:'The whole excerpt, verse into chorus. Find a balance that works for all of it, and watch for anything that shouldn\'t be in the house.' }
 };
@@ -1515,7 +1552,7 @@ const MISSION_TEXT_B = {
 };
 const FADER_MIN=-40, FADER_MAX=12;
 const clampF = v => Math.max(FADER_MIN, Math.min(FADER_MAX, v));
-const MX = { srcs:[], gains:{}, ans:{}, hp:{}, raf:0, playing:false };
+const MX = { srcs:[], gains:{}, ans:{}, hp:{}, eq:{}, raf:0, playing:false };
 const fmtDb = v => v<=FADER_MIN ? 'Off' : `${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
 const mixSong = () => songById(UI.mix.song);
 const mixSongs = dest => dest==='broadcast' ? SONGS.filter(s=>s.traps.includes('crowd')) : SONGS;
@@ -1526,6 +1563,7 @@ const missionCh = (song, level, dest=curDest()) => {
 };
 function startFaders(song, level){
   const m=song.missions[level], g={};
+  if(m.run){ for(const k of missionCh(song, level)) g[k] = song.traps.includes(k)||k==='mc' ? FADER_MIN : FX.includes(k) ? FX_REF.gospel[k] : clampF(Math.round(song.ref[k]+Math.random()*8-4)); return g; }
   for(const k of missionCh(song, level)){
     const trap=isTrap(song,k);
     if(k==='crowd' && !trap) g[k] = level===3 ? Math.round(-24+Math.random()*20) : FADER_MIN;   // the classic stream mistake: no room in the mix
@@ -1536,10 +1574,10 @@ function startFaders(song, level){
   }
   return g;
 }
-function startMixer(level, songId, dest='house'){
+function startMixer(level, songId, dest='house', unit=null, unitLevel=null){
   UI = { screen:'mixer', mix:{ dest } };   // set first so the helpers below know the destination
   const song=songById(songId), ch=missionCh(song, level);
-  UI = { screen:'mixer', mix:{ dest, unit: dest==='broadcast'?'bcast':'final', level, song:songId, g:startFaders(song, level), mute:Object.fromEntries(ch.map(k=>[k,false])), hpf:Object.fromEntries(ch.map(k=>[k,0])), ref:false, result:null } };
+  UI = { screen:'mixer', mix:{ dest, unit: unit || (dest==='broadcast'?'bcast':'final'), unitLevel: unitLevel ?? level, run: !!song.missions[level].run, runLog:[], level, song:songId, g:startFaders(song, level), mute:Object.fromEntries(ch.map(k=>[k,false])), hpf:Object.fromEntries(ch.map(k=>[k,0])), eq:Object.fromEntries(ch.map(k=>[k,{...EQ_FLAT}])), eqOpen:null, probs:{}, ref:false, result:null } };
 }
 const refFader = (song,k) => isTrap(song,k) ? FADER_MIN : styleRef(song,k);
 const refHpf = (song,k) => curStyle()==='modern' ? hpfRef(song,k) : 0;
@@ -1547,6 +1585,8 @@ function chanGain(k){
   const m=UI.mix, song=mixSong(), v = m.ref ? refFader(song,k) : (m.mute[k] ? FADER_MIN : m.g[k]);
   return v<=FADER_MIN ? 0 : db((FX.includes(k)?0:song.trim)+v);
 }
+const chanEq = k => UI.mix.ref ? EQ_FLAT : (UI.mix.eq[k] || EQ_FLAT);
+const chanProbs = k => UI.mix.ref ? [] : ((UI.mix.probs||{})[k] ? [UI.mix.probs[k].f] : []);   // Sona's mix is the clean channel
 const chanHpf = k => (UI.mix.ref ? refHpf(mixSong(),k) : UI.mix.hpf[k]) || 10;   // 10 Hz = filter effectively off
 function startMixerPlayback(){
   stopAll(); stopMixer();
@@ -1560,39 +1600,135 @@ function startMixerPlayback(){
     bus.connect(glue).connect(lim); lim.connect(full).connect(A.master); fxPhone(mixSong())(c,lim).connect(phone).connect(A.master);
     MX.full=full; MX.phoneOut=phone;
   } else bus.connect(A.master);
-  Object.assign(MX, mixGraph(c, mixSong(), UI.mix.level, bus, chanGain, chanHpf, {loop:true, t0:c.currentTime+0.05, analyse:true}));
+  const run=UI.mix.run, t0=c.currentTime+0.1;
+  Object.assign(MX, mixGraph(c, mixSong(), UI.mix.level, bus, chanGain, chanHpf, {loop:!run, t0, analyse:true, eqf:chanEq, probs:chanProbs}));
   MX.playing=true; meterLoop();
+  if(run){ const song=mixSong(), bars=song.missions[UI.mix.level].bars, len=(bars[1]-bars[0])*song.bar;
+    UI.mix.runLog=[]; UI.mix.result=null; MX.runT0=t0;
+    MX.runTimer=setInterval(()=>runSample(song, bars), 500);
+    MX.runEnd=setTimeout(()=>finishRun(), (len+0.6)*1000); }
 }
 // Builds the whole board: every channel through its own high-pass and fader, plus a post-fader
 // send from every vocal into two stereo FX returns (Luke's setup: vocal reverb and vocal delay).
-function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse}){
+// Channel EQ: low shelf (120 Hz), a sweepable mid, high shelf (8 kHz).
+const EQ_FLAT = {lo:0, mg:0, mf:1000, hi:0};
+const eqNode = (c, {type, f, g=0, q=0.9}) => { const b=c.createBiquadFilter(); b.type=type; b.frequency.value=f; b.gain.value=g; b.Q.value=q; return b; };
+const isFlat = e => !e || (Math.abs(e.lo)<0.25 && Math.abs(e.mg)<0.25 && Math.abs(e.hi)<0.25);
+// Tone problems for Quick mix: each one is a filter, plus what to call it and how to fix it.
+const TONE_PROBS = [
+  { id:'mud',   f:{type:'peaking',  f:300,  g:9, q:1.2}, name:'muddy',  fix:'cut around 250–400 Hz' },
+  { id:'boxy',  f:{type:'peaking',  f:600,  g:9, q:1.4}, name:'boxy',   fix:'cut around 500–800 Hz' },
+  { id:'honk',  f:{type:'peaking',  f:1100, g:9, q:1.4}, name:'honky',  fix:'cut around 1 kHz' },
+  { id:'harsh', f:{type:'peaking',  f:3000, g:9, q:1.4}, name:'harsh',  fix:'cut around 2.5–4 kHz' },
+  { id:'boom',  f:{type:'lowshelf', f:150,  g:9},        name:'boomy',  fix:'turn the low EQ down (or high-pass it)' },
+  { id:'dull',  f:{type:'highshelf',f:6000, g:-9},       name:'dull',   fix:'turn the high EQ up' }
+];
+// How far a channel's sound still is from "fixed": the problem plus your EQ, measured across the spectrum.
+function eqResidual(prob, e){
+  const fs=Float32Array.from({length:28},(_,i)=>60*Math.pow(200,i/27)), mag=new Float32Array(28), ph=new Float32Array(28), tot=new Float32Array(28);
+  const nodes=[prob, {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
+  for(const nd of nodes){ eqNode(A.ctx, nd).getFrequencyResponse(fs, mag, ph); for(let i=0;i<28;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
+  return Math.max(...tot.map(Math.abs));   // the worst point: an untouched problem is ~9 dB off
+}
+function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse, eqf=()=>EQ_FLAT, probs=()=>[]}){
   const bars=song.missions[level].bars, off=at(song,bars[0]), dur=(bars[1]-bars[0])*song.bar;
-  const res={srcs:[], gains:{}, ans:{}, hp:{}}, send=c.createGain();
+  const res={srcs:[], gains:{}, ans:{}, hp:{}, eq:{}}, send=c.createGain();
   const strip=(k, input)=>{
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=hpf(k);
-    const g=c.createGain(); g.gain.value=gain(k); input.connect(hp).connect(g); g.connect(dest);
+    let n=input.connect(hp);
+    for(const pf of probs(k)) n=n.connect(eqNode(c, pf));                     // a hidden tone problem (Quick mix)
+    const e=eqf(k), lo=eqNode(c,{type:'lowshelf',f:120,g:e.lo}), mid=eqNode(c,{type:'peaking',f:e.mf,g:e.mg,q:1.2}), hi=eqNode(c,{type:'highshelf',f:8000,g:e.hi});
+    const g=c.createGain(); g.gain.value=gain(k); n.connect(lo).connect(mid).connect(hi).connect(g); g.connect(dest);
     if(analyse){ const an=c.createAnalyser(); an.fftSize=1024; g.connect(an); res.ans[k]=an; }
-    res.gains[k]=g; res.hp[k]=hp; return g;
+    res.gains[k]=g; res.hp[k]=hp; res.eq[k]={lo,mid,hi}; return g;
   };
   const chs=missionCh(song, level);
   for(const k of chs){
     if(FX.includes(k)) continue;
+    if(k==='mc'){   // the speaker: starts talking at their bar
+      const sp=song.speaker, b=A.buf['speech:'+sp.voice], n=c.createBufferSource(); n.buffer=b;
+      const pre=c.createGain(); pre.gain.value=db(A.speechDb[sp.voice]-song.trim); n.connect(pre);
+      const tSpeak=(sp.bar-bars[0])*song.bar; if(tSpeak<dur) n.start(t0+tSpeak, 0, Math.min(b.duration, dur-tSpeak));
+      strip(k, pre); res.srcs.push(n); continue;
+    }
     const b=A.buf[`${song.id}:${k}`], n=c.createBufferSource(); n.buffer=b;
-    if(loop){ n.loop=true; n.loopStart=off; n.loopEnd=Math.min(off+dur, b.duration); n.start(t0, off); } else n.start(t0, off, dur);
+    if(loop){ n.loop=true; n.loopStart=off; n.loopEnd=Math.min(off+dur, b.duration); n.start(t0, off); } else n.start(t0, off, Math.min(dur, b.duration-off));
     const g=strip(k, n); if(isVocal(song,k)) g.connect(send); res.srcs.push(n);
   }
   if(chs.includes('vrev')){ const cv=c.createConvolver(); cv.buffer=impulse(2.2); send.connect(cv); strip('vrev', cv); }
   if(chs.includes('vdly')) strip('vdly', stereoDelayWet(c, send, {l:song.beat/2, r:song.beat*0.75, fb:0.3}));
   return res;
 }
+// What's happening in the run right now (and what's coming), by bar.
+function runCue(bar){
+  if(bar<16) return 'Soft opening: keys, acoustic and vocals.';
+  if(bar<20) return 'Get ready: the full band comes in at bar 20…';
+  if(bar<118) return 'Full band. Keep the vocals on top.';
+  if(bar<125) return 'The song is ending soon…';
+  if(bar<145) return 'The band drops out: keys pad and Vox 3.';
+  if(bar<153) return 'The MC is walking up to speak…';
+  return 'The MC is speaking.';
+}
+function runSample(song, bars){
+  const m=UI.mix; if(!m || !MX.playing) return;
+  const t=A.ctx.currentTime-MX.runT0; if(t<0) return;
+  const bar=bars[0]+t/song.bar, eff={}; for(const k in m.g) eff[k]=m.mute[k]?FADER_MIN:+m.g[k];
+  m.runLog.push({t, bar, eff});
+  const len=(bars[1]-bars[0])*song.bar, pr=document.getElementById('run-prog'), cue=document.getElementById('run-cue');
+  if(pr) pr.style.width=Math.min(100,t/len*100)+'%'; if(cue) cue.textContent=runCue(bar);
+}
+// Balance at one moment: how close each channel is to the reference, relative to the lead vocal.
+function balanceAt(song, eff, chans){
+  const v=eff[song.anchor]; if(v==null || v<=FADER_MIN) return {frac:0, err:{}};
+  let pts=0, n=0; const err={};
+  for(const k of chans){ if(k===song.anchor||song.traps.includes(k)||FX.includes(k)||k==='mc') continue;
+    const target=styleRef(song,k)-styleRef(song,song.anchor), rel=eff[k]<=FADER_MIN?-60:eff[k]-v, a=Math.abs(rel-target);
+    err[k]=rel-target; n++; pts += a<=3?1 : a<=6?0.6 : a<=10?0.25 : 0; }
+  return {frac:n?pts/n:1, err};
+}
+function finishRun(){
+  const m=UI.mix; if(!m || !m.run) return;
+  clearInterval(MX.runTimer); clearTimeout(MX.runEnd); stopMixer();
+  const song=mixSong(), log=m.runLog, chans=missionCh(song,m.level), notes=[], avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  // 1. the song: balance over time, plus which channels drifted most
+  const songLog=log.filter(e=>e.bar>=20 && e.bar<124), errSum={};
+  const bal=avg(songLog.map(e=>{ const b=balanceAt(song,e.eff,chans); for(const k in b.err) (errSum[k]=errSum[k]||[]).push(b.err[k]); return b.frac; }));
+  for(const k in errSum){ const e=avg(errSum[k]); if(Math.abs(e)>4) notes.push({k, err:Math.abs(e), bad:Math.abs(e)>7, msg:`On average about ${Math.round(Math.abs(e))} dB too ${e>0?'loud':'quiet'} during the song`}); }
+  // traps left open (click, crowd mics in the house)
+  let leaks=0; for(const k of song.traps.filter(k=>chans.includes(k))){ const open=log.filter(e=>e.eff[k]>-30).length/Math.max(1,log.length); if(open>0.3){ leaks++; notes.push({k, bad:true, leak:1, msg:TRAP_MSG[k]+' Mute it.'}); } }
+  let score=100*bal;
+  if(m.level===5){
+    const sp=song.speaker, pad=log.filter(e=>e.bar>=126 && e.bar<152), talk=log.filter(e=>e.bar>=sp.bar+1);
+    // 2. the pad and Vox 3 after the band drops out
+    const padOk=avg(pad.map(e=> (e.eff.vox3>=styleRef(song,'vox3')-8 ? 0.5:0) + (Math.abs(e.eff.keys-styleRef(song,'keys'))<=8 ? 0.5:0)));
+    if(padOk<0.7) notes.push({k:'keys', bad:true, msg:'After the band dropped out, keep the keys pad and Vox 3 up: that moment still matters.'});
+    // 3. the MC's mic: up before the first word, but not open during the song
+    const up=log.find(e=>e.eff.mc>-12), late = up ? (up.bar-sp.bar)*song.bar : Infinity;
+    let timing = !up ? 0 : up.bar<125 ? 0.5 : late<=0.35 ? 1 : Math.max(0, 1-late/3);
+    notes.unshift({k:'mc', good:timing===1, bad:timing<0.6, msg: !up ? 'The MC\'s mic never came up, so nobody heard them.' : up.bar<125 ? 'The MC\'s mic was open during the song. Bring it up as they walk up, not before.' : late<=0.35 ? `Mic up ${Math.abs(late).toFixed(1)} s before the first word. Nicely anticipated!` : `Mic up ${late.toFixed(1)} s after they started talking, so the first words were lost.`});
+    // 4. tuck the pad under the speaker, and keep the speaker at a good level
+    const tuck=avg(talk.map(e=> e.eff.keys<=FADER_MIN || e.eff.keys-styleRef(song,'keys')<=-6 ? 1 : 0));
+    const mcLvl=avg(talk.map(e=> Math.abs(e.eff.mc-styleRef(song,'mc'))<=6 ? 1 : 0));
+    if(tuck<0.7) notes.push({k:'keys', bad:true, msg:'Tuck the keys pad under the MC (about 6 dB or more) so the words are clear.'});
+    if(mcLvl<0.7) notes.push({k:'mc', bad:true, msg:'Keep the MC\'s level steady once they\'re talking.'});
+    score = 100*(0.35*bal + 0.25*timing + 0.15*padOk + 0.15*tuck + 0.10*mcLvl);
+  }
+  if(!notes.length) notes.push({k:song.anchor, good:true, msg:'Steady, balanced and on time. Sunday-ready!'});
+  notes.sort((x,y)=>((y.leak||0)-(x.leak||0))||(y.bad-x.bad)||((y.err||0)-(x.err||0)));
+  m.result={ score: Math.max(0, Math.round(score) - 25*leaks), notes, leaks };
+  render();
+}
 function stopMixer(){
+  clearInterval(MX.runTimer); clearTimeout(MX.runEnd);
   MX.srcs.forEach(s=>{ try{ s.stop(); }catch(e){} });
   if(MX.bus){ const b=MX.bus; b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.01); setTimeout(()=>b.disconnect(),150); }
-  MX.srcs=[]; MX.gains={}; MX.ans={}; MX.hp={}; MX.bus=null; MX.playing=false;
+  MX.srcs=[]; MX.gains={}; MX.ans={}; MX.hp={}; MX.eq={}; MX.bus=null; MX.playing=false;
   cancelAnimationFrame(MX.raf);
   document.querySelectorAll('.meter i').forEach(i=>{ i.style.width='0'; });
 }
-function updateGains(){ for(const k in MX.gains){ MX.gains[k].gain.setTargetAtTime(chanGain(k), A.ctx.currentTime, 0.02); MX.hp[k].frequency.setTargetAtTime(chanHpf(k), A.ctx.currentTime, 0.02); } }
+function updateGains(){ const t=A.ctx.currentTime;
+  for(const k in MX.gains){ MX.gains[k].gain.setTargetAtTime(chanGain(k), t, 0.02); MX.hp[k].frequency.setTargetAtTime(chanHpf(k), t, 0.02);
+    const e=chanEq(k), q=MX.eq[k]; if(q){ q.lo.gain.setTargetAtTime(e.lo,t,0.02); q.mid.gain.setTargetAtTime(e.mg,t,0.02); q.mid.frequency.setTargetAtTime(e.mf,t,0.02); q.hi.gain.setTargetAtTime(e.hi,t,0.02); } } }
 const meterBuf = new Float32Array(1024);
 function meterLoop(){
   for(const k in MX.ans){
@@ -1637,7 +1773,16 @@ function scoreMix(){
     filt = total ? ok/total : 1;
   }
   notes.sort((x,y)=>((y.leak||0)-(x.leak||0))||(y.bad-x.bad)||((y.err||0)-(x.err||0)));
-  const score = curStyle()==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal;
+  let score = curStyle()==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal;
+  // Quick mix: did you find and fix the tone problems with EQ? (40% of the score)
+  const probKeys=Object.keys(m.probs||{});
+  if(probKeys.length){
+    let fixed=0;
+    for(const k of probKeys){ const P=m.probs[k], res=eqResidual(P.f, m.eq[k]||EQ_FLAT);
+      const part = res<=3 ? 1 : res<=5 ? 0.6 : res<=7 ? 0.25 : 0; fixed+=part;
+      notes.unshift({k, eqn:1, bad:part<0.6, good:part===1, msg: part===1 ? `EQ: fixed the ${P.name} sound` : `EQ: it sounded ${P.name}. Try to ${P.fix}`}); }
+    score = 0.6*score + 40*fixed/probKeys.length;
+  }
   return { score: Math.max(0, Math.round(score) - 25*leaks), notes, leaks };
 }
 // Trainer tool: make the current faders the reference for this song (saved on this device,
@@ -1812,6 +1957,12 @@ const UNITS = [
     {t:'Two styles', p:['Gospel style keeps the band and choir energy strong. Modern worship style (the Bethel approach) keeps the vocals clearly on top and tucks the background vocals under.','In Modern worship, your high-pass filters count too: filter everything except the kick and bass.']},
     {t:'How you\'re scored', p:['I compare your balance to my reference mix. Only the balance counts, not how loud you turn everything up.','Score 70 or more to pass. After you submit, you can flip between your mix and mine. Each time you open a mission it switches songs, or you can pick one.']}
   ]},
+  { id:'run', title:'Sunday Service Run', mascot:'sona', who:'Sona and the whole team', color:'#9A3412', blurb:'Our own band: soundcheck, mix the whole song, then hand off to the MC.', levels:['Learn','Soundcheck','The song','Into speaking'], learn:[
+    {t:'A real Sunday', p:['This challenge uses a song from one of our own services, recorded off the board. You\'ll do what you\'d do on a Sunday, in order.']},
+    {t:'1. Soundcheck', p:['The band plays a chorus on a loop and the MC tests their mic. Set every channel\'s gain so its peaks land around -18 to -6 dBFS.','The MC\'s lav is recorded quietly, so it needs a lot more gain than the band.']},
+    {t:'2. The song', p:['The whole song plays once, start to finish: a soft opening, then the full band at bar 20. Ride the faders and EQ to keep the vocals on top the whole way. You\'re scored on how balanced it stays over time.']},
+    {t:'3. Into speaking', p:['When the song ends, the keys hold a pad under Vox 3, and then the MC walks up. Get their mic up before the first word, tuck the pad underneath, and keep the click and crowd mics out of the house.']}
+  ]},
   { id:'bcast', title:'The Livestream Mix', mascot:'penny', who:'Penny the pigeon', color:'#7A5900', blurb:'Mix for the people watching at home, the way Bethel mixes its broadcast.', levels:['Learn','Verse','Chorus','Song'], learn:[
     {t:'A different room', p:['The people in the sanctuary hear the speakers and the room. The people at home only hear your console, usually on a phone, a laptop or earbuds.','Luke Hendrickson says the broadcast and the room use the same approach at Bethel: same EQ and compression, same instruments, different tools to get there.']},
     {t:'Bring in the room', p:['A stream without crowd mics sounds like an empty room. Bethel hangs six crowd mics: some out wide at the stage, some in the room, and some in the ceiling above the preacher.','More locations means one loud person near one mic can\'t take over the whole sound. And it only works when the congregation is singing.']},
@@ -1897,7 +2048,7 @@ function setUnitColor(c){ document.documentElement.style.setProperty('--u', c ||
 
 function render(){
   const s=UI.screen;
-  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : vSetup()));
+  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : vSetup()));
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
 
@@ -1937,10 +2088,10 @@ function vUnit(u,i,next){
   const open=unitOpen(i);
   return `<section class="unit ${open?'':'locked'}" style="--u:${u.color}" aria-label="${u.title} unit">
     <div class="uhead"><div class="m tint" aria-hidden="true">${MASCOTS[u.mascot]}</div>
-      <div><div class="who ut">${u.id==='final'?'Final unit':u.id==='bcast'?'Bonus unit':'Unit '+(i+1)} · ${u.who}</div><h2>${u.title}</h2><p>${u.blurb}</p></div></div>
+      <div><div class="who ut">${u.id==='final'?'Final unit':['bcast','run'].includes(u.id)?'Bonus unit':'Unit '+(i+1)} · ${u.who}</div><h2>${u.title}</h2><p>${u.blurb}</p></div></div>
     <div class="nodes">${[0,1,2,3].map(l=>{
       const ok=nodeOpen(i,l), done=passed(u,l), isNext=next&&next.u===u&&next.l===l;
-      const icon = done?I.check : !ok?I.lock : l===0?I.book : (u.id==='final'||u.id==='bcast')?I.sliders : l;
+      const icon = done?I.check : !ok?I.lock : l===0?I.book : ['final','bcast','run'].includes(u.id)?I.sliders : l;
       return `<button class="node ${done?'done':''} ${!ok?'lock':''} ${isNext?'next':''}" data-act="open" data-u="${u.id}" data-l="${l}" ${ok?'':'disabled'} aria-label="${u.title} ${levelName(u,l)}${done?', complete':''}${ok?'':', locked'}">
         <span class="dot">${icon}</span>${levelName(u,l)}</button>`;
     }).join('')}</div>
@@ -2028,6 +2179,17 @@ function vLesson(){
   </div></div>`:''}`;
 }
 
+function eqPanel(k, e){
+  const sl=(p,label,min,max,step,val,txt)=>`<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="eqParam" data-k="${k}" data-p="${p}"><b id="eq-${k}-${p}">${txt}</b></label>`;
+  const g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`, mfPos=Math.round(Math.log(e.mf/100)/Math.log(80)*1000);
+  return `<div class="eqpanel" data-k="${k}">
+    ${sl('lo','Low (120 Hz)',-12,12,0.5,e.lo,g(e.lo))}
+    ${sl('mg','Mid',-12,12,0.5,e.mg,g(e.mg))}
+    ${sl('mf','Mid freq',0,1000,1,mfPos,hz(Math.round(e.mf/10)*10))}
+    ${sl('hi','High (8 kHz)',-12,12,0.5,e.hi,g(e.hi))}
+    <button class="btn ghost" data-act="eqFlat" data-k="${k}" style="min-height:36px;padding:0 12px;font-size:14px">Flat</button>
+  </div>`;
+}
 function vMixer(){
   const m=UI.mix, song=mixSong(), bc=m.dest==='broadcast', txt=(bc?MISSION_TEXT_B:MISSION_TEXT)[m.level], bars=song.missions[m.level].bars, u=unitById(m.unit), r=m.result;
   setUnitColor('#3F3399');
@@ -2038,8 +2200,9 @@ function vMixer(){
         <select class="hpf" data-act="hpf" data-k="${k}" aria-label="High-pass filter for ${song.name[k]}" ${m.ref?'disabled':''}>${HPF_STEPS.map(f=>`<option value="${f}" ${f===hz?'selected':''}>${f?`HPF ${f}`:'HPF off'}</option>`).join('')}</select></div>
       <div class="fd"><input type="range" min="${FADER_MIN}" max="${FADER_MAX}" step="0.5" value="${v}" data-act="fader" data-k="${k}" aria-label="${song.name[k]} fader" ${m.ref?'disabled':''}>
         <div class="meter" aria-hidden="true"><i></i></div></div>
-      <button class="mute" data-act="mute" data-k="${k}" aria-pressed="${muted}" aria-label="Mute ${song.name[k]}" ${m.ref?'disabled':''}>M</button>
-    </div>`;
+      <div class="chbtns"><button class="mute" data-act="mute" data-k="${k}" aria-pressed="${muted}" aria-label="Mute ${song.name[k]}" ${m.ref?'disabled':''}>M</button>
+        ${FX.includes(k)?'':`<button class="mute eqbtn ${isFlat(m.eq[k])?'':'on'}" data-act="eqToggle" data-k="${k}" aria-expanded="${m.eqOpen===k}" aria-label="EQ for ${song.name[k]}" ${m.ref?'disabled':''}>EQ</button>`}</div>
+    </div>${m.eqOpen===k && !m.ref ? eqPanel(k, m.eq[k]) : ''}`;
   }).join('');
   const styles = Object.entries(STYLES).map(([k,name])=>`<button class="btn ${S.mixStyle===k?'':'ghost'}" data-act="mixStyle" data-v="${k}" aria-pressed="${S.mixStyle===k}" style="flex:1;min-height:40px;padding:0 10px;font-size:14px">${name}</button>`).join('');
   const tabs = mixSongs(m.dest).map(s=>`<button class="btn ${s.id===song.id?'':'ghost'}" data-act="mixSong" data-s="${s.id}" aria-pressed="${s.id===song.id}" style="flex:1;min-height:44px;padding:0 12px;font-size:15px">${s.title}</button>`).join('');
@@ -2054,14 +2217,18 @@ function vMixer(){
   return `<div class="lbar"><button class="iconbtn" data-act="quitMix" aria-label="Leave the mixer">${I.close}</button>
     <h1 style="font-size:22px;flex:1">${txt.title}</h1></div>
   <main class="wrap" style="padding-bottom:40px">
-    <div class="row" role="group" aria-label="Song" style="margin-bottom:8px">${tabs}</div>
+    ${m.run?'':`<div class="row" role="group" aria-label="Song" style="margin-bottom:8px">${tabs}</div>`}
     ${bc ? `<div class="row" style="margin-bottom:6px"><button class="btn ${m.phone?'':'ghost'}" data-act="mixPhone" aria-pressed="${!!m.phone}" style="flex:1;min-height:40px;font-size:14px">${m.phone?'Listening on a phone':'Check it on a phone'}</button></div>` : `<div class="row" role="group" aria-label="Mix style" style="margin-bottom:6px">${styles}</div>`}
-    <div class="say">${mascot(bc?'penny':'sona')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.level)}</span><p>${txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
-    <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · bars ${bars[0]+1}–${bars[1]} · loops</div>
+    <div class="say">${mascot(bc?'penny':'sona')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
+    <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · bars ${bars[0]+1}–${bars[1]} · ${m.run?'plays once':'loops'}</div>
+    ${m.run ? `<div class="runbox"><div class="runbar"><i id="run-prog" style="width:${r?100:0}%"></i></div><p id="run-cue" class="disp">${r?'Run complete.':MX.playing?'…':'Press Start when you\'re ready. It plays once, start to finish.'}</p></div>` : ''}
     ${m.ref?`<p class="ut" style="font-weight:800;margin:0 0 6px">You're hearing Sona's reference mix.</p>`:''}
     <div class="board">${rows}</div>
     ${resultPanel}
-    <div class="transport"><div class="row">
+    ${m.run ? `<div class="transport"><div class="row">
+      ${r ? `<button class="btn ghost" data-act="runStart" style="flex:1">Run it again</button><button class="btn" data-act="mixFinish" style="flex:1;--u:${r.score>=70?'#1F7A3A':'#3F3399'}">${r.score>=70?'Finish':'Leave'}</button>`
+          : MX.playing ? `<button class="btn ghost" data-act="runStop" style="flex:1">${I.stop} Stop the run</button>` : `<button class="btn" data-act="runStart" style="flex:1">${I.play} Start the run</button>`}
+    </div></div>` : `<div class="transport"><div class="row">
       <button class="btn ${MX.playing?'ghost':''}" data-act="mixPlay" style="flex:1">${MX.playing?I.stop+' Stop':I.play+' Play'}</button>
       ${r ? `<button class="btn ghost" data-act="mixRef" style="flex:1">${m.ref?'Back to my mix':'Hear Sona\'s mix'}</button>
              <button class="btn" data-act="mixFinish" style="flex:1;--u:${r.score>=70?'#1F7A3A':'#3F3399'}">${r.score>=70?'Finish':'Leave'}</button>`
@@ -2069,7 +2236,7 @@ function vMixer(){
     </div>
     ${r && !m.ref ? `<button class="btn ghost block" data-act="mixSubmit" style="margin-top:10px">Resubmit after changes</button>`:''}
     ${S.unlockAll && !m.ref ? `<button class="btn ghost block" data-act="saveRef" style="margin-top:10px">Trainer: make this the reference mix</button>`:''}
-    </div>
+    </div>`}
   </main>`;
 }
 
@@ -2130,6 +2297,72 @@ function vExIntro(){
     <button class="btn ghost block" data-act="home" style="margin-top:12px">Go to Sound School home</button>
   </main>`;
 }
+function startSoundcheck(){
+  const song=songById('rcc'), off=at(song,60), n=Math.floor(8*song.bar*A.ctx.sampleRate), chs=[...song.mix,'mc'], raw={}, ideal={}, gain={};
+  // The loudest peak in the loop: the meter holds peaks for one full loop, like listening through a whole chorus.
+  const peakOf=(b,o)=>{ let pk=0; const s0=Math.floor(o*b.sampleRate); for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=s0;i<s0+n&&i<d.length;i++) pk=Math.max(pk,Math.abs(d[i])); } return 20*Math.log10(pk+1e-9); };
+  for(const k of chs){
+    raw[k] = k==='mc' ? peakOf(A.buf['speech:'+song.speaker.voice],0)-18 : peakOf(A.buf[`rcc:${k}`],off);   // the MC's lav is recorded quietly
+    ideal[k]=-11-raw[k]; gain[k]=Math.round(ideal[k]+(coin()?1:-1)*(8+Math.random()*12));
+  }
+  UI = { screen:'sc', sc:{ chs, raw, ideal, gain, hist:{}, result:null } };
+}
+function scPlay(){
+  stopAll(); stopMixer(); const c=A.ctx, song=songById('rcc'), sc=UI.sc, off=at(song,60), dur=8*song.bar, t0=c.currentTime+0.05;
+  const bus=c.createGain(); bus.connect(A.master); sc.nodes={}; sc.srcs=[]; sc.bus=bus;
+  for(const k of sc.chs){
+    const isMc=k==='mc', b=isMc?A.buf['speech:'+song.speaker.voice]:A.buf[`rcc:${k}`], n=c.createBufferSource(); n.buffer=b; n.loop=true;
+    n.loopStart=isMc?0:off; n.loopEnd=isMc?Math.min(8,b.duration):off+dur;
+    const pre=c.createGain(); pre.gain.value=isMc?db(-18):1; n.connect(pre);
+    const an=c.createAnalyser(); an.fftSize=4096; pre.connect(an);   // ~85 ms windows, read every 50 ms: no transient slips between
+    // Turning the gain changes the meter (and clipping), not the listening level.
+    const listen = isMc ? A.speechDb[song.speaker.voice]+18-4 : song.trim+song.ref[k];
+    const g=c.createGain(); g.gain.value=db(sc.gain[k]); const clip=c.createWaveShaper(); clip.curve=new Float32Array([-1,1]);
+    const post=c.createGain(); post.gain.value=db(listen-sc.gain[k]); pre.connect(g).connect(clip).connect(post).connect(bus);
+    n.start(t0, isMc?0:off); sc.srcs.push(n); sc.nodes[k]={an,g,post,listen};
+  }
+  sc.playing=true; sc.loopMs=(isFinite(dur)?dur:15)*1000+300; scMeterLoop();
+}
+function scStop(){ const sc=UI.sc; if(!sc||!sc.srcs) return; sc.srcs.forEach(s=>{ try{s.stop();}catch(e){} }); if(sc.bus){ const b=sc.bus; b.gain.setTargetAtTime(0,A.ctx.currentTime,0.01); setTimeout(()=>b.disconnect(),150); } sc.srcs=[]; sc.playing=false; }
+function scMeterLoop(){
+  const sc=UI.sc, buf=new Float32Array(4096);
+  clearInterval(sc.timer);
+  const tick=()=>{ if(UI.screen!=='sc' || !sc.playing){ clearInterval(sc.timer); return; }
+    for(const k of sc.chs){ const nd=sc.nodes[k]; if(!nd) continue; nd.an.getFloatTimeDomainData(buf); let pk=0; for(const x of buf) pk=Math.max(pk,Math.abs(x));
+      const d=20*Math.log10(pk*db(sc.gain[k])+1e-9), h=(sc.hist[k]=(sc.hist[k]||[]).filter(x=>performance.now()-x[0]<sc.loopMs)); h.push([performance.now(),d]);
+      const hold=Math.max(...h.map(x=>x[1])), bar=document.getElementById('scm-'+k), t=document.getElementById('sct-'+k);
+      if(bar){ bar.style.width=Math.max(0,Math.min(100,(d+60)/66*100))+'%'; bar.className = d>0?'clip':d>-6?'hot':d>-18?'good':'low'; }
+      if(t) t.textContent = hold<-80 ? '—' : `${hold>0?'+':''}${hold.toFixed(0)} dBFS`; } };
+  sc.timer=setInterval(tick, 50);   // keeps measuring even if the screen isn't redrawing
+}
+function finishSoundcheck(){
+  const sc=UI.sc, song=songById('rcc'), notes=[]; let ok=0;
+  for(const k of sc.chs){ const h=sc.hist[k]||[], hold=h.length?Math.max(...h.map(x=>x[1])):-99, good=hold>=GAIN_ZONE[0]-2 && hold<=GAIN_ZONE[1]+1; if(good) ok++;
+    notes.push({k, good, bad:!good, msg: good?`Healthy (${hold.toFixed(0)} dBFS)` : hold>GAIN_ZONE[1]+1 ? `Too hot (${hold>0?'+':''}${hold.toFixed(0)} dBFS): turn the gain down` : `Too low (${hold.toFixed(0)} dBFS): turn the gain up`}); }
+  scStop(); const score=Math.round(100*ok/sc.chs.length); sc.result={score, notes:notes.sort((a,b)=>b.bad-a.bad)};
+  if(score>=70){ S.done['run-1']=Math.max(S.done['run-1']||0, score); S.xp+=Math.round(score/2); bumpStreak(); save(); }
+  render();
+}
+function vSoundcheck(){
+  const sc=UI.sc, song=songById('rcc'), r=sc.result, u=unitById('run'); setUnitColor(u.color);
+  const zl=(GAIN_ZONE[0]+60)/66*100, zw=(GAIN_ZONE[1]-GAIN_ZONE[0])/66*100;
+  return `<div class="lbar"><button class="iconbtn" data-act="scQuit" aria-label="Leave soundcheck">${I.close}</button><h1 style="font-size:22px;flex:1">Soundcheck</h1></div>
+  <main class="wrap" style="padding-bottom:40px">
+    <div class="say">${mascot(u.mascot)}<div class="bubble"><span class="bt">${u.title} · Soundcheck</span><p>The band is playing a chorus on a loop, and the MC is testing their mic. Set every channel's gain so its peaks land in the green zone (about -18 to -6 dBFS). The meters hold the loudest peak from the whole loop, so let it play through once after your last change.</p></div></div>
+    <div class="board">${sc.chs.map(k=>`<div class="scrow">
+      <div class="scn"><b>${song.name[k]}</b><span id="sct-${k}">—</span></div>
+      <div class="gmeter sm" aria-hidden="true"><div class="gzone" style="left:${zl}%;width:${zw}%"></div><i id="scm-${k}"></i></div>
+      <label class="scg"><span class="sr">Gain for ${song.name[k]}</span><input type="range" min="-30" max="60" step="0.5" value="${sc.gain[k]}" data-act="scGain" data-k="${k}" ${r?'disabled':''}><b id="scg-${k}">${sc.gain[k]>0?'+':''}${sc.gain[k]} dB</b></label>
+    </div>`).join('')}</div>
+    ${r ? `<section class="slide" style="margin-top:16px"><div style="display:flex;align-items:center;gap:16px"><div class="score ut" style="--u:${r.score>=70?'#1F7A3A':'#B4421F'}">${r.score}</div>
+      <div><b class="disp" style="font-size:22px">${r.score>=70?'Soundcheck done!':'A few channels need work'}</b><p style="margin:2px 0 0">${r.score>=70?'Healthy levels everywhere it counts. On to the song.':'Fix the channels below and check again.'}</p></div></div>
+      <ul class="notes">${r.notes.map(n=>`<li class="${n.bad?'bad':'good'}">${song.name[n.k]}<span>${n.msg}</span></li>`).join('')}</ul></section>` : ''}
+    <div class="transport"><div class="row">
+      ${r ? `<button class="btn ghost" data-act="scAgain" style="flex:1">Try again</button><button class="btn" data-act="home" style="flex:1">${r.score>=70?'Finish':'Leave'}</button>`
+          : `<button class="btn ${sc.playing?'ghost':''}" data-act="scPlay" style="flex:1">${sc.playing?I.stop+' Stop':I.play+' Play the loop'}</button><button class="btn" data-act="scDone" style="flex:1" ${Object.keys(sc.hist).length?'':'disabled'}>${I.check} Check my levels</button>`}
+    </div></div>
+  </main>`;
+}
 function vResult(){
   if(UI.result.exercise){ const r=UI.result, x=exById(r.exercise); setUnitColor(x.color);
     return `<main class="wrap center big">${mascot(x.mascot)}
@@ -2177,7 +2410,7 @@ function vSetup(){
 
 function vSettings(){
   setUnitColor();
-  const team = UNITS.filter((u,i,a)=>!['final','bcast'].includes(u.id) && a.findIndex(x=>x.mascot===u.mascot)===i), hasRefs = S.refs && Object.keys(S.refs).length;
+  const team = UNITS.filter((u,i,a)=>!['final','bcast','run'].includes(u.id) && a.findIndex(x=>x.mascot===u.mascot)===i), hasRefs = S.refs && Object.keys(S.refs).length;
   return `<div class="lbar"><button class="iconbtn" data-act="home" aria-label="Back">${I.back}</button><h1 style="font-size:24px">Settings</h1></div>
   <main class="wrap">
     <div class="sec-title">Sound</div>
@@ -2246,7 +2479,9 @@ function startExercise(id){
 }
 async function openExercise(id){
   const x=exById(id); stopAll(); stopMixer(); markPlaying(null);
-  if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs()); await withAudio(()=>startMixer(1, song.id, 'house'), song.id); }
+  if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
+    await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
+      UI.mix.quick=true; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
   else await withAudio(()=>startExercise(id));
   window.scrollTo(0,0);
 }
@@ -2300,6 +2535,12 @@ function go(ui){ stopAll(); stopMixer(); markPlaying(null); UI=ui; render(); win
 async function openLevel(id, l){
   if(l===0) return go({screen:'learn', unit:id, slide:0});
   stopAll(); stopMixer(); markPlaying(null);
+  if(id==='run'){
+    if(!(await withAudio())) return;
+    if(l===1) await withAudio(()=>startSoundcheck(), 'rcc');
+    else await withAudio(()=>startMixer(l===2?4:5, 'rcc', 'house', 'run', l), 'rcc');
+    window.scrollTo(0,0); return;
+  }
   if(id==='final' || id==='bcast'){
     // Alternate songs each time a mission opens. The livestream mix uses the songs with crowd mics.
     const dest = id==='bcast' ? 'broadcast' : 'house';
@@ -2381,6 +2622,12 @@ document.addEventListener('click', async e=>{
       const id=el.dataset.s; if(id===UI.mix.song) return;
       stopMixer(); const lv=UI.mix.level, dest=UI.mix.dest; await withAudio(()=>startMixer(lv, id, dest), id);
       break; }
+    case 'scPlay': if(UI.sc.playing){ scStop(); } else scPlay(); render(); break;
+    case 'scDone': finishSoundcheck(); break;
+    case 'scAgain': scStop(); startSoundcheck(); render(); break;
+    case 'scQuit': scStop(); go({screen:'home'}); break;
+    case 'runStart': UI.mix.result=null; startMixerPlayback(); render(); break;
+    case 'runStop': stopMixer(); UI.mix.runLog=[]; render(); break;
     case 'mixPlay': if(MX.playing) stopMixer(); else startMixerPlayback(); render(); break;
     case 'mute': {
       const k=el.dataset.k, m=UI.mix; m.mute[k]=!m.mute[k]; updateGains();
@@ -2391,13 +2638,15 @@ document.addEventListener('click', async e=>{
     case 'mixSubmit': UI.mix.ref=false; UI.mix.result=scoreMix(); updateGains(); render(); break;
     case 'mixRef': UI.mix.ref=!UI.mix.ref; updateGains(); render(); break;
     case 'mixPhone': UI.mix.phone=!UI.mix.phone; if(MX.full){ MX.full.gain.setTargetAtTime(UI.mix.phone?0:1, A.ctx.currentTime, 0.02); MX.phoneOut.gain.setTargetAtTime(UI.mix.phone?1:0, A.ctx.currentTime, 0.02); } render(); break;
+    case 'eqToggle': UI.mix.eqOpen = UI.mix.eqOpen===el.dataset.k ? null : el.dataset.k; render(); break;
+    case 'eqFlat': UI.mix.eq[el.dataset.k]={...EQ_FLAT}; updateGains(); render(); break;
     case 'mixStyle': S.mixStyle=el.dataset.v; save(); UI.mix.ref=false; UI.mix.result=null; updateGains(); render(); break;
     case 'saveRef': saveReference(); if(UI.mix.result) UI.mix.result=scoreMix(); render(); break;
     case 'mixFinish': {
       const m=UI.mix, r=m.result, pass=r.score>=70, xp=pass?Math.round(r.score/2):0;
-      if(pass){ const k=`${m.unit}-${m.level}`; S.done[k]=Math.max(S.done[k]||0, r.score); }
+      if(pass){ const k=`${m.unit}-${m.unitLevel??m.level}`; S.done[k]=Math.max(S.done[k]||0, r.score); }
       S.xp+=xp; bumpStreak(); save();
-      if(pass) go({ screen:'result', result:{ unit:m.unit, level:m.level, correct:r.score, total:100, xp, pass, mix:true } });
+      if(pass) go({ screen:'result', result:{ unit:m.unit, level:m.unitLevel??m.level, correct:r.score, total:100, xp, pass, mix:true } });
       else go({screen:'home'});
       break; }
     case 'quitMix': if(!UI.mix.result || confirm('Leave the mixer? This mix won\'t be saved.')) go({screen:'home'}); break;
@@ -2417,6 +2666,17 @@ document.addEventListener('input', e=>{
     const lb=document.getElementById('ringlbl'); if(lb) lb.textContent=hz(Math.round(f/10)*10);
   }
   if(t.dataset.act==='hpf'){ UI.mix.hpf[t.dataset.k]=+t.value; updateGains(); }
+  if(t.dataset.act==='scGain'){
+    const k=t.dataset.k, sc=UI.sc, v=+t.value; sc.gain[k]=v; const nd=sc.nodes&&sc.nodes[k];
+    if(nd){ nd.g.gain.setTargetAtTime(db(v),A.ctx.currentTime,0.02); nd.post.gain.setTargetAtTime(db(nd.listen-v),A.ctx.currentTime,0.02); }
+    const lb=document.getElementById('scg-'+k); if(lb) lb.textContent=`${v>0?'+':''}${v} dB`;
+  }
+  if(t.dataset.act==='eqParam'){
+    const k=t.dataset.k, p=t.dataset.p, e=UI.mix.eq[k];
+    if(p==='mf'){ e.mf=Math.round(100*Math.pow(80,+t.value/1000)); } else e[p]=+t.value;
+    updateGains(); const lb=document.getElementById(`eq-${k}-${p}`); if(lb) lb.textContent = p==='mf' ? hz(Math.round(e.mf/10)*10) : `${e[p]>0?'+':''}${e[p].toFixed(1).replace('.0','')} dB`;
+    document.querySelector(`.eqbtn[data-k="${k}"]`)?.classList.toggle('on', !isFlat(e));
+  }
   if(t.dataset.act==='fader'){
     const k=t.dataset.k, m=UI.mix; m.g[k]=+t.value; updateGains();
     const row=t.closest('.ch'); row.querySelector('.dbv').textContent = m.mute[k]?'Muted':fmtDb(m.g[k]);

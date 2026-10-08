@@ -9,6 +9,7 @@ How Sound School's audio was prepared and how its reference mixes were measured.
 | `wwy` | We Worship You | Studio stems (TWM Multitracks), 94 BPM, A | 94 | Bars 3–34 (verse into chorus) | 7.660 s / 79.149 s |
 | `lhc` | Let's Have Church | Live multitrack, 50 mics | 170 | Bars 12–52 | 17.938 s / 56.471 s |
 | `isg` | I'm So Glad I Met Jesus | Live multitrack, same band and mic list | 180 | Bars 16–56 | 27.652 s / 53.333 s |
+| `rcc` | RCC Sunday (Feb 15, 2026) | RCC's own live multitrack (Google Drive) | 136 | Bars 12–170 (song into the MC) | 43:00–48:45 of the service recording |
 
 Bar numbers for the live songs count from the first click (`lhc` first click at 0.997 s, `isg` at 6.319 s). Tempo came from the median spacing of click-track onsets.
 
@@ -21,6 +22,8 @@ Bar numbers for the live songs count from the first click (`lhc` first click at 
 - Stereo pairs (overheads, guitars, keys, B3, tracks, crowd) are joined into stereo files.
 - Left out: ACC 2 and Loops Sub in `lhc` (empty), drum triggers, FOH mics. In `isg` the snare and count tracks are silent in the excerpt, so they're left off that song's board.
 - `x_*` files are the separate mics used by the Phase & Polarity drills.
+
+**RCC Sunday (`rcc`)** was pulled from the shared Drive folder with HTTP byte-range requests (only the 43:00–48:45 span of each WAV, not the full 25–30 GB). There are no real kick or snare-top mics on that board, so the drum channels use the KickReplace and SnareReplace tracks; the snare bottom mic is its own channel. The `mc` channel plays the TTS stand-in (`stems/speech/male.m4a`) from bar 153 until the MC and lav speakers OK using their real recordings. Its reference mix is an estimate: no Bethel fit yet.
 
 ## Measured facts the drills rely on
 
@@ -37,6 +40,12 @@ Bar numbers for the live songs count from the first click (`lhc` first click at 
 Average Bethel target (octave bands 63 Hz–8 kHz, dB relative to the total):
 `tonal: -5.1, -8.0, -8.6, -8.1, -9.2, -13.6, -18.5, -20.2`
 `width (side minus mid): -19.7, -9.7, -2.8, -2.7, -0.7, -1.5, -2.7, -5.9`
+
+## Service Run and Soundcheck
+
+- **Soundcheck:** the chorus (bars 60–68) loops, and each channel's ideal gain puts the loudest peak in that loop at −11 dBFS. The meters hold the loudest peak over a full loop. Shorter holds missed snare transients and read 4–6 dB low.
+- **Into speaking:** scored 35% balance, 25% MC mic timing, 15% pad held, 15% pad tucked, 10% MC level, minus 25 per leak (click or crowd in the house).
+- **Quick mix / mixer EQ:** each channel has a 3-band EQ (low shelf 120 Hz, sweepable mid, high shelf 8 kHz). Quick mix plants one or two tone problems (mud, boxy, honk, harsh, boom, dull). A problem counts as fixed when the remaining error is within 3 dB at every frequency.
 
 ## Speech
 

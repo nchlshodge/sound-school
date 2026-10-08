@@ -10,6 +10,7 @@
       "stems/wwy/**",
       "stems/lhc/**",
       "stems/isg/**",
+      "stems/rcc/**",
       "tools/**",
       "docs/**"
     ]
