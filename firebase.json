@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "README.md",
+      "**/.*",
+      "**/node_modules/**",
+      "stems/wwy/**",
+      "stems/lhc/**",
+      "stems/isg/**"
+    ]
+  }
+}
