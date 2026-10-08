@@ -9,7 +9,9 @@
       "**/node_modules/**",
       "stems/wwy/**",
       "stems/lhc/**",
-      "stems/isg/**"
+      "stems/isg/**",
+      "tools/**",
+      "docs/**"
     ]
   }
 }
