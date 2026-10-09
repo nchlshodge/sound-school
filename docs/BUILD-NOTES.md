@@ -47,6 +47,16 @@ Average Bethel target (octave bands 63 Hz–8 kHz, dB relative to the total):
 - **Into speaking:** scored 35% balance, 25% MC mic timing, 15% pad held, 15% pad tucked, 10% MC level, minus 25 per leak (click or crowd in the house).
 - **Quick mix / mixer EQ:** each channel has a 3-band EQ (low shelf 120 Hz, sweepable mid, high shelf 8 kHz). Quick mix plants one or two tone problems (mud, boxy, honk, harsh, boom, dull). A problem counts as fixed when the remaining error is within 3 dB at every frequency.
 
+## Our Mix vs. Bethel
+
+`stems/rcc/mb1–3.m4a` are 20 s of the board's stereo mix (Master Burn, Feb 15) from three worship songs: about 23:00, 37:00 and 44:00 into the service. Measured over 2.5 minutes of each song, against the Bethel averages above:
+
+- Loudness: −12.6 to −13.3 LUFS, peaks −0.3 dBFS, 2.1–2.5 dB short-term range (about the same as Bethel).
+- Tone: +1 to +3 dB at 125 Hz, −2 to −5 dB from 500 Hz to 2 kHz, +1 to +2 dB at 4 kHz.
+- Width: side minus mid 3–7 dB below Bethel from 250 Hz to 2 kHz.
+
+`OURS_TONE` (low shelf 150 Hz −3.2, peak 640 Hz +2.5 Q 0.5, high shelf 4 kHz −2.1) and `OURS_WIDE` (side-only peak 1370 Hz +8.5 Q 0.4) were fitted so the three clips land within about 2 dB of Bethel in each octave band. Every variant is level-matched at load.
+
 ## Speech
 
 `stems/speech/male.m4a` and `female.m4a` are an original sermon passage read by macOS voices (Reed and Samantha) with `say`, loudness-normalized. They're stand-ins until a real recording of a pastor (with their permission) replaces them.
