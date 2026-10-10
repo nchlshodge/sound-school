@@ -1,0 +1,24 @@
+rules_version = '2';
+// Sound School. Leaders and the church domain must match LEADERS / CHURCH_DOMAIN in index.html and storage.rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function leader() {
+      return signedIn() && request.auth.token.email_verified == true
+        && request.auth.token.email in ['nick@rochesterchristian.church', 'nchlshodge@gmail.com'];
+    }
+    // Each person's profile and progress. They can save their own; leaders can read everyone's.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || leader());
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'email', 'progressJson', 'xp', 'levels', 'lastSeen'])
+        && request.resource.data.progressJson.size() < 200000;
+      allow delete: if leader();
+    }
+    // Approvals for people without a church account. Only leaders can approve.
+    match /approvals/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || leader());
+      allow write: if leader();
+    }
+  }
+}

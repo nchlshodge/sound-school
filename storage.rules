@@ -1,0 +1,13 @@
+rules_version = '2';
+// Song stems are licensed: only signed-in church accounts, leaders and approved people can play them.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /stems/{path=**} {
+      allow read: if request.auth != null && request.auth.token.email_verified == true && (
+        request.auth.token.email.matches('.*@rochesterchristian[.]church$')
+        || request.auth.token.email in ['nick@rochesterchristian.church', 'nchlshodge@gmail.com']
+        || firestore.get(/databases/(default)/documents/approvals/$(request.auth.uid)).data.approved == true);
+      allow write: if false;
+    }
+  }
+}

@@ -241,6 +241,10 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 </head>
 <body>
 <div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 <script>
 /* ============================================================
    Sound School: ear training for the RCC sound team.
@@ -268,14 +272,90 @@ const I = {
   sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="6" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="15" width="5" height="3" rx="1" fill="currentColor"/></svg>'
 };
 const mascot = (id, cls='') => `<div class="m ${cls}" aria-hidden="true">${MASCOTS[id]||''}</div>`;
-// All markup below is authored in this file (no user-entered text is ever rendered).
+// All markup below is authored in this file. The only user-entered text (names and emails on the team page) goes through esc().
 const frag = s => document.createRange().createContextualFragment(s);
 
 /* ---------- saved progress (this device only) ---------- */
 const STORE_KEY = 'rcc-sound-school-v1';
 function loadState(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } }
 const S = Object.assign({ xp:0, streak:0, lastDay:null, done:{}, unlockAll:false, setup:false, vol:0.7, mixStyle:'modern', console:'m32' }, loadState());
-function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} pushProgress(); }
+
+/* ---------- accounts (Firebase project: RCC Training) ----------
+   On the hosted site everyone signs in, with Google or an emailed sign-in link. Church accounts get in
+   automatically; anyone else waits for a leader to approve them. Progress is saved to their account.
+   Local copies (localhost or the Wi-Fi test server) skip sign-in and load the stems from this folder. */
+const FB_CONFIG = { apiKey:'AIzaSyA_2R17ml_VfthC_xsF9F-Y8wtBfnejF1w', authDomain:'rcc-training.firebaseapp.com', projectId:'rcc-training',
+  storageBucket:'rcc-training.firebasestorage.app', messagingSenderId:'150798697241', appId:'1:150798697241:web:f6c7fdcd9e7dbb89517b88' };
+const LEADERS = ['nick@rochesterchristian.church','nchlshodge@gmail.com'];   // must match firestore.rules and storage.rules
+const CHURCH_DOMAIN = '@rochesterchristian.church';
+const CLOUD = /\.web\.app$|\.firebaseapp\.com$/.test(location.hostname) || new URLSearchParams(location.search).has('cloud');
+const ME = { user:null, approved:false, leader:false, ready:!CLOUD };
+let fb = null, pushT = null;
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isChurch = e => !!e && e.toLowerCase().endsWith(CHURCH_DOMAIN);
+const isLeaderEmail = e => !!e && LEADERS.includes(e.toLowerCase());
+const dayNum = k => { if(!k) return 0; const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d).getTime(); };
+
+function cloudInit(){
+  if(!CLOUD) return;
+  if(typeof firebase==='undefined'){ ME.ready=true; ME.error='Sound School couldn\'t reach the sign-in service. Check your connection and reload.'; UI=startUI(); render(); return; }
+  firebase.initializeApp(FB_CONFIG);
+  fb = { auth:firebase.auth(), db:firebase.firestore(), st:firebase.storage() };
+  if(fb.auth.isSignInWithEmailLink(location.href)){   // they tapped the link in their email
+    const email = localStorage.getItem('ss-signin-email') || prompt('To finish signing in, type the email address the link was sent to.');
+    if(email) fb.auth.signInWithEmailLink(email.trim(), location.href)
+      .then(()=>{ localStorage.removeItem('ss-signin-email'); history.replaceState(null,'',location.pathname); })
+      .catch(()=>{ ME.msg='That sign-in link has expired or was already used. Send yourself a new one.'; history.replaceState(null,'',location.pathname); UI=startUI(); render(); });
+  }
+  fb.auth.onAuthStateChanged(async u=>{
+    ME.user=u; ME.leader=false; ME.approved=false;
+    if(u){
+      const email=(u.email||'').toLowerCase();
+      ME.leader = u.emailVerified && isLeaderEmail(email);
+      ME.approved = ME.leader || (u.emailVerified && isChurch(email));
+      if(!ME.approved){ try{ const a=await fb.db.doc('approvals/'+u.uid).get(); ME.approved=!!(a.exists && a.data().approved); }catch(e){} }
+      await pullProgress(u);
+    }
+    ME.ready=true; UI=startUI(); render();
+  });
+}
+function startUI(){
+  if(CLOUD && !ME.ready) return { screen:'authwait' };
+  if(CLOUD && !ME.user) return { screen:'signin' };
+  if(CLOUD && !ME.approved) return { screen:'pending' };
+  return { screen: !S.setup ? 'setup' : sharedEx ? 'exIntro' : 'home', ex: sharedEx };
+}
+// Progress follows the person: merge what's on this device with their account (a shared device starts fresh for each person).
+async function pullProgress(u){
+  try{
+    const snap=await fb.db.doc('users/'+u.uid).get(), c = snap.exists && snap.data().progressJson ? JSON.parse(snap.data().progressJson) : null;
+    if(S.owner && S.owner!==u.uid){ Object.assign(S,{xp:0,streak:0,lastDay:null,done:{},placement:null,setup:false,refs:{}}); }
+    S.owner=u.uid;
+    if(c){
+      for(const [k,v] of Object.entries(c.done||{})) S.done[k] = typeof v==='number' && typeof S.done[k]==='number' ? Math.max(v,S.done[k]) : (S.done[k]||v);
+      S.xp=Math.max(S.xp||0, c.xp||0);
+      if(dayNum(c.lastDay)>dayNum(S.lastDay)){ S.lastDay=c.lastDay; S.streak=c.streak||0; } else if(c.lastDay===S.lastDay) S.streak=Math.max(S.streak||0, c.streak||0);
+      if(c.setup) S.setup=true; if(c.placement && !S.placement) S.placement=c.placement;
+      for(const k of ['console','mixStyle','vol']) if(c[k]!==undefined) S[k]=c[k];
+      if(c.refs && Object.keys(c.refs).length && !(S.refs && Object.keys(S.refs).length)) S.refs=c.refs;
+    }
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){}
+    pushProgress(true);
+  }catch(e){ console.warn('Could not load saved progress', e); }
+}
+function pushProgress(now){
+  if(!fb || !ME.user) return;
+  clearTimeout(pushT);
+  pushT=setTimeout(()=>{
+    const u=ME.user;
+    fb.db.doc('users/'+u.uid).set({ name:u.displayName||'', email:(u.email||'').toLowerCase(), progressJson:JSON.stringify(S),
+      xp:S.xp||0, levels:Object.values(S.done||{}).filter(Boolean).length, lastSeen:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true})
+      .catch(e=>console.warn('Could not save progress', e));
+  }, now?0:1500);
+}
+// Song stems: from this folder locally, from Firebase Storage (signed-in, approved people only) on the hosted site.
+const stemURL = path => CLOUD && fb ? fb.st.ref(path).getDownloadURL() : Promise.resolve(path);
 function dayKey(offset=0){ const d=new Date(); d.setDate(d.getDate()+offset); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 function liveStreak(){ return (S.lastDay===dayKey(0)||S.lastDay===dayKey(-1)) ? S.streak : 0; }
 function bumpStreak(){
@@ -489,7 +569,7 @@ function loadSong(song, show){
   return A.loading[song.id] = (async()=>{
     let n=0;
     await Promise.all([...song.ch, ...(song.xtra||[]).map(k=>({k}))].map(async c=>{
-      const res = await fetch(`stems/${song.id}/${c.k}.m4a`);
+      const res = await fetch(await stemURL(`stems/${song.id}/${c.k}.m4a`));
       if(!res.ok) throw new Error(`Missing stems/${song.id}/${c.k}.m4a`);
       const data = await res.arrayBuffer();
       A.buf[`${song.id}:${c.k}`] = await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
@@ -2132,14 +2212,14 @@ const exLink = id => `${location.origin}${location.pathname}?ex=${id}`;
 // Exercises that match the areas the placement check said to work on.
 const recommendedEx = () => { const weak=(S.placement&&S.placement.start)||[]; return EXERCISES.filter(x=>x.units.some(u=>weak.includes(u))).map(x=>x.id); };
 const sharedEx = (()=>{ try{ const id=new URLSearchParams(location.search).get('ex'); return exById(id) ? id : null; }catch(e){ return null; } })();
-let UI = { screen: !S.setup ? 'setup' : sharedEx ? 'exIntro' : 'home', ex: sharedEx };
+let UI = startUI();
 let playTimer = null, playingKey = null;
 
 function setUnitColor(c){ document.documentElement.style.setProperty('--u', c || '#3F3399'); }
 
 function render(){
   const s=UI.screen;
-  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : vSetup()));
+  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : vSetup()));
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
 
@@ -2485,6 +2565,69 @@ function vResult(){
   </main>`;
 }
 
+function vAuthWait(){
+  setUnitColor();
+  return `<main class="wrap center big">${mascot('sona')}<p style="color:var(--ink2)">Signing you in…</p></main>`;
+}
+function vSignIn(){
+  setUnitColor();
+  return `<main class="wrap center big">
+    <img class="team" src="img/team.webp" width="1100" height="553" alt="Sona the bat and the Sound School team">
+    <h1 style="font-size:32px">Welcome to Sound School</h1>
+    <p style="color:var(--ink2);max-width:440px;margin:8px auto 0">Ear training and mixing practice for the RCC sound team. Sign in so your progress follows you to any device.</p>
+    ${ME.error||ME.msg?`<p class="foot" role="alert" style="color:#B4421F;margin-top:12px">${esc(ME.error||ME.msg)}</p>`:''}
+    <div class="slide" style="text-align:left;margin-top:20px">
+      <button class="btn block" data-act="signGoogle">Continue with Google</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--ink2);font-size:14px"><span style="flex:1;height:1px;background:var(--line)"></span>or<span style="flex:1;height:1px;background:var(--line)"></span></div>
+      ${UI.sent?`<p style="margin:0"><b>Check your email.</b> We sent a sign-in link to ${esc(UI.sent)}. Open it on this device to finish. (It can take a minute; check spam too.)</p>
+        <button class="btn ghost block" data-act="signAgain" style="margin-top:12px">Use a different email</button>`
+      :`<label for="signinEmail"><b>No Google account? Use any email</b></label>
+      <input id="signinEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" style="display:block;width:100%;margin:8px 0 10px;min-height:48px;padding:0 14px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font:inherit">
+      <button class="btn ghost block" data-act="signEmail">Email me a sign-in link</button>`}
+    </div>
+    <p class="foot" style="margin-top:14px">Rochester Christian Church accounts get in right away. Anyone else gets in once a sound team leader approves them.</p>
+  </main>`;
+}
+function vPending(){
+  setUnitColor();
+  const u=ME.user;
+  return `<main class="wrap center big">
+    ${mascot('sona')}
+    <h1 style="font-size:30px">Almost there!</h1>
+    <p style="color:var(--ink2);max-width:440px;margin:8px auto 0">You're signed in as <b>${esc(u&&u.email)}</b>. A sound team leader needs to approve you before you can start. Let them know you've signed up.</p>
+    <button class="btn block" data-act="checkApproval" style="margin-top:22px">I've been approved: check again</button>
+    <button class="btn ghost block" data-act="signOut" style="margin-top:12px">Sign out</button>
+  </main>`;
+}
+function unitsDone(done){ return UNITS.filter(u=>[1,2,3].every(l=>done && done[key(u,l)])).length; }
+function vTeam(){
+  setUnitColor();
+  const T=UI.team, ago=t=>{ if(!t) return 'never'; const d=Math.floor((Date.now()-t)/864e5); return d<1?'today':d===1?'yesterday':`${d} days ago`; };
+  const row=p=>`<div class="set"><div class="t"><b>${esc(p.name||p.email)}</b><span>${esc(p.email)}${p.church?' · church account':''}</span>
+      ${p.ok?`<span>${p.xp} XP · ${p.levels} levels · ${p.units} of ${UNITS.length} units finished · active ${ago(p.seen)}</span>`:''}</div>
+      ${p.leader||p.church ? '' : p.ok ? `<button class="btn ghost" data-act="teamRevoke" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Remove</button>`
+        : `<button class="btn" data-act="teamApprove" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Approve</button>`}</div>`;
+  const waiting=T?T.filter(p=>!p.ok):[], team=T?T.filter(p=>p.ok).sort((a,b)=>(b.seen||0)-(a.seen||0)):[];
+  return `<div class="lbar"><button class="iconbtn" data-act="settings" aria-label="Back">${I.back}</button><h1 style="font-size:24px">Team progress</h1></div>
+  <main class="wrap">
+    ${!T?`<p style="color:var(--ink2)">Loading the team…</p>`:UI.teamErr?`<p role="alert">${esc(UI.teamErr)}</p>`:`
+    ${waiting.length?`<div class="sec-title">Waiting for approval</div><div class="panel">${waiting.map(row).join('')}</div>`:''}
+    <div class="sec-title">Team (${team.length})</div>
+    <div class="panel">${team.length?team.map(row).join(''):'<div class="set"><div class="t"><span>Nobody has signed in yet. Send people the link to the app.</span></div></div>'}</div>
+    <p class="foot">Church accounts (${CHURCH_DOMAIN}) get in automatically. Everyone else shows up under "Waiting for approval" after they sign in.</p>`}
+  </main>`;
+}
+async function loadTeam(){
+  UI.team=null; UI.teamErr=null; render();
+  try{
+    const [us,ap]=await Promise.all([fb.db.collection('users').get(), fb.db.collection('approvals').get()]);
+    const ok={}; ap.forEach(d=>{ ok[d.id]=!!d.data().approved; });
+    UI.team=[]; us.forEach(d=>{ const x=d.data(), email=x.email||''; let done={}; try{ done=JSON.parse(x.progressJson||'{}').done||{}; }catch(e){}
+      const church=isChurch(email), leader=isLeaderEmail(email);
+      UI.team.push({ uid:d.id, name:x.name, email, xp:x.xp||0, levels:x.levels||0, units:unitsDone(done), seen:x.lastSeen&&x.lastSeen.toMillis(), church, leader, ok:church||leader||!!ok[d.id] }); });
+  }catch(e){ UI.team=[]; UI.teamErr='Couldn\'t load the team. Check your connection and try again.'; }
+  if(UI.screen==='team') render();
+}
 function vSetup(){
   setUnitColor();
   return `<main class="wrap center big">
@@ -2505,6 +2648,13 @@ function vSettings(){
   const team = UNITS.filter((u,i,a)=>!['final','bcast','run'].includes(u.id) && a.findIndex(x=>x.mascot===u.mascot)===i), hasRefs = S.refs && Object.keys(S.refs).length;
   return `<div class="lbar"><button class="iconbtn" data-act="home" aria-label="Back">${I.back}</button><h1 style="font-size:24px">Settings</h1></div>
   <main class="wrap">
+    ${CLOUD&&ME.user?`<div class="sec-title">Account</div>
+    <div class="panel">
+      <div class="set"><div class="t"><b>${esc(ME.user.displayName||ME.user.email)}</b><span>${esc(ME.user.email)} · progress saves to your account</span></div>
+        <button class="btn ghost" data-act="signOut" style="min-height:44px;padding:0 14px">Sign out</button></div>
+      ${ME.leader?`<div class="set"><div class="t"><b>Team progress</b><span>See everyone's progress and approve new people.</span></div>
+        <button class="btn" data-act="team" style="min-height:44px;padding:0 14px">Open</button></div>`:''}
+    </div>`:''}
     <div class="sec-title">Sound</div>
     <div class="panel">
       <div class="set"><div class="t"><label for="vol"><b>Practice volume</b></label><span>How loud the drills play in this app.</span>
@@ -2513,15 +2663,15 @@ function vSettings(){
     </div>
     <div class="sec-title">Training</div>
     <div class="panel">
-      <div class="set"><div class="t"><b>Trainer mode</b><span>Open every unit and level, and set the reference mixes in the Sunday Mix.</span></div>
-        <button class="switch" role="switch" aria-checked="${S.unlockAll}" data-act="unlock" aria-label="Trainer mode"></button></div>
+      ${!CLOUD||ME.leader?`<div class="set"><div class="t"><b>Trainer mode</b><span>Open every unit and level, and set the reference mixes in the Sunday Mix.</span></div>
+        <button class="switch" role="switch" aria-checked="${S.unlockAll}" data-act="unlock" aria-label="Trainer mode"></button></div>`:''}
       ${hasRefs?`<div class="set"><div class="t"><b>Reference mixes</b><span>You've changed the reference mix on this device.</span></div>
         <button class="btn ghost" data-act="resetRefs" style="min-height:44px;padding:0 14px">Restore</button></div>`:''}
       <div class="set"><div class="t"><label for="consoleSel"><b>Your console</b></label><span>Lessons are universal; this adds notes for your board.</span></div>
         <select id="consoleSel" class="hpf" data-act="console" style="max-width:170px">${Object.entries(CONSOLES).map(([k,n])=>`<option value="${k}" ${S.console===k?'selected':''}>${n}</option>`).join('')}</select></div>
       <div class="set"><div class="t"><b>Placement check</b><span>${S.placement?`Last result: ${S.placement.level} (${S.placement.correct}/${S.placement.total})`:'Find out where to start and skip what you know.'}</span></div>
         <button class="btn ghost" data-act="placeAgain" style="min-height:44px;padding:0 14px">${S.placement?'Retake':'Take it'}</button></div>
-      <div class="set"><div class="t"><b>Reset my progress</b><span>Clears XP, streak and completed levels on this device.</span></div>
+      <div class="set"><div class="t"><b>Reset my progress</b><span>Clears XP, streak and completed levels${CLOUD?'':' on this device'}.</span></div>
         <button class="btn ghost" data-act="reset" style="min-height:44px;padding:0 14px">Reset</button></div>
     </div>
     <div class="sec-title">The team</div>
@@ -2644,6 +2794,7 @@ async function openLevel(id, l){
   window.scrollTo(0,0);
 }
 
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id==='signinEmail'){ e.preventDefault(); document.querySelector('[data-act=signEmail]')?.click(); } });
 document.addEventListener('click', async e=>{
   const el=e.target.closest('[data-act]'); if(!el || el.disabled) return;
   const act=el.dataset.act;
@@ -2656,6 +2807,31 @@ document.addEventListener('click', async e=>{
       if(UI.screen==='lesson'){ const q=lessonQ(UI.lesson); if(q.tool==='gainset') gainMeterLoop(q); }
       break; }
     case 'home': go({screen:'home'}); break;
+    case 'signGoogle': {
+      const p=new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:'select_account'});
+      fb.auth.signInWithPopup(p).catch(err=>{ if(err.code==='auth/popup-blocked'||err.code==='auth/operation-not-supported-in-this-environment') return fb.auth.signInWithRedirect(p);
+        if(err.code!=='auth/popup-closed-by-user'&&err.code!=='auth/cancelled-popup-request'){ ME.msg='Google sign-in didn\'t finish. Try again, or use the email link.'; render(); } });
+      break; }
+    case 'signEmail': {
+      const email=(document.getElementById('signinEmail')||{}).value?.trim();
+      if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ ME.msg='Type your email address first.'; render(); break; }
+      el.disabled=true;
+      fb.auth.sendSignInLinkToEmail(email, {url:location.origin+location.pathname, handleCodeInApp:true})
+        .then(()=>{ localStorage.setItem('ss-signin-email', email); ME.msg=null; UI.sent=email; render(); })
+        .catch(()=>{ ME.msg='We couldn\'t send the link. Check the address and try again.'; render(); });
+      break; }
+    case 'signAgain': UI.sent=null; render(); break;
+    case 'signOut': clearTimeout(pushT); fb.auth.signOut(); break;
+    case 'checkApproval': { const u=ME.user; if(!u) break; try{ const a=await fb.db.doc('approvals/'+u.uid).get(); ME.approved=!!(a.exists&&a.data().approved); }catch(e){}
+      if(ME.approved){ UI=startUI(); render(); } else alert('Not yet. Ask a sound team leader to approve you, then try again.'); break; }
+    case 'team': go({screen:'team'}); loadTeam(); break;
+    case 'teamApprove': case 'teamRevoke': {
+      const uid=el.dataset.uid, yes=act==='teamApprove';
+      if(!yes && !confirm('Remove this person\'s access to Sound School?')) break;
+      el.disabled=true;
+      fb.db.doc('approvals/'+uid).set({approved:yes, by:ME.user.email, at:firebase.firestore.FieldValue.serverTimestamp()})
+        .then(loadTeam).catch(()=>{ alert('That didn\'t save. Try again.'); el.disabled=false; });
+      break; }
     case 'settings': go({screen:'settings'}); break;
     case 'begin': S.setup=true; save(); go(sharedEx ? {screen:'exIntro', ex:sharedEx} : {screen:'place'}); break;
     case 'exStart': openExercise(el.dataset.ex); break;
@@ -2784,6 +2960,7 @@ document.addEventListener('keydown', e=>{
 });
 
 applySavedRefs();
+cloudInit();
 render();
 </script>
 </body>

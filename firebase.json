@@ -2,17 +2,26 @@
   "hosting": {
     "public": ".",
     "ignore": [
-      "firebase.json",
-      ".firebaserc",
-      "README.md",
       "**/.*",
       "**/node_modules/**",
-      "stems/wwy/**",
-      "stems/lhc/**",
+      ".firebaserc",
+      "README.md",
+      "docs/**",
+      "firebase.json",
+      "firestore.indexes.json",
+      "firestore.rules",
       "stems/isg/**",
+      "stems/lhc/**",
       "stems/rcc/**",
-      "tools/**",
-      "docs/**"
+      "stems/wwy/**",
+      "storage.rules",
+      "tools/**"
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

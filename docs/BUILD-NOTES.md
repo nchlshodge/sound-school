@@ -61,6 +61,11 @@ Average Bethel target (octave bands 63 Hz–8 kHz, dB relative to the total):
 
 `stems/speech/male.m4a` and `female.m4a` are an original sermon passage read by macOS voices (Reed and Samantha) with `say`, loudness-normalized. They're stand-ins until a real recording of a pastor (with their permission) replaces them.
 
-## Hosting (not live yet)
+## Hosting and sign-in
 
-The Firebase project **RCC Training** (`rcc-training`) is set up with a web app named Sound School. `firebase.json` keeps the song stems out of public hosting. The plan is to put the stems in Firebase Storage behind sign-in, which needs the Blaze plan.
+- **Live at https://rcc-training.web.app** (Firebase project **RCC Training**, `rcc-training`). Deploy with `firebase deploy --only hosting`.
+- **Sign-in:** Google, or an emailed sign-in link for people without Google. `@rochesterchristian.church` accounts get in automatically. Anyone else appears on the leader's **Team progress** page (Settings) and waits for approval.
+- **Leaders** are listed in three places that must match: `LEADERS` in `index.html`, `firestore.rules` and `storage.rules`.
+- **Data:** `users/{uid}` holds each person's progress (merged with the device on sign-in); `approvals/{uid}` is written only by leaders.
+- **Song stems** are kept out of public hosting (`firebase.json`) and load from Firebase Storage, which `storage.rules` limits to approved people. Storage needs the Blaze plan.
+- **Local copies** (localhost or the Wi-Fi test server) skip sign-in and load stems from this folder. Add `?cloud` to the URL to test sign-in locally.
