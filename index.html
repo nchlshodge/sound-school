@@ -40,8 +40,7 @@ button:disabled{cursor:default}
 :root[data-theme="dark"] .ut{color:color-mix(in srgb,var(--u) 45%,#fff)}
 .tint{background:color-mix(in srgb,var(--u) 13%,var(--card))}
 .m svg,.m img{width:100%;height:100%;display:block}
-.m img{border-radius:50%;object-fit:cover}
-.m img.pose{border-radius:0;object-fit:contain}
+.m img{object-fit:contain}
 
 /* top bar */
 .top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
@@ -254,8 +253,8 @@ input[type=range]{width:100%;accent-color:var(--brand)}
    stored in ./stems/<song>/ (see SONGS below).
    ============================================================ */
 
-// Round portraits cut from the team picture (img/team.webp).
-const MASCOTS = Object.fromEntries(['sona', 'pip', 'fenn', 'kit', 'hugo', 'bram', 'echo', 'verb', 'penny'].map(k=>[k, `<img src="img/m-${k}.webp" width="256" height="256" alt="" decoding="async">`]));
+// Every character's default look: the happy pose from their expression sheet.
+const MASCOTS = Object.fromEntries(['sona','pip','fenn','kit','hugo','bram','echo','verb','penny'].map(k=>[k, `<img class="pose" src="img/m-${k}-happy.webp" width="256" height="256" alt="" decoding="async">`]));
 
 /* ---------- icons ---------- */
 const I = {
@@ -274,8 +273,8 @@ const I = {
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="6" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="15" width="5" height="3" rx="1" fill="currentColor"/></svg>'
 };
-// Characters with an expression sheet (img/m-<id>-<mood>.webp). The rest use their round portrait for every mood.
-const POSES = ['kit','hugo','bram','echo','verb','penny'];
+// Each character has six expressions (img/m-<id>-<mood>.webp).
+const POSES = ['sona','pip','fenn','kit','hugo','bram','echo','verb','penny'];
 const MOODS = ['happy','celebrating','thinking','encouraging','surprised','sleeping'];
 const hasPose = (id, mood) => !!mood && POSES.includes(id) && MOODS.includes(mood);
 const mascotArt = (id, mood) => hasPose(id,mood) ? `<img class="pose" src="img/m-${id}-${mood}.webp" width="256" height="256" alt="" decoding="async">` : (MASCOTS[id]||'');
