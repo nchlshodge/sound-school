@@ -41,6 +41,7 @@ button:disabled{cursor:default}
 .tint{background:color-mix(in srgb,var(--u) 13%,var(--card))}
 .m svg,.m img{width:100%;height:100%;display:block}
 .m img{border-radius:50%;object-fit:cover}
+.m img.pose{border-radius:0;object-fit:contain}
 
 /* top bar */
 .top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
@@ -273,7 +274,12 @@ const I = {
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="6" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="15" width="5" height="3" rx="1" fill="currentColor"/></svg>'
 };
-const mascot = (id, cls='') => `<div class="m ${cls}" aria-hidden="true">${MASCOTS[id]||''}</div>`;
+// Characters with an expression sheet (img/m-<id>-<mood>.webp). The rest use their round portrait for every mood.
+const POSES = ['kit','hugo','bram','echo','verb','penny'];
+const MOODS = ['happy','celebrating','thinking','encouraging','surprised','sleeping'];
+const hasPose = (id, mood) => !!mood && POSES.includes(id) && MOODS.includes(mood);
+const mascotArt = (id, mood) => hasPose(id,mood) ? `<img class="pose" src="img/m-${id}-${mood}.webp" width="256" height="256" alt="" decoding="async">` : (MASCOTS[id]||'');
+const mascot = (id, cls='', mood) => `<div class="m ${cls}" aria-hidden="true">${mascotArt(id, mood)}</div>`;
 // All markup below is authored in this file. The only user-entered text (names and emails on the team page) goes through esc().
 const frag = s => document.createRange().createContextualFragment(s);
 
@@ -2261,7 +2267,7 @@ function vHome(){
 function vUnit(u,i,next){
   const open=unitOpen(i);
   return `<section class="unit ${open?'':'locked'}" style="--u:${u.color}" aria-label="${u.title} unit">
-    <div class="uhead"><div class="m tint" aria-hidden="true">${MASCOTS[u.mascot]}</div>
+    <div class="uhead"><div class="m tint" aria-hidden="true">${mascotArt(u.mascot, open?'happy':'sleeping')}</div>
       <div><div class="who ut">${u.id==='final'?'Final unit':['bcast','run'].includes(u.id)?'Bonus unit':'Unit '+(i+1)} · ${u.who}</div><h2>${u.title}</h2><p>${u.blurb}</p></div></div>
     <div class="nodes">${[0,1,2,3].map(l=>{
       const ok=nodeOpen(i,l), done=passed(u,l), isNext=next&&next.u===u&&next.l===l;
@@ -2285,7 +2291,7 @@ function vLearn(){
   return `<div class="lbar"><button class="iconbtn" data-act="home" aria-label="Close">${I.close}</button>
     <div class="prog" aria-hidden="true"><i style="width:${(UI.slide+1)/u.learn.length*100}%"></i></div></div>
   <main class="wrap">
-    <div class="say">${mascot(u.mascot)}<div class="bubble"><span class="bt">${u.title}</span><p>with ${u.who}</p></div></div>
+    <div class="say">${mascot(u.mascot,'','happy')}<div class="bubble"><span class="bt">${u.title}</span><p>with ${u.who}</p></div></div>
     <article class="slide"><h2 class="ut">${sl.t}</h2>${sl.p.map(p=>typeof p==='function'?p():p).filter(Boolean).map(p=>`<p>${p}</p>`).join('')}
       ${sl.demos?`<div class="demos">${sl.demos.map((d,i)=>clipBtn('d'+i,d.label,'',true)).join('')}</div>`:''}
     </article>
@@ -2322,7 +2328,7 @@ function vLesson(){
     <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${L.n}" aria-valuenow="${L.i+(answered?1:0)}"><i style="width:${prog*100}%"></i></div></div>
   <main class="wrap" style="padding-bottom:${answered?300:120}px">
     <div class="kicker ut">${L.exercise?exById(L.exercise).title+' · ':L.placement?'Placement check · ':L.practice?'Mixed practice · ':''}${u.title} · ${levelName(u,q.level)}${q.text?'':q.tag?' · '+q.tag:q.noSong?' · Pink noise':q.voice?' · Spoken word':` · "${songById(q.song).title}"`}</div>
-    <div class="say">${mascot(u.mascot)}<div class="bubble"><span class="bt">${q.prompt}</span>${q.text?'':`<p>${q.hint || (q.clips.length>1?'Play each one as many times as you like.':'Play it as many times as you like.')}</p>`}</div></div>
+    <div class="say">${mascot(u.mascot,'', !answered?'thinking':right?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${q.prompt}</span>${q.text?'':`<p>${q.hint || (q.clips.length>1?'Play each one as many times as you like.':'Play it as many times as you like.')}</p>`}</div></div>
     ${clips?`<div class="clips">${clips}</div>`:''}
     ${q.refs && (!q.refsAfter || answered) ? `<div class="slide" style="margin-bottom:18px;padding:16px"><div class="kicker" style="color:var(--ink2);margin:0 0 10px">Compare with each band</div>
       <div class="row">${q.refs.map((r,i)=>clipBtn('r'+i, r.label, '', true)).join('')}</div></div>` : ''}
@@ -2393,7 +2399,7 @@ function vMixer(){
   <main class="wrap" style="padding-bottom:40px">
     ${m.run?'':`<div class="row" role="group" aria-label="Song" style="margin-bottom:8px">${tabs}</div>`}
     ${bc ? `<div class="row" style="margin-bottom:6px"><button class="btn ${m.phone?'':'ghost'}" data-act="mixPhone" aria-pressed="${!!m.phone}" style="flex:1;min-height:40px;font-size:14px">${m.phone?'Listening on a phone':'Check it on a phone'}</button></div>` : `<div class="row" role="group" aria-label="Mix style" style="margin-bottom:6px">${styles}</div>`}
-    <div class="say">${mascot(bc?'penny':'sona')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
+    <div class="say">${mascot(bc?'penny':'sona','', !r?'happy':r.leaks?'surprised':r.score>=70?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
     <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · bars ${bars[0]+1}–${bars[1]} · ${m.run?'plays once':'loops'}</div>
     ${m.run ? `<div class="runbox"><div class="runbar"><i id="run-prog" style="width:${r?100:0}%"></i></div><p id="run-cue" class="disp">${r?'Run complete.':MX.playing?'…':'Press Start when you\'re ready. It plays once, start to finish.'}</p></div>` : ''}
     ${m.ref?`<p class="ut" style="font-weight:800;margin:0 0 6px">You're hearing Sona's reference mix.</p>`:''}
@@ -2446,7 +2452,7 @@ function exCard(x, rec){
   const best=(S.ex||{})[x.id];
   return `<div class="excard" style="--u:${x.color}">
     <button class="exmain" data-act="exStart" data-ex="${x.id}" aria-label="Start ${x.title}">
-      <div class="m tint" aria-hidden="true">${MASCOTS[x.mascot]}</div>
+      <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div>
       <div class="ext"><b>${x.title}</b><span>${x.blurb}</span>
         <em>${rec?'Recommended for you · ':''}${x.mixer?'Mixer':(x.plan.length+' questions')}${best!=null&&!x.mixer?` · best ${best}/${x.plan.length}`:''}</em></div>
     </button>
@@ -2463,7 +2469,7 @@ function vExercises(){
 function vExIntro(){
   const x=exById(UI.ex); setUnitColor(x.color);
   return `<main class="wrap center big">
-    ${mascot(x.mascot)}
+    ${mascot(x.mascot,'','happy')}
     <div class="kicker ut">Recommended for you</div>
     <h1 style="font-size:32px;margin-top:4px">${x.title}</h1>
     <p style="color:var(--ink2);max-width:440px;margin:8px auto 0">${x.blurb} ${x.mixer?'You\'ll mix on a real board.':`${x.plan.length} quick questions.`} Headphones help.</p>
@@ -2539,7 +2545,7 @@ function vSoundcheck(){
 }
 function vResult(){
   if(UI.result.exercise){ const r=UI.result, x=exById(r.exercise); setUnitColor(x.color);
-    return `<main class="wrap center big">${mascot(x.mascot)}
+    return `<main class="wrap center big">${mascot(x.mascot,'','celebrating')}
       <h1 style="font-size:34px" class="ut">${r.correct===r.total?'Perfect!':'Nice work!'}</h1>
       <p style="color:var(--ink2);margin:6px 0 0">${x.title}: ${r.correct} of ${r.total} right.</p>
       <div class="stats"><div class="stat"><b>${r.correct}/${r.total}</b><span>Correct</span></div><div class="stat"><b>+${r.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div></div>
@@ -2552,7 +2558,7 @@ function vResult(){
   const head = r.practice ? 'Practice complete!' : r.pass ? (r.correct===r.total?'Perfect!':'Level passed!') : 'So close!';
   const sub = r.practice ? 'Every rep makes Sunday easier.' : r.pass ? `${u.title} · ${levelName(u,r.level)} is done.` : `You need ${need} of ${r.total} to pass. Give it another listen.`;
   return `<main class="wrap center big">
-    ${mascot(r.pass||r.practice?'sona':u.mascot)}
+    ${mascot(u.mascot,'', r.pass||r.practice?'celebrating':'encouraging')}
     <h1 style="font-size:36px" class="ut">${head}</h1>
     <p style="color:var(--ink2);margin:6px 0 0">${sub}</p>
     <div class="stats">
@@ -2679,7 +2685,7 @@ function vSettings(){
     <div class="sec-title">The team</div>
     <div class="panel" style="padding:16px">
       <div class="team">${team.map(u=>`<div style="--u:${u.color}">
-        <div class="m tint" aria-hidden="true">${MASCOTS[u.mascot]}</div>
+        <div class="m tint" aria-hidden="true">${mascotArt(u.mascot,'happy')}</div>
         <b class="disp" style="display:block;margin-top:6px">${u.who.split(' ')[0]}</b>
         <span class="ut" style="font-size:13px;font-weight:800">${u.id==='found'?'Guide':u.title}</span></div>`).join('')}
       </div>
