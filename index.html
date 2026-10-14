@@ -449,6 +449,23 @@ const SONGS = [
       2:{ bars:[36,52], start:{kick:8,hat:7,bass:9,gtr1:-12,keys:10,b3:'off',tracks:10,chloe:-9,corbin:5,taylor:-8}, traps:{crowd:-4,smpte:-18} },
       3:{ bars:[16,56] } }
   },
+  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:6, clipBars:2, kind:'Life.Church live stems',
+    ch:[ {k:'drums',name:'Drums'},{k:'loop',name:'Loop'},{k:'bass',name:'Bass'},{k:'synth',name:'Synth bass'},{k:'acc',name:'Acoustic'},
+         {k:'eg',name:'Electric 1'},{k:'eg2',name:'Electric 2'},{k:'eg3',name:'Electric 3'},{k:'keys',name:'Keys 1'},{k:'keys2',name:'Keys 2'},
+         {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'} ],
+    // Stems printed at the record's own balance (bars 6–43: verse 1, the build, verse 2 and the first chorus); lead nudged forward like wwy.
+    ref:{ drums:0, loop:0, bass:0, synth:0, acc:0, eg:0, eg2:0, eg3:0, keys:0, keys2:0, pad:0, piano:0, lead:1.5, bgv:0, bgv2:0 },
+    anchor:'lead', vocal:'lead', bed:'pad', drums:['drums'], bass:'bass', leads:['lead'], bgvs:['bgv','bgv2'],
+    win:{ verse:[8,10,12], gap:[22,25], full:[29,31,35,37,39,41] },
+    groups:[ null,
+      {Drums:['drums','loop'], Bass:['bass','synth'], Guitars:['acc','eg','eg2','eg3'], Keys:['keys','keys2','pad','piano'], Vocals:['lead','bgv','bgv2']},
+      {Drums:['drums'], Loop:['loop'], Bass:['bass','synth'], Acoustic:['acc'], Electrics:['eg','eg2','eg3'], Keys:['keys','keys2','pad'], Piano:['piano'], 'Lead vocal':['lead'], BGVs:['bgv','bgv2']},
+      {Drums:['drums'], Bass:['bass'], 'Synth bass':['synth'], Acoustic:['acc'], 'Electric 1':['eg'], 'Electric 2':['eg2'], 'Keys 1':['keys'], Pad:['pad'], Piano:['piano'], 'Lead vocal':['lead'], 'BGV 1':['bgv'], 'BGV 2':['bgv2']} ],
+    missions:{
+      1:{ bars:[27,35], ch:['drums','bass','acc','eg','keys','lead','bgv'] },
+      2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
+      3:{ bars:[6,43] } }
+  },
   { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)',
     ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
          {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
@@ -524,7 +541,7 @@ function styleRef(song, k, style=curStyle()){
   return r + ((MODERN[song.id]||{})[k]||0) + (curDest()==='broadcast' ? ((BCAST[song.id]||{})[k]||0) : 0);
 }
 const HPF_STEPS = [0,80,120,200,300,400];
-const HPF_LOW = ['kick','bass','drums'], HPF_CHORD = ['keys','piano','organ','b3','acc','eg','gtr1','gtr2','horns','hat'];
+const HPF_LOW = ['kick','bass','drums','synth'], HPF_CHORD = ['keys','piano','organ','b3','acc','eg','gtr1','gtr2','horns','hat','eg2','eg3','keys2','pad'];
 function hpfRef(song,k){ return HPF_LOW.includes(k) ? 0 : HPF_CHORD.includes(k) ? 300 : isVocal(song,k) ? 200 : 0; }
 // null = fine; otherwise a coaching note.
 function hpfCheck(song,k,f){
@@ -1255,7 +1272,7 @@ const FX_TYPES = {
     fx:()=> (c,inp)=>{ const p=c.createStereoPanner(); p.pan.value=0; lfo(c,0.5,0.9,p.pan); inp.connect(p); return p; } }
 };
 // Which instrument each effect usually lives on, per song.
-const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys'} };
+const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad'} };
 const FX_ON = { chorus:['guitar','keys','vocal'], doubler:['vocal'], flanger:['guitar'], phaser:['keys','guitar'], tremolo:['guitar','keys'], rotary:['organ'], drive:['guitar'], pingpong:['vocal','guitar'], tape:['vocal','guitar'], digital:['vocal','guitar'], autopan:['keys'] };
 function fxSource(s, kind){
   const off=pickWin(s, kind==='vocal'?'verse':'full');
@@ -2633,7 +2650,7 @@ function vMixer(){
   <main class="wrap" style="padding-bottom:40px">
     ${m.run?'':`<div class="row" role="group" aria-label="Song" style="margin-bottom:8px">${tabs}</div>`}
     ${bc ? `<div class="row" style="margin-bottom:6px"><button class="btn ${m.phone?'':'ghost'}" data-act="mixPhone" aria-pressed="${!!m.phone}" style="flex:1;min-height:40px;font-size:14px">${m.phone?'Listening on a phone':'Check it on a phone'}</button></div>` : `<div class="row" role="group" aria-label="Mix style" style="margin-bottom:6px">${styles}</div>`}
-    <div class="say">${mascot(bc?'penny':'sona','', !r?'happy':r.leaks?'surprised':r.score>=70?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
+    <div class="say">${mascot(bc?'penny':'sona','', !r?'happy':r.leaks?'surprised':r.score>=70?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${m.level===2 && !(song.missions[2].traps && Object.keys(song.missions[2].traps).length) ? 'The last tech left this chorus a mess: some faders are way off and some channels are muted. Fix it.' : txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
     <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · bars ${bars[0]+1}–${bars[1]} · ${m.run?'plays once':'loops'}</div>
     ${m.run ? `<div class="runbox"><div class="runbar"><i id="run-prog" style="width:${r?100:0}%"></i></div><p id="run-cue" class="disp">${r?'Run complete.':MX.playing?'…':'Press Start when you\'re ready. It plays once, start to finish.'}</p></div>` : ''}
     ${m.ref?`<p class="ut" style="font-weight:800;margin:0 0 6px">You're hearing Sona's reference mix.</p>`:''}

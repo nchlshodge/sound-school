@@ -10,6 +10,8 @@
       "firebase.json",
       "firestore.indexes.json",
       "firestore.rules",
+      "stems/GodsoGoodLifeChurch/**",
+      "stems/gsg/**",
       "stems/isg/**",
       "stems/lhc/**",
       "stems/rcc/**",
