@@ -813,6 +813,105 @@ const EQS_TEXT = [
   {prompt:'Are these EQ settings rules you should always use?', options:['No, they\'re starting points: use your ears','Yes, always','Only on Sundays'], explain:'Every room, sound system and band is different. Start here, then listen and adjust.'}
 ];
 
+/* ----- Fix the EQ: hands-on. One instrument with a hidden tone problem; fix it with the same EQ as the mixer. ----- */
+const FIX_HPF = [0,40,60,80,100,120,140,160,200,250,300,400];
+const FIX_PROBS = {   // which instruments each problem makes sense on
+  mud:  ['acoustic','electric','vocals','keys','toms','bgv','snare'],
+  boxy: ['kick','snare','toms','acoustic','vocals','keys'],
+  honk: ['vocals','acoustic','electric','keys','bgv'],
+  harsh:['vocals','electric','cymbals','acoustic','bgv','keys'],
+  boom: ['kick','bass','acoustic','vocals','toms','keys'],
+  dull: ['vocals','acoustic','cymbals','snare','keys','bgv']
+};
+const fixHpRef = it => (it.eq.find(e=>e.type==='highpass')||{f:0}).f;
+// The problem filters, then your EQ (high-pass, low shelf, sweepable mid, high shelf). `store` keeps the live nodes.
+const fixChain = (probs, e, store) => (c,inp)=>{
+  let n=inp; for(const p of probs) n=n.connect(eqNode(c,p.f));
+  const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=e.hp||10;
+  const ls=eqNode(c,{type:'lowshelf',f:120,g:e.lo}), pk=eqNode(c,{type:'peaking',f:e.mf,g:e.mg,q:1.2}), hs=eqNode(c,{type:'highshelf',f:8000,g:e.hi});
+  if(store) store.nodes={hp,ls,pk,hs};
+  return n.connect(hp).connect(ls).connect(pk).connect(hs);
+};
+function fixApply(q){
+  const n=q.state.nodes, e=q.state.bypass?{hp:0,lo:0,mg:0,mf:q.state.eq.mf,hi:0}:q.state.eq; if(!n) return; const t=A.ctx.currentTime;
+  n.hp.frequency.setTargetAtTime(e.hp||10,t,0.02); n.ls.gain.setTargetAtTime(e.lo,t,0.02); n.pk.gain.setTargetAtTime(e.mg,t,0.02);
+  n.pk.frequency.setTargetAtTime(e.mf,t,0.02); n.hs.gain.setTargetAtTime(e.hi,t,0.02);
+}
+// What's left of the problem after your EQ, in dB at the worst point, over the part of the spectrum that matters for this instrument.
+function fixResidual(probs, e, it){
+  const lo = ['kick','bass','toms'].includes(it.id) ? 50 : it.id==='cymbals' ? 300 : 100, from=Math.max(lo, (e.hp||0)*1.6), N=28;
+  const fs=Float32Array.from({length:N},(_,i)=>from*Math.pow(10000/from,i/(N-1))), mag=new Float32Array(N), ph=new Float32Array(N), tot=new Float32Array(N);
+  const nodes=[...probs.map(p=>p.f), {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
+  for(const nd of nodes){ eqNode(A.ctx, nd).getFrequencyResponse(fs, mag, ph); for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
+  return Math.max(...tot.map(Math.abs));
+}
+// The best fix with these controls (for "hear it fixed right"): a coarse search, good enough to demonstrate.
+function fixBest(probs, it){
+  const e={hp:fixHpRef(it),lo:0,mg:0,mf:1000,hi:0};
+  for(const p of probs){
+    if(p.f.type==='lowshelf') e.lo=-p.f.g; else if(p.f.type==='highshelf') e.hi=-p.f.g; else { e.mg=-p.f.g; e.mf=p.f.f; }
+  }
+  return e;
+}
+function fixQuestion(l){
+  const its=EQ_START.filter(x=>EQG.cal&&EQG.cal[x.id]);
+  let it, probs;
+  const mk=(id,g)=>{ const t=TONE_PROBS.find(p=>p.id===id), f={...t.f};
+    if(f.type==='peaking') f.f=Math.round(f.f*Math.pow(2,(Math.random()-0.5)*0.8));   // move it around so you have to sweep
+    f.g = Math.sign(f.g)*g; return {...t, f}; };
+  if(l<3){
+    const id=pick(Object.keys(FIX_PROBS)); it=pick(its.filter(x=>FIX_PROBS[id].includes(x.id))); probs=[mk(id, l===1?11:9)];
+  } else {
+    const a=pick(['mud','boxy','honk','harsh']), b=pick(['boom','dull']);
+    it=pick(its.filter(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id))); probs=[mk(a,8),mk(b,8)];
+  }
+  const state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
+  const cal=EQG.cal[it.id], song=songById(EQG.song);
+  const src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6, loop:true }];
+  const need = l===2;
+  return { tool:'eqfix', song:EQG.song, dispUnit:'eq', it, probs, state, needHp:need, level:l,
+    prompt: l===1 ? `This ${it.name.toLowerCase()} has a tone problem. Fix it with the EQ.` : l===2 ? `Fix the ${it.name.toLowerCase()}: find the tone problem, and set the high-pass where this instrument usually starts.` : `This ${it.name.toLowerCase()} has two tone problems. Fix both.`,
+    hint: 'Press Play (it loops), then move the EQ until it sounds natural. Use "EQ off" to compare.',
+    clips:[{label:'Play', spec:{src, chain:fixChain(probs, state.eq, state)}}], options:['Lock it in'], answer:0, explain:'' };
+}
+function vFixTool(q, answered){
+  const e=q.state.eq, g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`, mfPos=Math.round(Math.log(e.mf/100)/Math.log(80)*1000), dis=answered?'disabled':'';
+  const sl=(pp,label,min,max,step,val,txt)=>`<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="fixParam" data-p="${pp}" ${dis}><b id="fx-${pp}">${txt}</b></label>`;
+  return `<div class="slide">
+    <div id="fx-curve">${eqCurve(fixUserEq(e))}</div>
+    <div class="eqpanel" style="margin-top:6px">
+      ${sl('hp','High-pass',0,FIX_HPF.length-1,1,FIX_HPF.indexOf(e.hp),e.hp?hz(e.hp):'Off')}
+      ${sl('lo','Low (120 Hz)',-12,12,0.5,e.lo,g(e.lo))}
+      ${sl('mg','Mid',-12,12,0.5,e.mg,g(e.mg))}
+      ${sl('mf','Mid freq',0,1000,1,mfPos,hz(Math.round(e.mf/10)*10))}
+      ${sl('hi','High (8 kHz)',-12,12,0.5,e.hi,g(e.hi))}
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost" data-act="fixBypass" aria-pressed="${q.state.bypass}" style="flex:1" ${dis}>${q.state.bypass?'EQ is off':'EQ off'}</button>
+      <button class="btn ghost" data-act="fixReset" style="flex:1" ${dis}>Flat</button>
+    </div>
+    <button class="btn block" data-act="fixLock" style="margin-top:12px" ${dis}>Lock in my EQ</button>
+  </div>`;
+}
+const fixUserEq = e => [...(e.hp?[{type:'highpass',f:e.hp,q:0.7}]:[]), {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
+function fixGrade(q){
+  const it=q.it, e={...q.state.eq}, res=fixResidual(q.probs, e, it), ref=fixHpRef(it);
+  const hpHigh = e.hp > Math.max(ref*1.6, 160);                       // filtering away the body of the instrument
+  const hpOk = !q.needHp || (ref ? !!e.hp && Math.abs(Math.log2(e.hp/ref))<=0.6 : e.hp<=40);
+  const ok = res<=4.5 && !hpHigh && hpOk;
+  const names=q.probs.map(p=>p.name).join(' and ');
+  const where=q.probs.map(p=>p.f.type==='peaking'?`a ${Math.abs(p.f.g)} dB bump near ${hz(Math.round(p.f.f/10)*10)}`:p.f.type==='lowshelf'?`${Math.abs(p.f.g)} dB too much low end`:`${Math.abs(p.f.g)} dB missing top end`).join(' and ');
+  const fix=q.probs.map(p=>p.fix).join(', and ');
+  let why = ok ? `Fixed! It was ${names}: ${where}. What's left is within ${Math.round(res)} dB of natural.`
+    : hpHigh ? `Your high-pass at ${hz(e.hp)} is cutting away the body of the ${it.name.toLowerCase()}. It was ${names}: ${where}. The fix: ${fix}.`
+    : !hpOk ? `The tone is ${res<=4.5?'fixed':'closer'}, but the high-pass for ${it.name.toLowerCase()} usually starts ${ref?`around ${hz(ref)}`:'off (the kick needs its low end)'}. It was ${names}: ${where}.`
+    : `Not quite. It was ${names}: ${where}. The fix: ${fix}. Your EQ still leaves it about ${Math.round(res)} dB off.`;
+  if(ref && hpOk && !hpHigh && (q.needHp || !ok)) why += ` Starting-point high-pass for ${it.name.toLowerCase()}: about ${hz(ref)}.`;
+  const song=songById(EQG.song), cal=EQG.cal[it.id], src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], flat={hp:0,lo:0,mg:0,mf:1000,hi:0};
+  q.after=[{label:'with the problem', spec:{src, chain:fixChain(q.probs, flat)}}, {label:'with your EQ', spec:{src, chain:fixChain(q.probs, e)}}, {label:'fixed right', spec:{src, chain:fixChain(q.probs, fixBest(q.probs,it))}}];
+  return {ok, why};
+}
+
 /* ----- Our Mix vs. Bethel -----
    Master Burn (our board's stereo mix, Feb 15) measured against Bethel's livestream: ours has more 125 Hz,
    2–5 dB less from 500 Hz to 2 kHz, a little more 4 kHz, and much less stereo width in the mids.
@@ -1405,6 +1504,7 @@ const GEN = {
   },
   eq(l, s, o={}){
     const r=Math.random(), kind=o.kind;   // kind: 'music' | 'voice' | 'mic' | 'ring' | 'ringout' (exercises ask for one)
+    if(!kind && EQG.cal && Math.random()<0.25) return fixQuestion(l);   // about one in four: fix it yourself
     if(kind==='voice' || (!kind && l===1 && r<0.5)){
       const v=pick(VOICES), src=VOICE(v), p=pick(VOICE_PROBS);
       return Object.assign(choiceQ({ prompt:'This pastor\'s voice has a problem. What is it?', clips:[{label:'Natural',spec:{src}},{label:'Problem',spec:{src,chain:fxEQ(p.f,p.g,1.4)}}],
@@ -1537,6 +1637,7 @@ const GEN = {
     if(l===3) q.after=[{label:'Balanced',spec:{src:BAND(s,{},w)}}];
     return q;
   },
+  eqfix(l, s){ return EQG.cal ? fixQuestion(l) : GEN.eq(l, s, {}); },
   eqstart(l, s){
     const tag={song:EQG.song, dispUnit:'eq'};
     if(l===1 || !EQG.cal || Math.random()<0.25) return Object.assign(textQ(pick(EQS_TEXT)), tag);
@@ -2323,6 +2424,8 @@ const EXERCISES = [
     plan:[['line',1],['line',1],['line',2],['line',2],['line',3],['line',3]] },
   { id:'walkup',  title:'Pastor walks up',     mascot:'sona',  color:'#3F3399', blurb:'Get the pastor\'s mic up before the first word, and the band down under him.', units:['found','mix'],
     plan:[['walk',1],['walk',1],['walk',2],['walk',2],['walk',3]] },
+  { id:'eqfix', title:'Fix the EQ', mascot:'fenn', color:'#A8540A', blurb:'Hands-on: each instrument has a hidden tone problem. Find it and fix it with a real channel EQ.', units:['eq'], guide:true,
+    plan:[['eqfix',1],['eqfix',1],['eqfix',2],['eqfix',2],['eqfix',3],['eqfix',3]] },
   { id:'eqstart', title:'EQ starting points', mascot:'fenn', color:'#A8540A', blurb:'Where to start EQ on each instrument, from MxU\'s Church Audio EQ Guide. Hear each one flat and with the starting point.', units:['eq'], guide:true,
     plan:[['eqstart',1],['eqstart',1],['eqstart',2],['eqstart',2],['eqstart',2],['eqstart',3],['eqstart',3],['eqstart',3]] },
   { id:'ourmix', title:'Our mix vs. Bethel', mascot:'sona', color:'#155E75', blurb:'Our Feb 15 mix next to Bethel\'s balance: hear the difference in tone and width.', units:['ours'],
@@ -2474,6 +2577,7 @@ function vLesson(){
         ${q.state.running||answered ? `<div class="row"><button class="btn" data-act="walkMic" style="flex:1" ${q.state.mic!=null||answered?'disabled':''}>Pastor mic up</button>
           ${q.needBand?`<button class="btn ghost" data-act="walkBand" style="flex:1" ${q.state.band!=null||answered?'disabled':''}>Bring the band down</button>`:''}</div>`
           : `<button class="btn block" data-act="walkStart">Start</button>`}</div>`
+    : q.tool==='eqfix' ? vFixTool(q, answered)
     : q.tool==='ringout' ? `<div class="slide" style="text-align:center">
         <label for="ringf" class="disp" style="font-size:20px;display:block">Your cut: <span id="ringlbl">${hz(Math.round(q.state.f/10)*10)}</span></label>
         <input id="ringf" type="range" min="0" max="1000" step="1" value="${Math.round(Math.log(q.state.f/100)/Math.log(80)*1000)}" data-act="ringFreq" ${answered?'disabled':''} style="margin:14px 0 6px">
@@ -2912,7 +3016,7 @@ function markPlaying(k, secs){
   playingKey=k;
   document.querySelectorAll('.clip').forEach(b=>b.classList.toggle('on', b.dataset.k===k));
   clearTimeout(playTimer);
-  if(k) playTimer=setTimeout(()=>{ playingKey=null; document.querySelectorAll('.clip.on').forEach(b=>b.classList.remove('on')); }, secs*1000);
+  if(k) playTimer=setTimeout(()=>{ if(secs>=60) stopAll(); playingKey=null; document.querySelectorAll('.clip.on').forEach(b=>b.classList.remove('on')); }, secs*1000);   // loops stop when the button does
 }
 function go(ui){ stopAll(); stopMixer(); markPlaying(null); UI=ui; render(); window.scrollTo(0,0); }
 async function openLevel(id, l){
@@ -2931,7 +3035,8 @@ async function openLevel(id, l){
     if(!(await withAudio())) return;
     const songs=mixSongs(dest), song=songs[S.mixTurn%songs.length];
     await withAudio(()=>startMixer(l, song.id, dest), song.id);
-  } else await withAudio(()=>startLesson(id,l), id==='ours'?'rcc':undefined);
+  } else if(id==='eq'){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startLesson(id,l); render(); }
+  else await withAudio(()=>startLesson(id,l), id==='ours'?'rcc':undefined);
   window.scrollTo(0,0);
 }
 
@@ -3009,6 +3114,12 @@ document.addEventListener('click', async e=>{
       st.mic=A.ctx.currentTime-st.t0; st.mic_g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.05); el.disabled=true; break; }
     case 'walkBand': { const q=lessonQ(UI.lesson), st=q.state; if(!st.running||st.band!=null) return;
       st.band=A.ctx.currentTime-st.t0; st.bandBus.gain.setTargetAtTime(db(-15), A.ctx.currentTime, 0.4); el.disabled=true; break; }
+    case 'fixBypass': { const q=lessonQ(UI.lesson); q.state.bypass=!q.state.bypass; fixApply(q); el.setAttribute('aria-pressed',q.state.bypass); el.textContent=q.state.bypass?'EQ is off':'EQ off'; break; }
+    case 'fixReset': { const q=lessonQ(UI.lesson); Object.assign(q.state.eq,{hp:0,lo:0,mg:0,mf:1000,hi:0}); q.state.bypass=false; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    case 'fixLock': {
+      const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
+      const {ok, why}=fixGrade(q); L.picked = ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
+      stopAll(); markPlaying(null); render(); break; }
     case 'ringLock': {
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const oct=Math.abs(Math.log2(q.state.f/q.ring)), ok=oct<=1/3;
@@ -3071,6 +3182,14 @@ document.addEventListener('input', e=>{
     const lb=document.getElementById('gainlbl'); if(lb) lb.textContent=`${q.state.gainDb>0?'+':''}${q.state.gainDb} dB`;
   }
   if(t.dataset.act==='console'){ S.console=t.value; save(); }
+  if(t.dataset.act==='fixParam'){
+    const q=lessonQ(UI.lesson), e=q.state.eq, pp=t.dataset.p, v=+t.value;
+    if(pp==='hp') e.hp=FIX_HPF[v]; else if(pp==='mf') e.mf=Math.round(100*Math.pow(80,v/1000)); else e[pp]=v;
+    if(q.state.bypass){ q.state.bypass=false; const b=document.querySelector('[data-act=fixBypass]'); if(b){ b.textContent='EQ off'; b.setAttribute('aria-pressed','false'); } }
+    fixApply(q);
+    const lb=document.getElementById('fx-'+pp); if(lb) lb.textContent = pp==='hp' ? (e.hp?hz(e.hp):'Off') : pp==='mf' ? hz(Math.round(e.mf/10)*10) : `${e[pp]>0?'+':''}${e[pp].toFixed(1).replace('.0','')} dB`;
+    const cv=document.getElementById('fx-curve'); if(cv) cv.replaceChildren(frag(eqCurve(fixUserEq(e))));
+  }
   if(t.dataset.act==='ringFreq'){
     const q=lessonQ(UI.lesson), f=100*Math.pow(80, +t.value/1000); q.state.f=f;
     if(q.state.node) q.state.node.frequency.setTargetAtTime(f, A.ctx.currentTime, 0.02);
