@@ -1322,8 +1322,8 @@ function knobStep(kn, dpos){
 (()=>{
   let drag=null;
   document.addEventListener('pointerdown', e=>{
-    const kn=e.target.closest('.knob[data-p]'); if(kn && !kn.classList.contains('dis')){ e.preventDefault(); drag={kn, y:e.clientY}; kn.setPointerCapture(e.pointerId); return; }
-    const nd=e.target.closest('#m32screen .mnode'); if(nd){ const scr=document.getElementById('m32screen'); e.preventDefault(); drag={band:nd.dataset.band, scr}; scr.setPointerCapture(e.pointerId); }
+    const kn=e.target.closest('.knob[data-p]'); if(kn && !kn.classList.contains('dis')){ e.preventDefault(); drag={kn, y:e.clientY}; try{ kn.setPointerCapture(e.pointerId); }catch(err){} return; }
+    const nd=e.target.closest('#m32screen .mnode'); if(nd){ const scr=document.getElementById('m32screen'); e.preventDefault(); drag={band:nd.dataset.band, scr}; try{ scr.setPointerCapture(e.pointerId); }catch(err){} }
   });
   document.addEventListener('pointermove', e=>{
     if(!drag) return;
