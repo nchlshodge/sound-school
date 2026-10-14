@@ -73,6 +73,29 @@ button:disabled{cursor:default}
 .secrow span{font-weight:800;font-size:13px;color:var(--ink2);flex:none}
 .chipbtn{flex:none;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .chipbtn.on{background:var(--u,#3F3399);border-color:var(--u,#3F3399);color:#fff}
+.cbank{display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.cstrip{flex:none;width:78px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:6px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;scroll-snap-align:start}
+.cstrip.sel{border-color:var(--u,#3F3399);box-shadow:0 0 0 3px color-mix(in srgb,var(--u,#3F3399) 25%,transparent)}
+.cstrip.dim{opacity:.5}
+.cstrip.fxs,.cstrip.mst{background:color-mix(in srgb,var(--u,#3F3399) 9%,var(--card))}
+.cname{font:inherit;font-size:12px;font-weight:800;border:0;background:none;color:var(--ink);text-align:center;min-height:32px;width:100%;line-height:1.15;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+.cins{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:30px;align-content:flex-start}
+.cins i{font-style:normal;font-size:9px;font-weight:800;padding:1px 4px;border-radius:4px;background:var(--line);color:var(--ink2)}
+.cins i.on{background:#1F7A3A;color:#fff}
+.cpan{width:64px;margin:0}
+.cbtns{display:flex;gap:4px}
+.cbtns button{width:30px;height:28px;border-radius:8px;border:2px solid var(--line);background:var(--card);font-weight:800;font-size:12px;color:var(--ink);cursor:pointer;padding:0}
+.cbtns .cm.on{background:#B4421F;border-color:#B4421F;color:#fff}
+.cbtns .cs.on{background:#C99A06;border-color:#C99A06;color:#fff}
+.cfad{position:relative;height:180px;width:64px}
+.cfad input[type=range]{position:absolute;width:176px;max-width:none;left:-60px;top:82px;transform:rotate(-90deg);margin:0}
+.cmeter{position:absolute;right:0;top:2px;bottom:2px;width:7px;border-radius:4px;background:var(--line);overflow:hidden;display:flex;align-items:flex-end}
+.cmeter i{display:block;width:100%;height:0;background:linear-gradient(to top,#1F7A3A 0,#1F7A3A 70%,#C99A06 88%,#B4421F 100%);background-size:100% 172px;background-position:bottom}
+.cdb{font-size:11px;white-space:nowrap}
+.cgr{font-size:10px;color:#B4421F;min-height:12px;font-weight:800}
+.plug{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.plug:first-child{border-top:0;margin-top:0;padding-top:0}
+.plug h4{margin:0 0 2px;font-family:'Fredoka',sans-serif;font-size:18px}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -937,6 +960,272 @@ function fixGrade(q){
   q.after=[{label:'with the problem', spec:{src, chain:fixChain(q.probs, flat)}}, {label:'with your EQ', spec:{src, chain:fixChain(q.probs, e)}}, {label:'fixed right', spec:{src, chain:fixChain(q.probs, fixBest(q.probs,it))}}];
   return {ok, why};
 }
+
+/* ============================================================
+   THE CONSOLE: a full board for any song. Every channel has a high-pass, a 4-band EQ, a gate,
+   a compressor and a de-esser (the "plugins"), pan, mute/solo, a fader and two post-fader sends
+   (reverb and delay). The FX rack and the master bus (glue compressor, limiter) sit at the end.
+   ============================================================ */
+const GATE_SRC = `class SSGate extends AudioWorkletProcessor{
+  static get parameterDescriptors(){ return [{name:'on',defaultValue:0},{name:'thr',defaultValue:-40},{name:'range',defaultValue:-60}]; }
+  constructor(){ super(); this.env=0; this.g=1; this.hold=0; }
+  process(ins, outs, p){
+    const i=ins[0], o=outs[0]; if(!i || !i.length){ return true; }
+    const n=i[0].length, sr=sampleRate, on=p.on[0]>0.5, thr=Math.pow(10,p.thr[0]/20), floor=Math.pow(10,p.range[0]/20);
+    const att=Math.exp(-1/(0.0008*sr)), rel=Math.exp(-1/(0.09*sr)), er=Math.exp(-1/(0.005*sr)), H=Math.floor(0.06*sr);
+    for(let s=0;s<n;s++){
+      let pk=0; for(let c=0;c<i.length;c++){ const a=Math.abs(i[c][s]); if(a>pk) pk=a; }
+      this.env = pk>this.env ? pk : this.env*er + pk*(1-er);
+      let target=1;
+      if(on){ if(this.env>=thr) this.hold=H; else if(this.hold>0) this.hold--; else target=floor; }
+      this.g = target>this.g ? target+(this.g-target)*att : target+(this.g-target)*rel;
+      for(let c=0;c<o.length;c++) o[c][s]=(i[c]||i[0])[s]*this.g;
+    }
+    return true;
+  }
+}
+registerProcessor('ss-gate', SSGate);`;
+function ensureGate(){
+  if(A.gateP) return A.gateP;
+  if(!A.ctx.audioWorklet) return (A.gateP=Promise.resolve(false));
+  const url=URL.createObjectURL(new Blob([GATE_SRC],{type:'application/javascript'}));
+  return (A.gateP=A.ctx.audioWorklet.addModule(url).then(()=>true).catch(()=>false));
+}
+const CON_HPF = [0,40,60,80,100,120,150,200,250,300,400];
+const CON_DLY = { q:{name:'1/4 note', l:1, r:1}, de:{name:'Dotted 1/8', l:0.75, r:0.75}, luke:{name:'1/8 + dotted 1/8', l:0.5, r:0.75} };
+const CON = { playing:false, nodes:{}, srcs:[], meterT:0 };
+const conSong = () => songById(UI.con.song);
+// What you can loop: the song's sections if it has them, otherwise its verse, chorus and the whole mission.
+function conSections(song){
+  const whole={name:'Whole song', bars:song.missions[3].bars};
+  if(song.sections) return [whole, ...song.sections];
+  return [{name:'Verse', bars:song.missions[1].bars}, {name:'Chorus', bars:song.missions[2].bars}, whole];
+}
+const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0,
+  eq:{ lf:0, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0 },
+  gate:{ on:false, thr:-40 }, comp:{ on:false, thr:-18, ratio:3, atk:10, rel:150, mk:0 }, des:{ on:false, thr:-30 }, rev:FADER_MIN, dly:FADER_MIN });
+function conInit(songId, start){
+  const song=songById(songId), ch={};
+  for(const k of song.mix){
+    const ref=styleRef(song,k);
+    const f = start==='down' ? FADER_MIN : start==='ref' ? ref : Math.max(FADER_MIN+5, Math.min(FADER_MAX, Math.round(ref + (Math.random()*10-5))));
+    ch[k]=conStrip(f);
+    if(start==='ref'){ ch[k].hp=refHpf(song,k); if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
+  }
+  return { song:songId, sec:0, sel:song.anchor, tab:'eq', start:start||'rough', ch,
+    fx:{ revType:'plate', revRet:0, dlyTime:'luke', dlyFb:0.3, dlyRet:-3 }, master:{ fader:0, glue:false, lim:true }, result:null };
+}
+function conEqList(e, hp){
+  return [...(hp?[{type:'highpass',f:hp,q:0.7}]:[]), {type:'lowshelf',f:100,g:e.lf}, {type:'peaking',f:e.lmf,g:e.lmg,q:e.lmq}, {type:'peaking',f:e.hmf,g:e.hmg,q:e.hmq}, {type:'highshelf',f:10000,g:e.hf}];
+}
+const anySolo = () => Object.values(UI.con.ch).some(s=>s.solo);
+function conGainOf(k){
+  const s=UI.con.ch[k], song=conSong();
+  if(s.mute || (anySolo() && !s.solo) || s.fader<=FADER_MIN) return 0;
+  return db(song.trim + s.fader);
+}
+const sendGain = v => v<=FADER_MIN ? 0 : db(v);
+// Push the state into the live nodes (called after every change; cheap).
+function conApply(k){
+  if(!CON.playing) return;
+  const t=A.ctx.currentTime, set=(prm,v)=>prm.setTargetAtTime(v,t,0.015), ks = k ? [k] : Object.keys(CON.nodes);
+  for(const key of ks){
+    const n=CON.nodes[key], s=UI.con.ch[key]; if(!n) continue;
+    set(n.hp.frequency, s.hp||10); set(n.lf.gain, s.eq.lf); set(n.lm.frequency, s.eq.lmf); set(n.lm.gain, s.eq.lmg); set(n.lm.Q, s.eq.lmq);
+    set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg); set(n.hm.Q, s.eq.hmq); set(n.hf.gain, s.eq.hf);
+    if(n.gate){ set(n.gate.parameters.get('on'), s.gate.on?1:0); set(n.gate.parameters.get('thr'), s.gate.thr); }
+    set(n.comp.threshold, s.comp.on?s.comp.thr:0); set(n.comp.ratio, s.comp.on?s.comp.ratio:1); set(n.comp.knee, s.comp.on?6:0);
+    n.comp.attack.value=s.comp.atk/1000; n.comp.release.value=s.comp.rel/1000; set(n.mk.gain, s.comp.on?db(s.comp.mk):1);
+    set(n.dcomp.threshold, s.des.on?s.des.thr:0); set(n.dcomp.ratio, s.des.on?8:1);
+    set(n.pan.pan, s.pan); set(n.fader.gain, conGainOf(key)); set(n.rev.gain, sendGain(s.rev)); set(n.dly.gain, sendGain(s.dly));
+  }
+  if(!k){
+    const f=UI.con.fx, M=UI.con.master, song=conSong(), D=CON_DLY[f.dlyTime];
+    set(CON.revRet.gain, sendGain(f.revRet)); set(CON.dlyRet.gain, sendGain(f.dlyRet));
+    set(CON.dl.delayTime, song.beat*D.l); set(CON.dr.delayTime, song.beat*D.r); set(CON.dfbl.gain, f.dlyFb); set(CON.dfbr.gain, f.dlyFb);
+    if(CON.verb.typeNow!==f.revType){ CON.verb.buffer=impulseType(f.revType); CON.verb.typeNow=f.revType; }
+    set(CON.glue.threshold, M.glue?-18:0); set(CON.glue.ratio, M.glue?2:1);
+    set(CON.lim.threshold, M.lim?-2:0); set(CON.lim.ratio, M.lim?20:1);
+    set(CON.mfader.gain, db(M.fader));
+  }
+}
+function conStart(){
+  const c=A.ctx; if(c.state!=='running') c.resume();
+  stopAll(); stopMixer(); conStop();
+  const song=conSong(), sec=conSections(song)[UI.con.sec], off=at(song,sec.bars[0]), dur=(sec.bars[1]-sec.bars[0])*song.bar, t0=c.currentTime+0.1;
+  const bus=c.createGain(), revBus=c.createGain(), dlyBus=c.createGain();
+  // master: glue compressor -> limiter -> master fader
+  const glue=c.createDynamicsCompressor(); glue.attack.value=0.03; glue.release.value=0.3; glue.knee.value=6;
+  const lim=c.createDynamicsCompressor(); lim.attack.value=0.001; lim.release.value=0.08; lim.knee.value=0;
+  const mfader=c.createGain(), man=c.createAnalyser(); man.fftSize=1024;
+  bus.connect(glue).connect(lim).connect(mfader).connect(A.master); mfader.connect(man);
+  // FX rack
+  const verb=c.createConvolver(); verb.buffer=impulseType(UI.con.fx.revType); verb.typeNow=UI.con.fx.revType;
+  const revRet=c.createGain(); revBus.connect(verb).connect(revRet).connect(bus);
+  const dm=c.createChannelMerger(2), dl=c.createDelay(4), dr=c.createDelay(4), dfbl=c.createGain(), dfbr=c.createGain(), dlp=c.createBiquadFilter(), drp=c.createBiquadFilter(), dlyRet=c.createGain();
+  dlp.type=drp.type='lowpass'; dlp.frequency.value=drp.frequency.value=5000;
+  dlyBus.connect(dl); dlyBus.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
+  dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus);
+  Object.assign(CON, { bus, glue, lim, mfader, man, verb, revRet, dl, dr, dfbl, dfbr, dlyRet, nodes:{}, srcs:[], t0, off, dur });
+  for(const k of song.mix){
+    const b=A.buf[`${song.id}:${k}`]; if(!b) continue;
+    const src=c.createBufferSource(); src.buffer=b; src.loop=true; src.loopStart=off; src.loopEnd=Math.min(off+dur, b.duration); src.start(t0, off);
+    const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707;
+    const lf=eqNode(c,{type:'lowshelf',f:100}), lm=eqNode(c,{type:'peaking',f:300}), hm=eqNode(c,{type:'peaking',f:3000}), hf=eqNode(c,{type:'highshelf',f:10000});
+    let n=src.connect(hp).connect(lf).connect(lm).connect(hm).connect(hf), gate=null;
+    if(A.gateOk){ gate=new AudioWorkletNode(c,'ss-gate',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n=n.connect(gate); }
+    const comp=c.createDynamicsCompressor(), mk=c.createGain(); n=n.connect(comp).connect(mk);
+    // de-esser: split at 6 kHz, squash only the top, add it back (in polarity for a flat sum)
+    const dlo=c.createBiquadFilter(), dhi=c.createBiquadFilter(), dcomp=c.createDynamicsCompressor(), dinv=c.createGain(), dsum=c.createGain();
+    dlo.type='lowpass'; dhi.type='highpass'; dlo.frequency.value=dhi.frequency.value=6000; dlo.Q.value=dhi.Q.value=0.5; dinv.gain.value=-1;
+    dcomp.attack.value=0.001; dcomp.release.value=0.05; dcomp.knee.value=0;
+    n.connect(dlo).connect(dsum); n.connect(dhi).connect(dcomp).connect(dinv).connect(dsum);
+    const pan=c.createStereoPanner(), fader=c.createGain(), an=c.createAnalyser(); an.fftSize=1024;
+    dsum.connect(pan).connect(fader).connect(bus); fader.connect(an);
+    const rev=c.createGain(), dly=c.createGain(); fader.connect(rev).connect(revBus); fader.connect(dly).connect(dlyBus);
+    CON.nodes[k]={ hp, lf, lm, hm, hf, gate, comp, mk, dcomp, pan, fader, an, rev, dly };
+    CON.srcs.push(src);
+  }
+  CON.playing=true; conApply();
+  // set first values instantly (setTargetAtTime starts from defaults)
+  for(const k in CON.nodes){ CON.nodes[k].fader.gain.value=conGainOf(k); }
+  conMeters();
+}
+function conStop(){
+  clearInterval(CON.meterT); clearInterval(CON.nowT);
+  CON.srcs.forEach(s=>{ try{ s.stop(); }catch(e){} });
+  if(CON.bus){ const b=CON.mfader; b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.01); setTimeout(()=>{ try{ b.disconnect(); }catch(e){} },150); }
+  CON.srcs=[]; CON.nodes={}; CON.playing=false; CON.bus=null;
+}
+const conBuf=new Float32Array(1024);
+function conPeak(an){ an.getFloatTimeDomainData(conBuf); let pk=0; for(let i=0;i<conBuf.length;i++){ const a=Math.abs(conBuf[i]); if(a>pk) pk=a; } return 20*Math.log10(pk+1e-9); }
+function conMeters(){
+  clearInterval(CON.meterT);
+  CON.meterT=setInterval(()=>{
+    if(!CON.playing || UI.screen!=='console') return;
+    for(const k in CON.nodes){
+      const el=document.getElementById('cm-'+k); if(el) el.style.height=Math.max(0,Math.min(100,(conPeak(CON.nodes[k].an)+60)/60*100))+'%';
+      const gr=document.getElementById('cg-'+k); if(gr){ const r=CON.nodes[k].comp.reduction; gr.textContent = UI.con.ch[k].comp.on && r<-0.5 ? `${Math.round(r)} dB` : ''; }
+    }
+    const mm=document.getElementById('cm-master'); if(mm){ const p=conPeak(CON.man); mm.style.height=Math.max(0,Math.min(100,(p+60)/60*100))+'%'; mm.classList.toggle('hot', p>-1); }
+    const gk=document.getElementById('con-gr'); if(gk && CON.nodes[UI.con.sel]){ const r=CON.nodes[UI.con.sel].comp.reduction; gk.textContent = UI.con.ch[UI.con.sel].comp.on ? `Gain reduction: ${Math.round(-r*10)/10} dB` : 'Compressor is off'; }
+    const now=document.getElementById('con-now'), song=conSong(); if(now && song.sections){ const sec=conSections(song)[UI.con.sec], len=(sec.bars[1]-sec.bars[0])*song.bar, t=((A.ctx.currentTime-CON.t0)%len+len)%len, x=sectionAt(song, sec.bars[0]+t/song.bar); now.textContent = x ? `Now playing: ${x.name}` : ''; }
+  }, 70);
+}
+// Balance relative to the lead vocal (like the Sunday Mix), plus high-pass filters in modern style.
+function conScore(){
+  const C=UI.con, song=conSong(), eff=k=>{ const s=C.ch[k]; return s.mute ? FADER_MIN : s.fader; }, v=eff(song.anchor), notes=[];
+  if(v<=FADER_MIN) return { score:0, notes:[{k:song.anchor, bad:true, msg:'Off! The lead vocal carries the message.'}] };
+  let pts=0, n=0;
+  for(const k of song.mix.filter(k=>k!==song.anchor)){
+    const target=styleRef(song,k,S.mixStyle)-styleRef(song,song.anchor,S.mixStyle), rel=eff(k)<=FADER_MIN?-60:eff(k)-v, err=rel-target, a=Math.abs(err);
+    n++; pts += a<=3?1 : a<=6?0.6 : a<=10?0.25 : 0;
+    notes.push({k, err:a, good:a<=3, bad:a>6, msg: a<=3?'Sits well' : eff(k)<=FADER_MIN?'Off: bring it up' : `About ${Math.round(a)} dB too ${err>0?'loud':'quiet'}`});
+  }
+  let filt=1;
+  if(S.mixStyle==='modern'){ let ok=0, tot=0; for(const k of song.mix){ const ruled=HPF_LOW.includes(k)||HPF_CHORD.includes(k)||isVocal(song,k); if(!ruled) continue; tot++; const msg=hpfCheck(song,k,C.ch[k].hp); if(msg) notes.push({k, hp:1, msg:'Filter: '+msg}); else ok++; } filt=tot?ok/tot:1; }
+  const lead=C.ch[song.anchor];
+  if(!lead.comp.on) notes.push({k:song.anchor, tip:1, msg:'Tip: a little compression (2–6 dB of gain reduction) keeps the lead vocal steady.'});
+  if(lead.rev<=FADER_MIN && lead.dly<=FADER_MIN) notes.push({k:song.anchor, tip:1, msg:'Tip: send the lead vocal to the reverb or delay so it doesn\'t sound dry.'});
+  notes.sort((x,y)=>(y.bad-x.bad)||((y.err||0)-(x.err||0)));
+  const bal=pts/n; return { score: Math.round(S.mixStyle==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal), notes };
+}
+async function openConsole(songId, start){
+  stopAll(); stopMixer(); conStop(); markPlaying(null);
+  const id = songId || (UI.con && UI.con.song) || 'gsg';
+  if(!(await withAudio(null, id))) return;
+  A.gateOk = await ensureGate();
+  go({ screen:'console', con: conInit(id, start) });
+}
+function conKnob(k, p, label, min, max, step, val, txt, dis=''){
+  return `<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="conParam" data-k="${k}" data-p="${p}" ${dis}><b id="cv-${k}-${p.replace(/\./g,'-')}">${txt}</b></label>`;
+}
+const fmtS = v => v<=FADER_MIN ? 'Off' : `${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
+const logPos = (f,lo,hi) => Math.round(Math.log(f/lo)/Math.log(hi/lo)*1000);
+const logVal = (p,lo,hi) => Math.round(lo*Math.pow(hi/lo, p/1000));
+function vConsole(){
+  setUnitColor('#1E2235');
+  const C=UI.con, song=conSong(), secs=conSections(song), solo=anySolo();
+  const strip = k => { const s=C.ch[k], on=(x)=>x?'on':''; const eqOn=Object.entries(s.eq).some(([p,v])=>/g$|^lf$|^hf$/.test(p)&&Math.abs(v)>0.2)||s.hp;
+    return `<div class="cstrip ${C.sel===k?'sel':''} ${s.mute||(solo&&!s.solo)?'dim':''}">
+      <button class="cname" data-act="conSel" data-k="${k}" aria-pressed="${C.sel===k}">${esc(song.name[k])}</button>
+      <div class="cins"><i class="${on(eqOn)}">EQ</i><i class="${on(s.gate.on)}">GT</i><i class="${on(s.comp.on)}">CP</i><i class="${on(s.des.on)}">DS</i></div>
+      <input class="cpan" type="range" min="-1" max="1" step="0.05" value="${s.pan}" data-act="conParam" data-k="${k}" data-p="pan" aria-label="${esc(song.name[k])} pan">
+      <div class="cbtns"><button class="cm ${on(s.mute)}" data-act="conMute" data-k="${k}" aria-pressed="${s.mute}">M</button><button class="cs ${on(s.solo)}" data-act="conSolo" data-k="${k}" aria-pressed="${s.solo}">S</button></div>
+      <div class="cfad"><div class="cmeter"><i id="cm-${k}"></i></div><input type="range" min="${FADER_MIN}" max="${FADER_MAX}" step="0.5" value="${s.fader}" data-act="conParam" data-k="${k}" data-p="fader" aria-label="${esc(song.name[k])} fader"></div>
+      <b class="cdb" id="cv-${k}-fader">${fmtS(s.fader)}</b><span class="cgr" id="cg-${k}"></span>
+    </div>`; };
+  const k=C.sel, s=C.ch[k], e=s.eq, g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
+  const tabs=['eq','dyn','sends'].map(t=>`<button class="chipbtn ${C.tab===t?'on':''}" data-act="conTab" data-t="${t}" aria-pressed="${C.tab===t}">${{eq:'EQ',dyn:'Plugins',sends:'Sends'}[t]}</button>`).join('');
+  const sw=(p,on,label)=>`<div class="set" style="padding:8px 0"><div class="t"><b>${label}</b></div><button class="switch" role="switch" aria-checked="${on}" data-act="conToggle" data-k="${k}" data-p="${p}" aria-label="${label}"></button></div>`;
+  const detail = C.tab==='eq' ? `<div id="con-curve">${eqCurve(conEqList(e,s.hp))}</div><div class="eqpanel">
+      ${conKnob(k,'hp','High-pass',0,CON_HPF.length-1,1,Math.max(0,CON_HPF.indexOf(s.hp)),s.hp?hz(s.hp):'Off')}
+      ${conKnob(k,'eq.lf','Low (100 Hz)',-15,15,0.5,e.lf,g(e.lf))}
+      ${conKnob(k,'eq.lmf','Low-mid freq',0,1000,1,logPos(e.lmf,60,2000),hz(e.lmf))}
+      ${conKnob(k,'eq.lmg','Low-mid gain',-15,15,0.5,e.lmg,g(e.lmg))}
+      ${conKnob(k,'eq.lmq','Low-mid width (Q)',0.3,6,0.1,e.lmq,e.lmq.toFixed(1))}
+      ${conKnob(k,'eq.hmf','High-mid freq',0,1000,1,logPos(e.hmf,500,12000),hz(e.hmf))}
+      ${conKnob(k,'eq.hmg','High-mid gain',-15,15,0.5,e.hmg,g(e.hmg))}
+      ${conKnob(k,'eq.hmq','High-mid width (Q)',0.3,6,0.1,e.hmq,e.hmq.toFixed(1))}
+      ${conKnob(k,'eq.hf','High (10 kHz)',-15,15,0.5,e.hf,g(e.hf))}
+      <button class="btn ghost" data-act="conEqFlat" data-k="${k}" style="min-height:36px;padding:0 12px;font-size:14px">Flat</button></div>
+      ${onM32('press the channel\'s Select button, then the EQ knobs on the right of the console: 4 bands plus the low cut (high-pass).')()?`<p class="foot">${onM32('press the channel\'s Select button, then use the EQ section on the right: 4 bands plus the low cut (high-pass).')()}</p>`:''}`
+    : C.tab==='dyn' ? `
+      <div class="plug"><h4>Gate</h4>${A.gateOk?`${sw('gate.on',s.gate.on,'Gate on')}${conKnob(k,'gate.thr','Threshold',-70,0,1,s.gate.thr,s.gate.thr+' dB',s.gate.on?'':'disabled')}
+        <p class="foot">Closes when the channel drops below the threshold: cleans up spill between hits on drums, or noise between lines.</p>`:'<p class="foot">This browser can\'t run the gate.</p>'}</div>
+      <div class="plug"><h4>Compressor</h4>${sw('comp.on',s.comp.on,'Compressor on')}
+        ${conKnob(k,'comp.thr','Threshold',-50,0,1,s.comp.thr,s.comp.thr+' dB',s.comp.on?'':'disabled')}
+        ${conKnob(k,'comp.ratio','Ratio',1,20,0.5,s.comp.ratio,s.comp.ratio+':1',s.comp.on?'':'disabled')}
+        ${conKnob(k,'comp.atk','Attack',1,100,1,s.comp.atk,s.comp.atk+' ms',s.comp.on?'':'disabled')}
+        ${conKnob(k,'comp.rel','Release',20,1000,10,s.comp.rel,s.comp.rel+' ms',s.comp.on?'':'disabled')}
+        ${conKnob(k,'comp.mk','Makeup',0,20,0.5,s.comp.mk,g(s.comp.mk),s.comp.on?'':'disabled')}
+        <p id="con-gr" class="disp" style="margin:6px 0 0;font-size:17px">${s.comp.on?'Gain reduction: …':'Compressor is off'}</p></div>
+      <div class="plug"><h4>De-esser</h4>${sw('des.on',s.des.on,'De-esser on')}${conKnob(k,'des.thr','Threshold',-60,0,1,s.des.thr,s.des.thr+' dB',s.des.on?'':'disabled')}
+        <p class="foot">Turns down only the "s" and "t" sounds above about 6 kHz. Mostly for vocals.</p></div>
+      ${onM32('')()?`<p class="foot">On the M32 the gate and compressor are on each channel's Dynamics page; RCC's Waves plugins (like a de-esser or a vocal compressor) go on the channel as inserts.</p>`:''}`
+    : `<div class="eqpanel">${conKnob(k,'rev','Reverb send',FADER_MIN,6,0.5,s.rev,fmtS(s.rev))}${conKnob(k,'dly','Delay send',FADER_MIN,6,0.5,s.dly,fmtS(s.dly))}</div>
+      <p class="foot">Post-fader sends: if you pull the fader down, the effect goes down with it.</p>`;
+  const f=C.fx, M=C.master, r=C.result;
+  return `<div class="lbar"><button class="iconbtn" data-act="conQuit" aria-label="Leave the console">${I.close}</button><h1 style="font-size:22px;flex:1">Mixing console</h1></div>
+  <main class="wrap" style="padding-bottom:110px;max-width:1100px">
+    <div class="row" style="margin-bottom:8px;align-items:center;gap:8px">
+      <select class="hpf" data-act="conSong" aria-label="Song" style="flex:1;max-width:none;min-height:40px">${SONGS.map(x=>`<option value="${x.id}" ${x.id===song.id?'selected':''}>${esc(x.title)}</option>`).join('')}</select>
+      <select class="hpf" data-act="conStartSel" aria-label="Start from" style="flex:1;max-width:none;min-height:40px">${[['rough','Start: rough mix'],['down','Start: all faders down'],['ref','Start: Sona\'s mix']].map(([v,t])=>`<option value="${v}" ${C.start===v?'selected':''}>${t}</option>`).join('')}</select>
+    </div>
+    <div class="secrow" role="group" aria-label="Loop a section"><span>Loop:</span>${secs.map((x,i)=>`<button class="chipbtn ${C.sec===i?'on':''}" data-act="conSec" data-i="${i}" aria-pressed="${C.sec===i}">${x.name}</button>`).join('')}</div>
+    <p id="con-now" class="ut" style="font-weight:800;margin:0 0 6px;min-height:1.4em"></p>
+    <div class="cbank" id="cbank">${song.mix.map(strip).join('')}
+      <div class="cstrip fxs"><b class="cname" style="cursor:default">Reverb</b><div class="cins"><i class="on">${REVERB_TYPES[f.revType].name.toUpperCase()}</i></div>
+        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i></i></div><input type="range" min="${FADER_MIN}" max="6" step="0.5" value="${f.revRet}" data-act="conFx" data-p="revRet" aria-label="Reverb return"></div><b class="cdb" id="cf-revRet">${fmtS(f.revRet)}</b></div>
+      <div class="cstrip fxs"><b class="cname" style="cursor:default">Delay</b><div class="cins"><i class="on">DLY</i></div>
+        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i></i></div><input type="range" min="${FADER_MIN}" max="6" step="0.5" value="${f.dlyRet}" data-act="conFx" data-p="dlyRet" aria-label="Delay return"></div><b class="cdb" id="cf-dlyRet">${fmtS(f.dlyRet)}</b></div>
+      <div class="cstrip mst"><b class="cname" style="cursor:default">Main LR</b><div class="cins"><i class="${M.glue?'on':''}">GLUE</i><i class="${M.lim?'on':''}">LIM</i></div>
+        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i id="cm-master"></i></div><input type="range" min="-30" max="6" step="0.5" value="${M.fader}" data-act="conMaster" data-p="fader" aria-label="Main fader"></div><b class="cdb" id="cf-master">${fmtS(M.fader)}</b></div>
+    </div>
+    <section class="slide" style="margin-top:12px">
+      <div class="row" style="align-items:center;margin-bottom:8px"><h2 class="ut" style="font-size:20px;flex:1">${esc(song.name[k])}</h2><div class="row" style="gap:6px">${tabs}</div></div>
+      ${detail}
+    </section>
+    <section class="slide" style="margin-top:12px"><h2 style="font-size:20px">FX rack and main bus</h2>
+      <div class="eqpanel">
+        <label class="eqrow"><span>Reverb type</span><select class="hpf" data-act="conFxSel" data-p="revType" style="max-width:none">${Object.entries(REVERB_TYPES).map(([t,x])=>`<option value="${t}" ${f.revType===t?'selected':''}>${x.name}</option>`).join('')}</select><b></b></label>
+        <label class="eqrow"><span>Delay time</span><select class="hpf" data-act="conFxSel" data-p="dlyTime" style="max-width:none">${Object.entries(CON_DLY).map(([t,x])=>`<option value="${t}" ${f.dlyTime===t?'selected':''}>${x.name}</option>`).join('')}</select><b></b></label>
+        <label class="eqrow"><span>Delay feedback</span><input type="range" min="0" max="0.7" step="0.05" value="${f.dlyFb}" data-act="conFx" data-p="dlyFb"><b id="cf-dlyFb">${Math.round(f.dlyFb*100)}%</b></label>
+      </div>
+      <div class="set" style="padding:8px 0"><div class="t"><b>Glue compressor</b><span>Gently holds the whole mix together (2:1).</span></div><button class="switch" role="switch" aria-checked="${M.glue}" data-act="conMasterT" data-p="glue" aria-label="Glue compressor"></button></div>
+      <div class="set" style="padding:8px 0"><div class="t"><b>Limiter</b><span>Catches peaks so the main never clips.</span></div><button class="switch" role="switch" aria-checked="${M.lim}" data-act="conMasterT" data-p="lim" aria-label="Limiter"></button></div>
+    </section>
+    ${r?`<section class="slide" style="margin-top:12px"><div style="display:flex;align-items:center;gap:16px"><div class="score ut" style="--u:${r.score>=70?'#1F7A3A':'#B4421F'}">${r.score}</div>
+      <div><b class="disp" style="font-size:22px">${r.score>=90?'Sunday-ready!':r.score>=70?'Nice mix!':'Keep going'}</b><p style="margin:2px 0 0">Balance against Sona's ${S.mixStyle==='modern'?'modern worship':'gospel'} mix, judged around the lead vocal.</p></div></div>
+      <ul class="notes">${r.notes.map(n=>`<li class="${n.bad?'bad':n.good?'good':''}">${esc(song.name[n.k])}<span>${n.msg}</span></li>`).join('')}</ul></section>`:''}
+  </main>
+  <div class="transport"><div class="row">
+    <button class="btn" data-act="conPlay" style="flex:1">${CON.playing?I.stop+' Stop':I.play+' Play'}</button>
+    <button class="btn ghost" data-act="conCheck" style="flex:1">${I.check} Check my mix</button>
+  </div></div>`;
+}
+// Re-render without losing your place in the fader bank.
+function conRender(){ const b=document.getElementById('cbank'), x=b?b.scrollLeft:0, y=window.scrollY; render(); const nb=document.getElementById('cbank'); if(nb) nb.scrollLeft=x; window.scrollTo(0,y); }
 
 /* ----- Our Mix vs. Bethel -----
    Master Burn (our board's stereo mix, Feb 15) measured against Bethel's livestream: ours has more 125 Hz,
@@ -2500,7 +2789,7 @@ function setUnitColor(c){ document.documentElement.style.setProperty('--u', c ||
 
 function render(){
   const s=UI.screen;
-  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : vSetup()));
+  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : s==='console'?vConsole() : vSetup()));
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
 
@@ -2530,6 +2819,7 @@ function vHome(){
       ${next?`<button class="btn" data-act="open" data-u="${next.u.id}" data-l="${next.l}" style="--u:${next.u.color};flex:1">${next.l===0?I.book:I.play} Continue</button>`:''}
       <button class="btn ghost" data-act="practice" ${anyPassed?'':'disabled'} style="flex:1">${I.bolt} Mixed practice</button>
     </div>
+    <button class="btn ghost block" data-act="openConsole" style="margin-top:12px">${I.sliders} Open the mixing console</button>
     ${!S.placement ? `<button class="btn ghost block" data-act="placeAgain" style="margin-top:12px">Not sure where to start? Take the 5-minute placement check</button>` : ''}
     ${vExercises()}
     <div class="sec-title" style="margin-top:28px">The path</div>
@@ -3062,7 +3352,7 @@ function markPlaying(k, secs){
   clearTimeout(playTimer);
   if(k) playTimer=setTimeout(()=>{ if(secs>=60) stopAll(); playingKey=null; document.querySelectorAll('.clip.on').forEach(b=>b.classList.remove('on')); }, secs*1000);   // loops stop when the button does
 }
-function go(ui){ stopAll(); stopMixer(); markPlaying(null); UI=ui; render(); window.scrollTo(0,0); }
+function go(ui){ stopAll(); stopMixer(); if(ui.screen!=='console') conStop(); markPlaying(null); UI=ui; render(); window.scrollTo(0,0); }
 async function openLevel(id, l){
   if(l===0) return go({screen:'learn', unit:id, slide:0});
   stopAll(); stopMixer(); markPlaying(null);
@@ -3195,6 +3485,19 @@ document.addEventListener('click', async e=>{
     case 'runStart': UI.mix.result=null; startMixerPlayback(); render(); break;
     case 'runStop': stopMixer(); UI.mix.runLog=[]; render(); break;
     case 'mixPlay': if(MX.playing) stopMixer(); else startMixerPlayback(); render(); break;
+    /* console */
+    case 'openConsole': openConsole(); break;
+    case 'conQuit': conStop(); go({screen:'home'}); break;
+    case 'conPlay': if(CON.playing) conStop(); else conStart(); conRender(); break;
+    case 'conSel': UI.con.sel=el.dataset.k; conRender(); break;
+    case 'conTab': UI.con.tab=el.dataset.t; conRender(); break;
+    case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
+    case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
+    case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
+    case 'conEqFlat': { const s=UI.con.ch[el.dataset.k]; s.eq=conStrip(0).eq; s.hp=0; conApply(el.dataset.k); conRender(); break; }
+    case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
+    case 'conMasterT': { const M=UI.con.master; M[el.dataset.p]=!M[el.dataset.p]; conApply(); conRender(); break; }
+    case 'conCheck': UI.con.result=conScore(); conRender(); setTimeout(()=>document.querySelector('.notes')?.scrollIntoView({behavior:'smooth',block:'center'}),50); break;
     case 'mixSec': { const m=UI.mix, was=MX.playing; m.sec = el.dataset.i==='' ? null : +el.dataset.i; if(was){ stopMixer(); startMixerPlayback(); } render(); break; }
     case 'mute': {
       const k=el.dataset.k, m=UI.mix; m.mute[k]=!m.mute[k]; updateGains();
@@ -3235,6 +3538,24 @@ document.addEventListener('input', e=>{
     const lb=document.getElementById('fx-'+pp); if(lb) lb.textContent = pp==='hp' ? (e.hp?hz(e.hp):'Off') : pp==='mf' ? hz(Math.round(e.mf/10)*10) : `${e[pp]>0?'+':''}${e[pp].toFixed(1).replace('.0','')} dB`;
     const cv=document.getElementById('fx-curve'); if(cv) cv.replaceChildren(frag(eqCurve(fixUserEq(e))));
   }
+  if(t.dataset.act==='conParam'){
+    const k=t.dataset.k, s=UI.con.ch[k], p=t.dataset.p, v=+t.value, g=x=>`${x>0?'+':''}${(+x).toFixed(1).replace('.0','')} dB`;
+    let txt;
+    if(p==='hp'){ s.hp=CON_HPF[v]; txt=s.hp?hz(s.hp):'Off'; }
+    else if(p==='eq.lmf'){ s.eq.lmf=logVal(v,60,2000); txt=hz(s.eq.lmf); }
+    else if(p==='eq.hmf'){ s.eq.hmf=logVal(v,500,12000); txt=hz(s.eq.hmf); }
+    else if(p.includes('.')){ const [a,b]=p.split('.'); s[a][b]=v; txt = /q$/.test(b) ? v.toFixed(1) : b==='ratio' ? v+':1' : /atk|rel/.test(b) ? v+' ms' : /thr/.test(b) ? v+' dB' : g(v); }
+    else { s[p]=v; txt = p==='pan' ? '' : fmtS(v); }
+    conApply(k);
+    const lb=document.getElementById(`cv-${k}-${p.replace(/\./g,'-')}`); if(lb && txt!=='') lb.textContent=txt;
+    if((p==='hp'||p.startsWith('eq.')) && UI.con.sel===k){ const cv=document.getElementById('con-curve'); if(cv) cv.replaceChildren(frag(eqCurve(conEqList(s.eq,s.hp)))); }
+    UI.con.result=null;
+  }
+  if(t.dataset.act==='conSong'){ openConsole(t.value, UI.con.start); return; }
+  if(t.dataset.act==='conStartSel'){ const was=CON.playing; conStop(); const sec=UI.con.sec, sel=UI.con.sel; UI.con=conInit(UI.con.song, t.value); UI.con.sec=sec; UI.con.sel=sel; if(was) conStart(); conRender(); return; }
+  if(t.dataset.act==='conFxSel'){ UI.con.fx[t.dataset.p]=t.value; conApply(); conRender(); return; }
+  if(t.dataset.act==='conFx'){ const f=UI.con.fx, p=t.dataset.p; f[p]=+t.value; conApply(); const lb=document.getElementById('cf-'+p); if(lb) lb.textContent = p==='dlyFb' ? Math.round(f[p]*100)+'%' : fmtS(f[p]); }
+  if(t.dataset.act==='conMaster'){ UI.con.master.fader=+t.value; conApply(); const lb=document.getElementById('cf-master'); if(lb) lb.textContent=fmtS(+t.value); }
   if(t.dataset.act==='ringFreq'){
     const q=lessonQ(UI.lesson), f=100*Math.pow(80, +t.value/1000); q.state.f=f;
     if(q.state.node) q.state.node.frequency.setTargetAtTime(f, A.ctx.currentTime, 0.02);
