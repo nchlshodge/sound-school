@@ -62,6 +62,13 @@ button:disabled{cursor:default}
 .hero{display:flex;gap:14px;align-items:flex-end;margin:22px 0 8px}
 .hero .m{width:96px;height:96px;flex:none}
 /* home: the whole team, with the message pointing up at them */
+.eqg-svg{display:block;width:100%;height:auto;margin:10px 0 6px;background:color-mix(in srgb,var(--u) 7%,var(--card));border-radius:12px}
+.eqg-line{fill:none;stroke:var(--u);stroke-width:2.5}
+.eqg-zero{stroke:var(--line);stroke-width:1.5}
+.eqg-grid{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4}
+.eqg-lbl{fill:var(--ink2);font-size:10px}
+.eqg-moves{margin:6px 0 0;padding-left:20px}
+.eqg-moves li{margin:4px 0}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -696,6 +703,115 @@ async function calibrate(song){
   song.cal.luke=await match({src:VOCAL(song,wv),chain:fxLukeEq(song)}, voc.rms);
   if(song.xtra && song.xtra.includes('mb1')) await calOurs(song);
 }
+
+/* ----- EQ starting points -----
+   Settings follow MxU's "The Church Audio EQ Guide" (getmxu.com), described in our own words. Two of the guide's
+   tables repeat another instrument's text (acoustic = bass, snare = kick); we follow the guide's EQ pictures there.
+   Each `eq` list is the guide's picture for that instrument; `ch` is the channel we play it on in "Let's Have Church". */
+const EQ_START = [
+  { id:'kick', name:'Kick', ch:'kick', moves:[['Cut','around 500 Hz','takes out the hollow, cardboard-box sound'],['Boost','40–60 Hz','adds the thump you feel'],['Boost','around 6–8 kHz','brings out the beater click so it cuts through']],
+    eq:[{type:'peaking',f:60,g:12,q:0.9},{type:'peaking',f:504,g:-10,q:1.2},{type:'highshelf',f:8000,g:12}],
+    luke:'Luke gives the low end to the kick and bass alone. Those boosts are big: try half first.' },
+  { id:'snare', name:'Snare', ch:'snare', bar:44, moves:[['High-pass','around 100 Hz','the snare has no useful sub'],['Cut','around 500 Hz','less boxy'],['Boost','around 140 Hz','body'],['Boost','around 2.5 kHz','the crack'],['Boost','around 8 kHz','sizzle from the wires']],
+    eq:[{type:'highpass',f:100,q:0.7},{type:'peaking',f:142,g:6,q:1.2},{type:'peaking',f:504,g:-10,q:1.2},{type:'peaking',f:2500,g:3.5,q:1},{type:'highshelf',f:8380,g:4}],
+    note:'The guide\'s snare table repeats the kick\'s "40–60 Hz" boost; its picture boosts around 140 Hz, which is what we use.' },
+  { id:'toms', name:'Toms', ch:'toms', moves:[['High-pass','120 Hz (rack), 90 Hz (floor)','keeps them out of the kick\'s space'],['Boost','120–150 Hz (rack), 90–105 Hz (floor)','the tone of the drum'],['Cut','around 500 Hz','less boxy'],['Boost','around 8 kHz','stick attack']],
+    eq:[{type:'highpass',f:100,q:0.7},{type:'peaking',f:131,g:6,q:1.2},{type:'peaking',f:504,g:-10,q:1.2},{type:'highshelf',f:8380,g:4}] },
+  { id:'cymbals', name:'Cymbals and overheads', ch:'oh', moves:[['High-pass','around 200 Hz','the kick and toms have their own mics'],['Cut','around 500 Hz','less boxy'],['Cut','3–4 kHz, if harsh','tames clang'],['Boost','around 8–10 kHz','sparkle']],
+    eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:504,g:-4.2,q:1},{type:'peaking',f:2500,g:-4.2,q:1},{type:'highshelf',f:10130,g:2.6}],
+    luke:'This is Luke\'s "sonic real estate": move everything that isn\'t kick or bass out of the low end.' },
+  { id:'bass', name:'Bass guitar', ch:'bass', moves:[['High-pass','around 40 Hz','rumble you can\'t hear'],['Boost','around 60 Hz','weight'],['Cut','around 160 Hz','clears the low-mid buildup'],['Boost','600–700 Hz','growl that reads on small speakers'],['Low-pass','around 5 kHz','tames string and fret noise']],
+    eq:[{type:'highpass',f:40,q:0.7},{type:'peaking',f:65,g:7,q:1.4},{type:'peaking',f:162,g:-4,q:1},{type:'peaking',f:675,g:6,q:1.2},{type:'lowpass',f:5000,q:0.7}],
+    luke:'The bass and kick share the low end. Everything else gets filtered out of their way.' },
+  { id:'acoustic', name:'Acoustic guitar', ch:'acc', moves:[['High-pass','around 140 Hz','the guitar\'s body lives higher than the bass'],['Cut','200–400 Hz','clears low-mid buildup (the guide\'s picture cuts 300 Hz)'],['Cut','a little around 2.5 kHz','softer pick attack'],['Boost','a little around 10 kHz','shimmer']],
+    eq:[{type:'highpass',f:140,q:0.7},{type:'peaking',f:300,g:-8.7,q:1},{type:'peaking',f:2500,g:-3.1,q:1},{type:'peaking',f:10130,g:3,q:1}],
+    note:'The guide\'s acoustic table repeats the bass settings (a 60 Hz boost and 40 Hz high-pass). Its picture is right, and that\'s what we use.',
+    luke:'In a full band Luke high-passes acoustic even higher, around 200–400 Hz.' },
+  { id:'electric', name:'Electric guitar', ch:'gtr1', moves:[['High-pass','around 200 Hz','out of the kick and bass\'s way'],['Cut','around 400 Hz','clears low-mid buildup'],['Cut','2–4 kHz','makes room for the vocals']],
+    eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:424,g:-6.2,q:1.2},{type:'peaking',f:3030,g:-6,q:1}],
+    luke:'Luke\'s rule: the vocal should never compete with the band. This cut is how you make that happen.' },
+  { id:'vocals', name:'Lead vocal', vocal:true, moves:[['High-pass','200–250 Hz','lower for deep voices'],['Cut','300–350 Hz','less mud and fewer pops'],['Cut','around 600 Hz','less boxy'],['Cut','3–4 kHz','if it\'s harsh'],['Cut','around 8 kHz','only if "s" sounds jump out']],
+    eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:312,g:-11.2,q:1.2},{type:'peaking',f:626,g:-6.5,q:1.4},{type:'peaking',f:3450,g:-4,q:1.6}],
+    luke:'Very close to Luke\'s vocal EQ: a high-pass near 260 Hz with cuts near 370 Hz, 900 Hz and 2 kHz, plus a little air at 14 kHz.' },
+  { id:'keys', name:'Keys and pad tracks', ch:'keys', moves:[['High-pass','around 200 Hz','pads pile up in the low mids fast'],['Cut','2–4 kHz','makes room for the vocals']],
+    eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:3410,g:-3.7,q:1.4}] },
+  { id:'perc', name:'Percussion and loop tracks', ch:'tracks', moves:[['High-pass','around 60 Hz','keep only the weight'],['Boost','around 60 Hz','weight, if the loop needs it'],['Cut','3–4 kHz','if it\'s harsh']],
+    eq:[{type:'highpass',f:45,q:0.7},{type:'peaking',f:61,g:4.9,q:1.2},{type:'peaking',f:3410,g:-3.7,q:1.4}],
+    luke:'Luke would keep the sub for the kick and bass: go easy on that 60 Hz boost.' },
+  { id:'bgv', name:'Background vocals', ch:'corbin', moves:[['High-pass','around 200 Hz','clears room under the lead'],['Cut','3–4 kHz','keeps the lead vocal in front'],['Low-pass','around 6 kHz','tucks them behind the lead']],
+    eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:3040,g:-3.7,q:1.4},{type:'lowpass',f:7000,q:0.7}] }
+];
+const EQG = { song:'lhc', cal:null };
+// The guide's acoustic table by mistake (it repeats the bass row): used in a Hard question to show why we follow the picture.
+const ACOUSTIC_AS_BASS = [{type:'highpass',f:40,q:0.7},{type:'peaking',f:60,g:7,q:1.2},{type:'peaking',f:650,g:6,q:1.2},{type:'lowpass',f:5000,q:0.7}];
+const eqgCh = it => it.vocal ? songById(EQG.song).vocal : it.ch;
+const eqStartChain = eq => (c,inp)=>eq.reduce((n,e)=>n.connect(eqNode(c,e)), inp);
+// One instrument, soloed, from its loudest 6 seconds; level-matched flat vs. starting point.
+function eqgSpec(it, on){
+  const song=songById(EQG.song), cal=EQG.cal&&EQG.cal[it.id]||{off:0,trim:0,match:0};
+  return { src:[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], chain:on?eqStartChain(it.eq):null, gain:on?cal.match:0 };
+}
+async function prepEqGuide(){
+  if(EQG.cal) return;
+  const song=songById(EQG.song), cal={};
+  for(const it of EQ_START){
+    const buf=A.buf[`${song.id}:${eqgCh(it)}`]; if(!buf) continue;
+    // the loudest 6 seconds of this mic (or the bar the guide drill needs)
+    let off=it.bar ? at(song,it.bar) : 0;
+    if(!it.bar){ const sr=buf.sampleRate, d=buf.getChannelData(0), sec=[]; for(let i=0;i+sr<=d.length;i+=sr){ let e=0; for(let j=i;j<i+sr;j++) e+=d[j]*d[j]; sec.push(e); }
+      let best=-1; for(let i=0;i+6<=sec.length;i++){ const e=sec.slice(i,i+6).reduce((a,b)=>a+b,0); if(e>best){ best=e; off=i; } } }
+    const flat=await measure({src:[{b:`${song.id}:${eqgCh(it)}`,db:0,off,dur:6}]});
+    const trim=BAND_TARGET-flat.rms, on=await measure({src:[{b:`${song.id}:${eqgCh(it)}`,db:trim,off,dur:6}],chain:eqStartChain(it.eq)});
+    cal[it.id]={ off, trim, match:BAND_TARGET-on.rms };
+    if(it.id==='acoustic') cal.acousticAsBass = BAND_TARGET-(await measure({src:[{b:`${song.id}:${eqgCh(it)}`,db:trim,off,dur:6}],chain:eqStartChain(ACOUSTIC_AS_BASS)})).rms;
+  }
+  EQG.cal=cal;
+}
+// The EQ curve, drawn from the same filters the audio uses.
+function eqCurve(eq){
+  const c=(A.ctx||new OfflineAudioContext(1,1,48000)), N=90, fr=new Float32Array(N), mag=new Float32Array(N), ph=new Float32Array(N), tot=new Float32Array(N);
+  for(let i=0;i<N;i++) fr[i]=20*Math.pow(1000,i/(N-1));
+  for(const e of eq){ eqNode(c,e).getFrequencyResponse(fr,mag,ph); for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
+  const W=320,H=110,y=d=>H/2-Math.max(-18,Math.min(18,d))*(H/2-6)/18, x=i=>i*W/(N-1);
+  const path=[...tot].map((d,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(d).toFixed(1)}`).join('');
+  const gx=[100,1000,10000].map(f=>{ const X=Math.log10(f/20)/3*W; return `<line x1="${X}" x2="${X}" y1="0" y2="${H}" class="eqg-grid"/><text x="${X+3}" y="${H-4}" class="eqg-lbl">${f>=1000?f/1000+'k':f}</text>`; }).join('');
+  return `<svg class="eqg-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="EQ curve"><line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" class="eqg-zero"/>${gx}<path d="${path}" class="eqg-line"/></svg>`;
+}
+function vEqGuide(){
+  setUnitColor('#A8540A');
+  const cards=EQ_START.map((it,i)=>`<section class="slide eqg-card" style="margin-top:14px">
+      <h2 class="ut" style="font-size:22px">${it.name}</h2>
+      ${eqCurve(it.eq)}
+      <ul class="eqg-moves">${it.moves.map(([k,f,why])=>`<li><b>${k} ${f}</b>: ${why}</li>`).join('')}</ul>
+      ${it.note?`<p class="foot" style="margin:6px 0 0">${it.note}</p>`:''}
+      ${it.luke?`<p style="margin:8px 0 0;color:var(--ink2)"><b>Luke Hendrickson:</b> ${it.luke}</p>`:''}
+      <div class="demos">${clipBtn('g'+i+'f','Flat','',true)}${clipBtn('g'+i+'e','Starting point','',true)}</div>
+    </section>`).join('');
+  return `<div class="lbar"><button class="iconbtn" data-act="${UI.back||'home'}" aria-label="Back">${I.back}</button><h1 style="font-size:24px">EQ starting points</h1></div>
+  <main class="wrap" style="padding-bottom:40px">
+    <div class="say">${mascot('fenn','','happy')}<div class="bubble"><span class="bt">Where to start, instrument by instrument</span>
+      <p>These are starting points, not rules. Every room, system and band is different, so use your ears. Each one plays our live band soloed, level-matched, so you hear the EQ and not the volume.</p></div></div>
+    ${cards}
+    <p class="foot" style="margin-top:18px">Settings from <b>The Church Audio EQ Guide</b> by MxU. For more EQ help, visit <a href="https://www.getmxu.com" target="_blank" rel="noopener">getmxu.com</a>. Notes from Luke Hendrickson's approach to modern worship mixing.</p>
+  </main>`;
+}
+async function openEqGuide(back){
+  stopAll(); stopMixer(); markPlaying(null);
+  if(!(await withAudio(null, EQG.song))) return;
+  UI.loading=true; render(); await prepEqGuide(); UI.loading=false;
+  go({screen:'eqguide', back:back||'home'});
+}
+// "EQ starting points" quiz. First option is correct.
+const EQS_TEXT = [
+  {prompt:'Starting point: where do you high-pass the cymbals and overheads?', options:['Around 200 Hz','Around 40 Hz','Around 2 kHz'], explain:'Around 200 Hz. The kick and toms have their own mics, so the overheads don\'t need low end.'},
+  {prompt:'Your electric guitar is covering up the vocal. Where\'s the starting-point cut?', options:['2–4 kHz','60 Hz','10 kHz'], explain:'2–4 kHz is where words are clearest. A cut there on the guitar makes room for the vocal.'},
+  {prompt:'What does a cut around 500 Hz do on a kick, snare or tom?', options:['Takes out the boxy, cardboard sound','Adds thump','Adds sizzle'], explain:'Around 500 Hz is boxiness on drums. The starting point cuts it on kick, snare and toms.'},
+  {prompt:'Where does the starting point high-pass the lead vocal?', options:['200–250 Hz','40 Hz','1 kHz'], explain:'200–250 Hz (lower for a deep voice). Luke\'s is close: about 260 Hz.'},
+  {prompt:'Which instrument gets a boost around 600–700 Hz for growl?', options:['Bass guitar','Cymbals','Background vocals'], explain:'The bass. That growl is what lets you hear the bass line on small speakers and phones.'},
+  {prompt:'How do the background vocals sit behind the lead in the starting point?', options:['Cut 3–4 kHz and low-pass around 6 kHz','Boost 3–4 kHz','Turn off their high-pass'], explain:'Taking away some presence and top end tucks them behind the lead.'},
+  {prompt:'The guide\'s acoustic guitar table says to boost 60 Hz. Why doesn\'t Sound School follow that?', options:['It\'s copied from the bass table; the guide\'s picture high-passes the acoustic instead','Acoustics need lots of sub','60 Hz is where the strings buzz'], explain:'That row repeats the bass settings. The picture (and Luke) keep the acoustic out of the low end so the kick and bass have room.'},
+  {prompt:'Are these EQ settings rules you should always use?', options:['No, they\'re starting points: use your ears','Yes, always','Only on Sundays'], explain:'Every room, sound system and band is different. Start here, then listen and adjust.'}
+];
 
 /* ----- Our Mix vs. Bethel -----
    Master Burn (our board's stereo mix, Feb 15) measured against Bethel's livestream: ours has more 125 Hz,
@@ -1421,6 +1537,18 @@ const GEN = {
     if(l===3) q.after=[{label:'Balanced',spec:{src:BAND(s,{},w)}}];
     return q;
   },
+  eqstart(l, s){
+    const tag={song:EQG.song, dispUnit:'eq'};
+    if(l===1 || !EQG.cal || Math.random()<0.25) return Object.assign(textQ(pick(EQS_TEXT)), tag);
+    if(l===3 && EQG.cal.acoustic && Math.random()<0.4){
+      const it=EQ_START.find(x=>x.id==='acoustic'), sw=eqgSpec({...it, eq:ACOUSTIC_AS_BASS},true); sw.gain=EQG.cal.acousticAsBass;
+      return Object.assign(abQ({ prompt:'Which acoustic guitar leaves room for the kick and bass?', yes:eqgSpec(it,true), no:sw, yesName:'High-passed (the guide\'s picture)', noName:'Bass settings (the table\'s mistake)',
+        explain:L=>`${L} was high-passed and cut around 300 Hz. The other used the bass settings that the guide\'s acoustic table repeats by mistake: it adds low end right where the kick and bass live.` }), tag);
+    }
+    const it=pick(EQ_START.filter(x=>EQG.cal[x.id]));
+    return Object.assign(abQ({ prompt:`Which ${it.name.toLowerCase()} clip has the starting-point EQ?`, yes:eqgSpec(it,true), no:eqgSpec(it,false), yesName:'Starting point', noName:'Flat',
+      explain:L=>`${L} had it: ${it.moves.map(m=>`${m[0].toLowerCase()} ${m[1]}`).join(', ')}.` }), tag);
+  },
   ours(l, s){
     if(!A.buf['rcc:mb1'] || !songById('rcc').cal.ours) return Object.assign(GEN.mw(l, s), {dispUnit:'mw'});   // our song isn't loaded (mixed practice)
     const r=Math.random(), tag={song:'rcc', tag:'Our Feb 15 mix'};
@@ -2005,6 +2133,7 @@ const UNITS = [
     {t:'Words for problems', p:['Boom ≈ 100 Hz · Mud ≈ 250 Hz · Boxy ≈ 500 Hz','Honk ≈ 1 kHz · Harsh ≈ 3 kHz · Sizzle ≈ 8 kHz','Learn these and you can turn "it sounds muddy" into a knob.'],
       demos:[{label:'Flat',spec:()=>({src:BAND(D())})},{label:'Muddy',spec:()=>({src:BAND(D()),chain:fxEQ(250,10,1.8)})},{label:'Harsh',spec:()=>({src:BAND(D()),chain:fxEQ(3000,10,1.8)})}]},
     {t:'Cut before you boost', p:['Fixing a problem usually means cutting the bad part, not boosting everything else.','Use a high-pass filter on every mic that doesn\'t need lows (vocals, pastor, acoustic guitar), usually around 80–120 Hz.']},
+    {t:'Starting points', p:['Every instrument has a usual place to start: where to high-pass, what to cut, and what (if anything) to boost.','<button class="btn ghost" data-act="eqGuide" data-back="learn">Open EQ starting points</button>']},
     {t:'Sweep to find it', p:['Can\'t tell where a problem is? Boost a narrow band, sweep slowly until the problem jumps out, then turn that boost into a cut.']},
     {t:'EQ for the spoken word', p:['A speaking voice needs to be clear, not big. High-pass every speaking mic around 80–120 Hz, cut mud around 200–300 Hz if it sounds thick, and add only a touch around 2–4 kHz for clarity.','These voices are computer-generated stand-ins for a pastor; the EQ moves are the same.'],
       demos:[{label:'Natural',spec:()=>({src:VOICE('male',4)})},{label:'Muddy',spec:()=>({src:VOICE('male',4),chain:fxEQ(300,9,1.4)})},{label:'Clear',spec:()=>({src:VOICE('male',4),chain:chainOf(fxEQ(300,-3,1.4),fxEQ(3000,3,1))})}]},
@@ -2194,6 +2323,8 @@ const EXERCISES = [
     plan:[['line',1],['line',1],['line',2],['line',2],['line',3],['line',3]] },
   { id:'walkup',  title:'Pastor walks up',     mascot:'sona',  color:'#3F3399', blurb:'Get the pastor\'s mic up before the first word, and the band down under him.', units:['found','mix'],
     plan:[['walk',1],['walk',1],['walk',2],['walk',2],['walk',3]] },
+  { id:'eqstart', title:'EQ starting points', mascot:'fenn', color:'#A8540A', blurb:'Where to start EQ on each instrument, from MxU\'s Church Audio EQ Guide. Hear each one flat and with the starting point.', units:['eq'], guide:true,
+    plan:[['eqstart',1],['eqstart',1],['eqstart',2],['eqstart',2],['eqstart',2],['eqstart',3],['eqstart',3],['eqstart',3]] },
   { id:'ourmix', title:'Our mix vs. Bethel', mascot:'sona', color:'#155E75', blurb:'Our Feb 15 mix next to Bethel\'s balance: hear the difference in tone and width.', units:['ours'],
     plan:[['ours',1],['ours',1],['ours',2],['ours',2],['ours',2],['ours',3],['ours',3]] },
   { id:'volume',  title:'Volume ladder',       mascot:'pip',   color:'#0B7A73', blurb:'Climb from 6 dB changes down to 1 dB.', units:['vol'],
@@ -2226,7 +2357,7 @@ function setUnitColor(c){ document.documentElement.style.setProperty('--u', c ||
 
 function render(){
   const s=UI.screen;
-  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : vSetup()));
+  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : vSetup()));
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
 
@@ -2473,6 +2604,7 @@ function vExIntro(){
     <h1 style="font-size:32px;margin-top:4px">${x.title}</h1>
     <p style="color:var(--ink2);max-width:440px;margin:8px auto 0">${x.blurb} ${x.mixer?'You\'ll mix on a real board.':`${x.plan.length} quick questions.`} Headphones help.</p>
     <button class="btn block" data-act="exStart" data-ex="${x.id}" style="margin-top:22px">Start</button>
+    ${x.guide?`<button class="btn ghost block" data-act="eqGuide" style="margin-top:12px">Open the cheat sheet</button>`:''}
     <button class="btn ghost block" data-act="home" style="margin-top:12px">Go to Sound School home</button>
   </main>`;
 }
@@ -2731,6 +2863,7 @@ async function openExercise(id){
   if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
     await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
       UI.mix.quick=true; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
+  else if(x.guide){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startExercise(id); render(); }
   else await withAudio(()=>startExercise(id), x.plan.some(p=>p[0]==='ours')?'rcc':undefined);
   window.scrollTo(0,0);
 }
@@ -2771,6 +2904,7 @@ function finishLesson(){
 function clipSpec(k){
   if(k==='test') return {src:PINK(SONGS[0])};
   if(UI.screen==='learn') return unitById(UI.unit).learn[UI.slide].demos[+k.slice(1)].spec();
+  if(UI.screen==='eqguide'){ const m=k.match(/^g(\d+)([fe])$/); return eqgSpec(EQ_START[+m[1]], m[2]==='e'); }
   const q=lessonQ(UI.lesson);
   return (k[0]==='a'?q.after:k[0]==='r'?q.refs:q.clips)[+k.slice(1)].spec;
 }
@@ -2814,6 +2948,8 @@ document.addEventListener('click', async e=>{
       if(UI.screen==='lesson'){ const q=lessonQ(UI.lesson); if(q.tool==='gainset') gainMeterLoop(q); }
       break; }
     case 'home': go({screen:'home'}); break;
+    case 'eqGuide': { const back=el.dataset.back; if(back==='learn'){ const ret={unit:UI.unit, slide:UI.slide}; await openEqGuide('eqBack'); UI.ret=ret; } else await openEqGuide(UI.screen==='exIntro'?'home':'home'); break; }
+    case 'eqBack': go({screen:'learn', ...(UI.ret||{unit:'eq',slide:0})}); break;
     case 'signGoogle': {
       const p=new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:'select_account'});
       fb.auth.signInWithPopup(p).catch(err=>{ if(err.code==='auth/popup-blocked'||err.code==='auth/operation-not-supported-in-this-environment') return fb.auth.signInWithRedirect(p);
