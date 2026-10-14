@@ -452,7 +452,8 @@ const SONGS = [
   { id:'gsg', title:'God So Good', bpm:77.5, firstBar:6, clipBars:2, kind:'Life.Church live stems',
     ch:[ {k:'drums',name:'Drums'},{k:'loop',name:'Loop'},{k:'bass',name:'Bass'},{k:'synth',name:'Synth bass'},{k:'acc',name:'Acoustic'},
          {k:'eg',name:'Electric 1'},{k:'eg2',name:'Electric 2'},{k:'eg3',name:'Electric 3'},{k:'keys',name:'Keys 1'},{k:'keys2',name:'Keys 2'},
-         {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'} ],
+         {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'},
+         {k:'click',name:'Click',trap:1},{k:'cues',name:'Cues',trap:1},{k:'count',name:'Count',trap:1} ],
     // Stems printed at the record's own balance (bars 6–43: verse 1, the build, verse 2 and the first chorus); lead nudged forward like wwy.
     ref:{ drums:0, loop:0, bass:0, synth:0, acc:0, eg:0, eg2:0, eg3:0, keys:0, keys2:0, pad:0, piano:0, lead:1.5, bgv:0, bgv2:0 },
     anchor:'lead', vocal:'lead', bed:'pad', drums:['drums'], bass:'bass', leads:['lead'], bgvs:['bgv','bgv2'],
@@ -463,7 +464,7 @@ const SONGS = [
       {Drums:['drums'], Bass:['bass'], 'Synth bass':['synth'], Acoustic:['acc'], 'Electric 1':['eg'], 'Electric 2':['eg2'], 'Keys 1':['keys'], Pad:['pad'], Piano:['piano'], 'Lead vocal':['lead'], 'BGV 1':['bgv'], 'BGV 2':['bgv2']} ],
     missions:{
       1:{ bars:[27,35], ch:['drums','bass','acc','eg','keys','lead','bgv'] },
-      2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
+      2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'}, traps:{click:-5} },
       3:{ bars:[6,43] } }
   },
   { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)',

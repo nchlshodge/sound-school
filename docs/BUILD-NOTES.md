@@ -26,7 +26,7 @@ Bar numbers for the live songs count from the first click (`lhc` first click at 
 
 **RCC Sunday (`rcc`)** was pulled from the shared Drive folder with HTTP byte-range requests (only the 43:00–48:45 span of each WAV, not the full 25–30 GB). There are no real kick or snare-top mics on that board, so the drum channels use the KickReplace and SnareReplace tracks; the snare bottom mic is its own channel. The `mc` channel plays the TTS stand-in (`stems/speech/male.m4a`) from bar 153 until the MC and lav speakers OK using their real recordings. Its reference mix is an estimate: no Bethel fit yet.
 
-**God So Good (`gsg`)** stems are printed at the record's balance (bar 1 starts at 0:00; tempo from kick-drum spacing). Lead vocal, bass and synth bass are encoded mono at 64 kbps; the rest stereo at 96 kbps. There is no click or cue track, so its chorus mission has no "leak" to catch. The lead vocal sings through everything except the bar 23–25 instrumental, which is used for the gate drills' pauses.
+**God So Good (`gsg`)** stems are printed at the record's balance (bar 1 starts at 0:00; tempo from kick-drum spacing). Lead vocal, bass and synth bass are encoded mono at 64 kbps; the rest stereo at 96 kbps. Click, cues (the "Guide" stem) and count are trap channels; the click lines up with the bar grid within 0.2 ms. The chorus mission starts with the click leaking into the house. The lead vocal sings through everything except the bar 23–25 instrumental, which is used for the gate drills' pauses.
 
 ## Measured facts the drills rely on
 
