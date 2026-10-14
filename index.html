@@ -96,6 +96,37 @@ button:disabled{cursor:default}
 .plug{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .plug:first-child{border-top:0;margin-top:0;padding-top:0}
 .plug h4{margin:0 0 2px;font-family:'Fredoka',sans-serif;font-size:18px}
+.m32eq{background:#17181B;color:#E8EAED;border-radius:16px;padding:12px;margin:0 -4px}
+.m32top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.m32top span{flex:1;font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:#C9CDD3}
+.m32btn{font:inherit;font-size:12px;font-weight:800;letter-spacing:.06em;border:1px solid #3A3D43;background:#26282C;color:#9AA0A8;border-radius:6px;padding:7px 12px;cursor:pointer}
+.m32btn.on{background:#2B2F12;color:#FFE14D;border-color:#FFE14D;box-shadow:0 0 10px rgba(255,225,77,.35)}
+.m32screen{background:#0B0C0E;border:1px solid #2C2F34;border-radius:10px;touch-action:none}
+.m32svg{display:block;width:100%;height:auto}
+.m32svg .mg{stroke:#24272C;stroke-width:1}
+.m32svg .mz{stroke:#4A4E55;stroke-width:1.2}
+.m32svg .ml{fill:#7D838C;font-size:11px;font-family:Nunito,sans-serif}
+.m32svg .mcurve{fill:none;stroke:#FFE14D;stroke-width:2.6}
+.m32svg .mfill{fill:rgba(255,225,77,.13)}
+.m32svg .off{opacity:.3}
+.m32svg .mnode{cursor:grab}
+.m32svg .mnode circle{stroke:#0B0C0E;stroke-width:2}
+.m32svg .mnode circle.mhit{fill:transparent;stroke:none}
+.m32svg .mnode text{fill:#0B0C0E;font-size:12px;font-weight:800;font-family:Nunito,sans-serif;pointer-events:none}
+.m32hint{color:#7D838C;font-size:12px;margin:6px 2px 10px;text-align:center}
+.m32bands{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.mband{background:#202226;border:1px solid #2E3136;border-top:3px solid var(--b);border-radius:10px;padding:6px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.mbh{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--b);white-space:nowrap}
+.mtype{font-size:10px;color:#7D838C;font-weight:700}
+.knob{display:flex;flex-direction:column;align-items:center;gap:1px;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none;outline:none}
+.knob.ghost{height:66px}
+.knob.dis{opacity:.35;cursor:default}
+.knob:focus-visible .kdial{box-shadow:0 0 0 3px #FFE14D}
+.kdial{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7A7F87,#3A3D43 60%,#26282C);border:2px solid #111;position:relative;box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.kdial i{position:absolute;left:50%;top:3px;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:var(--b,#FFE14D);transform-origin:50% 16px}
+.kval{font-size:11px;color:#E8EAED;font-variant-numeric:tabular-nums}
+.knob span{font-size:9px;font-weight:800;letter-spacing:.06em;color:#8B9199}
+@media (max-width:420px){ .kdial{width:32px;height:32px} .kdial i{height:12px;transform-origin:50% 13px} .m32bands{gap:4px} .mbh{font-size:9px} }
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -1001,8 +1032,8 @@ function conSections(song){
   if(song.sections) return [whole, ...song.sections];
   return [{name:'Verse', bars:song.missions[1].bars}, {name:'Chorus', bars:song.missions[2].bars}, whole];
 }
-const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0,
-  eq:{ lf:0, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0 },
+const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0, hpOn:false, hpF:80, eqOn:true,
+  eq:{ lf:0, lff:100, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0, hff:10000 },
   gate:{ on:false, thr:-40 }, comp:{ on:false, thr:-18, ratio:3, atk:10, rel:150, mk:0 }, des:{ on:false, thr:-30 }, rev:FADER_MIN, dly:FADER_MIN });
 function conInit(songId, start){
   const song=songById(songId), ch={};
@@ -1010,13 +1041,14 @@ function conInit(songId, start){
     const ref=styleRef(song,k);
     const f = start==='down' ? FADER_MIN : start==='ref' ? ref : Math.max(FADER_MIN+5, Math.min(FADER_MAX, Math.round(ref + (Math.random()*10-5))));
     ch[k]=conStrip(f);
-    if(start==='ref'){ ch[k].hp=refHpf(song,k); if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
+    if(start==='ref'){ const h=refHpf(song,k); if(h){ ch[k].hp=h; ch[k].hpF=h; ch[k].hpOn=true; } if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
   }
   return { song:songId, sec:0, sel:song.anchor, tab:'eq', start:start||'rough', ch,
     fx:{ revType:'plate', revRet:0, dlyTime:'luke', dlyFb:0.3, dlyRet:-3 }, master:{ fader:0, glue:false, lim:true }, result:null };
 }
-function conEqList(e, hp){
-  return [...(hp?[{type:'highpass',f:hp,q:0.7}]:[]), {type:'lowshelf',f:100,g:e.lf}, {type:'peaking',f:e.lmf,g:e.lmg,q:e.lmq}, {type:'peaking',f:e.hmf,g:e.hmg,q:e.hmq}, {type:'highshelf',f:10000,g:e.hf}];
+function conEqList(e, hp, on=true){
+  const z=on?1:0;
+  return [...(hp?[{type:'highpass',f:hp,q:0.7}]:[]), {type:'lowshelf',f:e.lff||100,g:e.lf*z}, {type:'peaking',f:e.lmf,g:e.lmg*z,q:e.lmq}, {type:'peaking',f:e.hmf,g:e.hmg*z,q:e.hmq}, {type:'highshelf',f:e.hff||10000,g:e.hf*z}];
 }
 const anySolo = () => Object.values(UI.con.ch).some(s=>s.solo);
 function conGainOf(k){
@@ -1031,8 +1063,9 @@ function conApply(k){
   const t=A.ctx.currentTime, set=(prm,v)=>prm.setTargetAtTime(v,t,0.015), ks = k ? [k] : Object.keys(CON.nodes);
   for(const key of ks){
     const n=CON.nodes[key], s=UI.con.ch[key]; if(!n) continue;
-    set(n.hp.frequency, s.hp||10); set(n.lf.gain, s.eq.lf); set(n.lm.frequency, s.eq.lmf); set(n.lm.gain, s.eq.lmg); set(n.lm.Q, s.eq.lmq);
-    set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg); set(n.hm.Q, s.eq.hmq); set(n.hf.gain, s.eq.hf);
+    const z=s.eqOn?1:0;
+    set(n.hp.frequency, s.hp||10); set(n.lf.frequency, s.eq.lff); set(n.lf.gain, s.eq.lf*z); set(n.lm.frequency, s.eq.lmf); set(n.lm.gain, s.eq.lmg*z); set(n.lm.Q, s.eq.lmq);
+    set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg*z); set(n.hm.Q, s.eq.hmq); set(n.hf.frequency, s.eq.hff); set(n.hf.gain, s.eq.hf*z);
     if(n.gate){ set(n.gate.parameters.get('on'), s.gate.on?1:0); set(n.gate.parameters.get('thr'), s.gate.thr); }
     set(n.comp.threshold, s.comp.on?s.comp.thr:0); set(n.comp.ratio, s.comp.on?s.comp.ratio:1); set(n.comp.knee, s.comp.on?6:0);
     n.comp.attack.value=s.comp.atk/1000; n.comp.release.value=s.comp.rel/1000; set(n.mk.gain, s.comp.on?db(s.comp.mk):1);
@@ -1146,7 +1179,7 @@ const logVal = (p,lo,hi) => Math.round(lo*Math.pow(hi/lo, p/1000));
 function vConsole(){
   setUnitColor('#1E2235');
   const C=UI.con, song=conSong(), secs=conSections(song), solo=anySolo();
-  const strip = k => { const s=C.ch[k], on=(x)=>x?'on':''; const eqOn=Object.entries(s.eq).some(([p,v])=>/g$|^lf$|^hf$/.test(p)&&Math.abs(v)>0.2)||s.hp;
+  const strip = k => { const s=C.ch[k], on=(x)=>x?'on':''; const eqOn=(s.eqOn&&['lf','lmg','hmg','hf'].some(p=>Math.abs(s.eq[p])>0.2))||s.hpOn;
     return `<div class="cstrip ${C.sel===k?'sel':''} ${s.mute||(solo&&!s.solo)?'dim':''}">
       <button class="cname" data-act="conSel" data-k="${k}" aria-pressed="${C.sel===k}">${esc(song.name[k])}</button>
       <div class="cins">${[['EQ',eqOn,'eq','EQ'],['GT',s.gate.on,'dyn','gate'],['CP',s.comp.on,'dyn','compressor'],['DS',s.des.on,'dyn','de-esser']].map(([t,o,tab,lab])=>`<button class="${on(o)}" data-act="conOpen" data-k="${k}" data-t="${tab}" aria-label="${esc(song.name[k])} ${lab}">${t}</button>`).join('')}</div>
@@ -1158,18 +1191,7 @@ function vConsole(){
   const k=C.sel, s=C.ch[k], e=s.eq, g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
   const tabs=['eq','dyn','sends'].map(t=>`<button class="chipbtn ${C.tab===t?'on':''}" data-act="conTab" data-t="${t}" aria-pressed="${C.tab===t}">${{eq:'EQ',dyn:'Plugins',sends:'Sends'}[t]}</button>`).join('');
   const sw=(p,on,label)=>`<div class="set" style="padding:8px 0"><div class="t"><b>${label}</b></div><button class="switch" role="switch" aria-checked="${on}" data-act="conToggle" data-k="${k}" data-p="${p}" aria-label="${label}"></button></div>`;
-  const detail = C.tab==='eq' ? `<div id="con-curve">${eqCurve(conEqList(e,s.hp))}</div><div class="eqpanel">
-      ${conKnob(k,'hp','High-pass',0,CON_HPF.length-1,1,Math.max(0,CON_HPF.indexOf(s.hp)),s.hp?hz(s.hp):'Off')}
-      ${conKnob(k,'eq.lf','Low (100 Hz)',-15,15,0.5,e.lf,g(e.lf))}
-      ${conKnob(k,'eq.lmf','Low-mid freq',0,1000,1,logPos(e.lmf,60,2000),hz(e.lmf))}
-      ${conKnob(k,'eq.lmg','Low-mid gain',-15,15,0.5,e.lmg,g(e.lmg))}
-      ${conKnob(k,'eq.lmq','Low-mid width (Q)',0.3,6,0.1,e.lmq,e.lmq.toFixed(1))}
-      ${conKnob(k,'eq.hmf','High-mid freq',0,1000,1,logPos(e.hmf,500,12000),hz(e.hmf))}
-      ${conKnob(k,'eq.hmg','High-mid gain',-15,15,0.5,e.hmg,g(e.hmg))}
-      ${conKnob(k,'eq.hmq','High-mid width (Q)',0.3,6,0.1,e.hmq,e.hmq.toFixed(1))}
-      ${conKnob(k,'eq.hf','High (10 kHz)',-15,15,0.5,e.hf,g(e.hf))}
-      <button class="btn ghost" data-act="conEqFlat" data-k="${k}" style="min-height:36px;padding:0 12px;font-size:14px">Flat</button></div>
-      ${onM32('press the channel\'s Select button, then the EQ knobs on the right of the console: 4 bands plus the low cut (high-pass).')()?`<p class="foot">${onM32('press the channel\'s Select button, then use the EQ section on the right: 4 bands plus the low cut (high-pass).')()}</p>`:''}`
+  const detail = C.tab==='eq' ? vM32Eq(k)
     : C.tab==='dyn' ? `
       <div class="plug"><h4>Gate</h4>${A.gateOk?`${sw('gate.on',s.gate.on,'Gate on')}${conKnob(k,'gate.thr','Threshold',-70,0,1,s.gate.thr,s.gate.thr+' dB',s.gate.on?'':'disabled')}
         <p class="foot">Closes when the channel drops below the threshold: cleans up spill between hits on drums, or noise between lines.</p>`:'<p class="foot">This browser can\'t run the gate.</p>'}</div>
@@ -1225,6 +1247,105 @@ function vConsole(){
     <button class="btn ghost" data-act="conCheck" style="flex:1">${I.check} Check my mix</button>
   </div></div>`;
 }
+/* ----- M32-style EQ: a dark EQ display with draggable band points, and the console's knob section
+   (Low Cut, Low, Lo Mid, Hi Mid, High; each with Gain, Frequency and Q). ----- */
+const M32_BANDS = [
+  { id:'cut', name:'LOW CUT', color:'#B8BCC4' },
+  { id:'l',   name:'LOW',     color:'#FF5A4E', g:'lf',  f:'lff', fr:[20,500],    type:'LShv' },
+  { id:'lm',  name:'LO MID',  color:'#FFD23F', g:'lmg', f:'lmf', q:'lmq', fr:[40,4000], type:'PEQ' },
+  { id:'hm',  name:'HI MID',  color:'#3DDC84', g:'hmg', f:'hmf', q:'hmq', fr:[300,16000], type:'PEQ' },
+  { id:'h',   name:'HIGH',    color:'#4DA3FF', g:'hf',  f:'hff', fr:[1000,20000], type:'HShv' }
+];
+const GX = f => 34 + Math.log10(f/20)/3*556, GY = g => 116 - g/15*96, XF = x => 20*Math.pow(1000, Math.min(1,Math.max(0,(x-34)/556))), YG = y => Math.max(-15, Math.min(15, (116-y)/96*15));
+const fmtHz = f => f>=1000 ? `${(f/1000).toFixed(f>=10000?1:2).replace(/\.?0+$/,'')}k` : `${Math.round(f)}`;
+function m32Graph(s){
+  const e=s.eq, c=(A.ctx||new OfflineAudioContext(1,1,48000)), N=160, fr=new Float32Array(N), mag=new Float32Array(N), ph=new Float32Array(N), tot=new Float32Array(N);
+  for(let i=0;i<N;i++) fr[i]=20*Math.pow(1000,i/(N-1));
+  for(const x of conEqList(e, s.hp, s.eqOn)){ eqNode(c,x).getFrequencyResponse(fr,mag,ph); for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
+  const pts=[...tot].map((d,i)=>`${GX(fr[i]).toFixed(1)},${GY(Math.max(-15,Math.min(15,d))).toFixed(1)}`);
+  const grid = [20,50,100,200,500,1000,2000,5000,10000,20000].map(f=>`<line x1="${GX(f)}" x2="${GX(f)}" y1="20" y2="212" class="mg"/><text x="${GX(f)}" y="230" class="ml" text-anchor="middle">${fmtHz(f)}</text>`).join('')
+    + [15,10,5,0,-5,-10,-15].map(g=>`<line x1="34" x2="590" y1="${GY(g)}" y2="${GY(g)}" class="${g?'mg':'mz'}"/><text x="28" y="${GY(g)+4}" class="ml" text-anchor="end">${g>0?'+':''}${g}</text>`).join('');
+  const node = (b,i) => {
+    if(b.id==='cut'){ const f=s.hpF; return `<g class="mnode ${s.hpOn?'':'off'}" data-band="cut"><circle class="mhit" cx="${GX(f)}" cy="${GY(0)}" r="30"/><circle cx="${GX(f)}" cy="${GY(0)}" r="13" fill="${b.color}"/><text x="${GX(f)}" y="${GY(0)+4.5}" text-anchor="middle">C</text></g>`; }
+    const f=e[b.f], g=e[b.g]; return `<g class="mnode ${s.eqOn?'':'off'}" data-band="${b.id}"><circle class="mhit" cx="${GX(f)}" cy="${GY(g)}" r="30"/><circle cx="${GX(f)}" cy="${GY(g)}" r="13" fill="${b.color}"/><text x="${GX(f)}" y="${GY(g)+4.5}" text-anchor="middle">${i}</text></g>`;
+  };
+  return `<svg viewBox="0 0 600 240" class="m32svg" role="img" aria-label="EQ curve">${grid}
+    <polygon points="34,${GY(0)} ${pts.join(' ')} 590,${GY(0)}" class="mfill ${s.eqOn?'':'off'}"/><polyline points="${pts.join(' ')}" class="mcurve ${s.eqOn?'':'off'}"/>
+    ${M32_BANDS.map(node).join('')}</svg>`;
+}
+// A rotary knob: drag up/down (or use the arrow keys). `pos` is 0..1 along its travel.
+function knob(k, p, label, val, min, max, text, log, dis){
+  const pos = log ? Math.log(val/min)/Math.log(max/min) : (val-min)/(max-min), ang=-135+Math.max(0,Math.min(1,pos))*270;
+  return `<div class="knob ${dis?'dis':''}" role="slider" tabindex="${dis?-1:0}" aria-label="${label}" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${val}" aria-valuetext="${text}"
+    data-k="${k}" data-p="${p}" data-min="${min}" data-max="${max}" data-log="${log?1:0}" data-val="${val}">
+    <div class="kdial"><i style="transform:rotate(${ang}deg)"></i></div><b class="kval">${text}</b><span>${label}</span></div>`;
+}
+function vM32Eq(k){
+  const C=UI.con, s=C.ch[k], e=s.eq, song=conSong();
+  const g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')}`, col=(b,inner)=>`<div class="mband" style="--b:${b.color}"><div class="mbh">${b.name}</div>${inner}</div>`;
+  const bands = M32_BANDS.map(b=> b.id==='cut'
+    ? col(b, `<button class="m32btn ${s.hpOn?'on':''}" data-act="conHpOn" data-k="${k}" aria-pressed="${s.hpOn}">ON</button>${knob(k,'hpF','FREQ',s.hpF,20,400,fmtHz(s.hpF),true,!s.hpOn)}<div class="mtype">12 dB/oct</div>`)
+    : col(b, `${knob(k,'eq.'+b.g,'GAIN',e[b.g],-15,15,g(e[b.g]),false,!s.eqOn)}${knob(k,'eq.'+b.f,'FREQ',e[b.f],b.fr[0],b.fr[1],fmtHz(e[b.f]),true,!s.eqOn)}${b.q?knob(k,'eq.'+b.q,'Q',e[b.q],0.3,10,e[b.q].toFixed(1),true,!s.eqOn):'<div class="knob ghost"></div>'}<div class="mtype">${b.type}</div>`)).join('');
+  return `<div class="m32eq" id="m32eq">
+    <div class="m32top"><button class="m32btn ${s.eqOn?'on':''}" data-act="conEqOn" data-k="${k}" aria-pressed="${s.eqOn}">EQ</button><span>${esc(song.name[k])}</span><button class="m32btn" data-act="conEqFlat" data-k="${k}">RESET</button></div>
+    <div class="m32screen" id="m32screen" data-k="${k}">${m32Graph(s)}</div>
+    <p class="m32hint">Drag a numbered point: left/right for frequency, up/down for gain. Drag a knob up or down.</p>
+    <div class="m32bands">${bands}</div>
+    ${onM32('')()?`<p class="foot" style="margin-top:8px">On the M32: press the channel's Select button. This is the EQ section on the right of the console. Each band has the same Gain, Frequency and Width (Q) knobs; the Low Cut is on the channel's Config/Preamp section.</p>`:''}
+  </div>`;
+}
+// Set one EQ value and refresh just the EQ display, knobs and audio (no full redraw, so drags keep working).
+function conSetEq(k, p, v){
+  const s=UI.con.ch[k];
+  if(p==='hpF'){ s.hpF=v; s.hp=s.hpOn?v:0; }
+  else { const [, b]=p.split('.'); s.eq[b]=v; }
+  conApply(k); UI.con.result=null;
+  const scr=document.getElementById('m32screen'); if(scr) scr.replaceChildren(frag(m32Graph(s)));
+  const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v);
+}
+function knobShow(kn, v){
+  const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', pos=log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min);
+  kn.dataset.val=v; kn.setAttribute('aria-valuenow', v);
+  const p=kn.dataset.p, txt = /hpF|lff|lmf|hmf|hff/.test(p) ? fmtHz(v) : /q$/.test(p) ? v.toFixed(1) : `${v>0?'+':''}${v.toFixed(1).replace('.0','')}`;
+  kn.setAttribute('aria-valuetext', txt); kn.querySelector('.kval').textContent=txt;
+  kn.querySelector('.kdial i').style.transform=`rotate(${-135+Math.max(0,Math.min(1,pos))*270}deg)`;
+}
+function knobStep(kn, dpos){
+  const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', v=+kn.dataset.val;
+  let pos=(log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))+dpos; pos=Math.max(0,Math.min(1,pos));
+  let nv = log ? min*Math.pow(max/min,pos) : min+pos*(max-min);
+  nv = log ? (nv>=1000?Math.round(nv/10)*10:nv>=100?Math.round(nv):Math.round(nv*10)/10) : Math.round(nv*2)/2;
+  if(/q$/.test(kn.dataset.p)) nv=Math.round(nv*10)/10;
+  conSetEq(kn.dataset.k, kn.dataset.p, nv);
+}
+// Pointer handling for knobs and the EQ display.
+(()=>{
+  let drag=null;
+  document.addEventListener('pointerdown', e=>{
+    const kn=e.target.closest('.knob[data-p]'); if(kn && !kn.classList.contains('dis')){ e.preventDefault(); drag={kn, y:e.clientY}; kn.setPointerCapture(e.pointerId); return; }
+    const nd=e.target.closest('#m32screen .mnode'); if(nd){ const scr=document.getElementById('m32screen'); e.preventDefault(); drag={band:nd.dataset.band, scr}; scr.setPointerCapture(e.pointerId); }
+  });
+  document.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    if(drag.kn){ const dy=drag.y-e.clientY; if(Math.abs(dy)>=1){ knobStep(drag.kn, dy/160); drag.y=e.clientY; } return; }
+    const k=drag.scr.dataset.k, s=UI.con.ch[k], r=drag.scr.querySelector('svg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*600, y=(e.clientY-r.top)/r.height*240;
+    const b=M32_BANDS.find(z=>z.id===drag.band), fx=XF(x), f = fx>=1000 ? Math.round(fx/10)*10 : Math.round(fx);
+    if(b.id==='cut'){ if(!s.hpOn) return; conSetEq(k,'hpF',Math.max(20,Math.min(400,f))); return; }
+    if(!s.eqOn) return;
+    s.eq[b.f]=Math.max(b.fr[0],Math.min(b.fr[1],f)); conSetEq(k,'eq.'+b.g, Math.round(YG(y)*2)/2);
+    const fk=document.querySelector(`.knob[data-k="${k}"][data-p="eq.${b.f}"]`); if(fk) knobShow(fk, s.eq[b.f]);
+  });
+  const end=()=>{ drag=null; };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+  document.addEventListener('keydown', e=>{
+    const kn=e.target.closest && e.target.closest('.knob[data-p]'); if(!kn || kn.classList.contains('dis')) return;
+    const st = e.shiftKey ? 0.1 : 0.02;
+    if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); knobStep(kn, st); }
+    if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); knobStep(kn, -st); }
+  });
+  document.addEventListener('dblclick', e=>{ const kn=e.target.closest('.knob[data-p]'); if(!kn||kn.classList.contains('dis')) return;
+    const p=kn.dataset.p, d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) conSetEq(kn.dataset.k,p,d); });
+})();
 // Re-render without losing your place in the fader bank.
 function conRender(){ const b=document.getElementById('cbank'), x=b?b.scrollLeft:0, y=window.scrollY; render(); const nb=document.getElementById('cbank'); if(nb) nb.scrollLeft=x; window.scrollTo(0,y); }
 
@@ -3497,7 +3618,9 @@ document.addEventListener('click', async e=>{
     case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
-    case 'conEqFlat': { const s=UI.con.ch[el.dataset.k]; s.eq=conStrip(0).eq; s.hp=0; conApply(el.dataset.k); conRender(); break; }
+    case 'conEqFlat': { const s=UI.con.ch[el.dataset.k], f=conStrip(0); Object.assign(s,{eq:f.eq, hp:0, hpOn:false, hpF:80, eqOn:true}); conApply(el.dataset.k); conRender(); break; }
+    case 'conEqOn': { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
+    case 'conHpOn': { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
     case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
     case 'conMasterT': { const M=UI.con.master; M[el.dataset.p]=!M[el.dataset.p]; conApply(); conRender(); break; }
     case 'conCheck': UI.con.result=conScore(); conRender(); setTimeout(()=>document.querySelector('.notes')?.scrollIntoView({behavior:'smooth',block:'center'}),50); break;
