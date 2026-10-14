@@ -1249,11 +1249,13 @@ function conScore(){
   const bal=pts/n; return { score: Math.round(S.mixStyle==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal), notes };
 }
 async function openConsole(songId, start){
+  const was=CON.playing;
   stopAll(); stopMixer(); conStop(); markPlaying(null);
   const id = songId || (UI.con && UI.con.song) || 'gsg';
   if(!(await withAudio(null, id))) return;
   A.gateOk = await ensureGate();
   go({ screen:'console', con: conInit(id, start) });
+  if(was){ conStart(); conRender(); }   // switching songs while playing keeps the music going
 }
 function conKnob(k, p, label, min, max, step, val, txt, dis=''){
   return `<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="conParam" data-k="${k}" data-p="${p}" ${dis}><b id="cv-${k}-${p.replace(/\./g,'-')}">${txt}</b></label>`;
@@ -3801,7 +3803,8 @@ document.addEventListener('click', async e=>{
     /* mixer */
     case 'mixSong': {
       const id=el.dataset.s; if(id===UI.mix.song) return;
-      stopMixer(); const lv=UI.mix.level, dest=UI.mix.dest; await withAudio(()=>startMixer(lv, id, dest), id);
+      const was=MX.playing; stopMixer(); const lv=UI.mix.level, dest=UI.mix.dest; await withAudio(()=>startMixer(lv, id, dest), id);
+      if(was && UI.screen==='mixer' && UI.mix.song===id && !UI.mix.run){ startMixerPlayback(); render(); }   // keep the music going on the new song
       break; }
     case 'scPlay': if(UI.sc.playing){ scStop(); } else scPlay(); render(); break;
     case 'scDone': finishSoundcheck(); break;
