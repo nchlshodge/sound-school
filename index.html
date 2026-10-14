@@ -80,8 +80,8 @@ button:disabled{cursor:default}
 .cstrip.fxs,.cstrip.mst{background:color-mix(in srgb,var(--u,#3F3399) 9%,var(--card))}
 .cname{font:inherit;font-size:12px;font-weight:800;border:0;background:none;color:var(--ink);text-align:center;min-height:32px;width:100%;line-height:1.15;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
 .cins{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:30px;align-content:flex-start}
-.cins i{font-style:normal;font-size:9px;font-weight:800;padding:1px 4px;border-radius:4px;background:var(--line);color:var(--ink2)}
-.cins i.on{background:#1F7A3A;color:#fff}
+.cins i,.cins button{font:inherit;font-style:normal;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;border:0;background:var(--line);color:var(--ink2);cursor:pointer;line-height:1.3}
+.cins .on{background:#1F7A3A;color:#fff}
 .cpan{width:64px;margin:0}
 .cbtns{display:flex;gap:4px}
 .cbtns button{width:30px;height:28px;border-radius:8px;border:2px solid var(--line);background:var(--card);font-weight:800;font-size:12px;color:var(--ink);cursor:pointer;padding:0}
@@ -1149,7 +1149,7 @@ function vConsole(){
   const strip = k => { const s=C.ch[k], on=(x)=>x?'on':''; const eqOn=Object.entries(s.eq).some(([p,v])=>/g$|^lf$|^hf$/.test(p)&&Math.abs(v)>0.2)||s.hp;
     return `<div class="cstrip ${C.sel===k?'sel':''} ${s.mute||(solo&&!s.solo)?'dim':''}">
       <button class="cname" data-act="conSel" data-k="${k}" aria-pressed="${C.sel===k}">${esc(song.name[k])}</button>
-      <div class="cins"><i class="${on(eqOn)}">EQ</i><i class="${on(s.gate.on)}">GT</i><i class="${on(s.comp.on)}">CP</i><i class="${on(s.des.on)}">DS</i></div>
+      <div class="cins">${[['EQ',eqOn,'eq','EQ'],['GT',s.gate.on,'dyn','gate'],['CP',s.comp.on,'dyn','compressor'],['DS',s.des.on,'dyn','de-esser']].map(([t,o,tab,lab])=>`<button class="${on(o)}" data-act="conOpen" data-k="${k}" data-t="${tab}" aria-label="${esc(song.name[k])} ${lab}">${t}</button>`).join('')}</div>
       <input class="cpan" type="range" min="-1" max="1" step="0.05" value="${s.pan}" data-act="conParam" data-k="${k}" data-p="pan" aria-label="${esc(song.name[k])} pan">
       <div class="cbtns"><button class="cm ${on(s.mute)}" data-act="conMute" data-k="${k}" aria-pressed="${s.mute}">M</button><button class="cs ${on(s.solo)}" data-act="conSolo" data-k="${k}" aria-pressed="${s.solo}">S</button></div>
       <div class="cfad"><div class="cmeter"><i id="cm-${k}"></i></div><input type="range" min="${FADER_MIN}" max="${FADER_MAX}" step="0.5" value="${s.fader}" data-act="conParam" data-k="${k}" data-p="fader" aria-label="${esc(song.name[k])} fader"></div>
@@ -1202,9 +1202,10 @@ function vConsole(){
       <div class="cstrip mst"><b class="cname" style="cursor:default">Main LR</b><div class="cins"><i class="${M.glue?'on':''}">GLUE</i><i class="${M.lim?'on':''}">LIM</i></div>
         <div class="cfad" style="margin-top:58px"><div class="cmeter"><i id="cm-master"></i></div><input type="range" min="-30" max="6" step="0.5" value="${M.fader}" data-act="conMaster" data-p="fader" aria-label="Main fader"></div><b class="cdb" id="cf-master">${fmtS(M.fader)}</b></div>
     </div>
-    <section class="slide" style="margin-top:12px">
+    <section class="slide" id="con-detail" style="margin-top:12px;scroll-margin-top:12px">
       <div class="row" style="align-items:center;margin-bottom:8px"><h2 class="ut" style="font-size:20px;flex:1">${esc(song.name[k])}</h2><div class="row" style="gap:6px">${tabs}</div></div>
       ${detail}
+      <button class="btn ghost block" data-act="conTop" style="margin-top:12px;min-height:40px">Back to the faders</button>
     </section>
     <section class="slide" style="margin-top:12px"><h2 style="font-size:20px">FX rack and main bus</h2>
       <div class="eqpanel">
@@ -3491,6 +3492,8 @@ document.addEventListener('click', async e=>{
     case 'conPlay': if(CON.playing) conStop(); else conStart(); conRender(); break;
     case 'conSel': UI.con.sel=el.dataset.k; conRender(); break;
     case 'conTab': UI.con.tab=el.dataset.t; conRender(); break;
+    case 'conTop': document.getElementById('cbank')?.scrollIntoView({behavior:'smooth', block:'center'}); break;
+    case 'conOpen': UI.con.sel=el.dataset.k; UI.con.tab=el.dataset.t; conRender(); document.getElementById('con-detail')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
