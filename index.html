@@ -127,6 +127,21 @@ button:disabled{cursor:default}
 .kval{font-size:11px;color:#E8EAED;font-variant-numeric:tabular-nums}
 .knob span{font-size:9px;font-weight:800;letter-spacing:.06em;color:#8B9199}
 @media (max-width:420px){ .kdial{width:32px;height:32px} .kdial i{height:12px;transform-origin:50% 13px} .m32bands{gap:4px} .mbh{font-size:9px} }
+.mpanel{margin:0 -4px 10px}
+.mtag{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.08em;color:#FFE14D;border:1px solid #4A4E55;border-radius:4px;padding:2px 6px}
+.dynrow{display:flex;gap:8px;align-items:stretch;margin-bottom:10px;min-height:150px}
+.dyngraph{flex:1;background:#0B0C0E;border:1px solid #2C2F34;border-radius:10px;min-width:0}
+.dynsvg{max-height:220px}
+.m32svg .mthr{stroke:#FF5A4E;stroke-width:1.5;stroke-dasharray:3 3}
+.m32svg .mdot{fill:#fff;stroke:#FFE14D;stroke-width:2}
+.grm{width:14px;background:#0B0C0E;border:1px solid #2C2F34;border-radius:6px;position:relative;overflow:hidden;min-height:60px}
+.grm i{position:absolute;left:0;right:0;top:0;height:0;background:linear-gradient(#FF8A3D,#FF5A4E)}
+.grtxt{align-self:center;color:#FFB35A;font-weight:800;font-size:13px;min-width:56px;font-variant-numeric:tabular-nums}
+.led{align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.06em;padding:4px 7px;border-radius:5px;background:#16361F;color:#3DDC84;border:1px solid #3DDC84}
+.led.shut{background:#3A1614;color:#FF5A4E;border-color:#FF5A4E}
+.led.dim{background:#26282C;color:#7D838C;border-color:#3A3D43}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px 4px;background:#202226;border:1px solid #2E3136;border-radius:10px;padding:8px 4px;--b:#FFE14D}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -998,12 +1013,12 @@ function fixGrade(q){
    (reverb and delay). The FX rack and the master bus (glue compressor, limiter) sit at the end.
    ============================================================ */
 const GATE_SRC = `class SSGate extends AudioWorkletProcessor{
-  static get parameterDescriptors(){ return [{name:'on',defaultValue:0},{name:'thr',defaultValue:-40},{name:'range',defaultValue:-60}]; }
-  constructor(){ super(); this.env=0; this.g=1; this.hold=0; }
+  static get parameterDescriptors(){ return [{name:'on',defaultValue:0},{name:'thr',defaultValue:-40},{name:'range',defaultValue:-60},{name:'atk',defaultValue:1},{name:'hold',defaultValue:60},{name:'rel',defaultValue:90}]; }
+  constructor(){ super(); this.env=0; this.g=1; this.hold=0; this.n=0; }
   process(ins, outs, p){
     const i=ins[0], o=outs[0]; if(!i || !i.length){ return true; }
     const n=i[0].length, sr=sampleRate, on=p.on[0]>0.5, thr=Math.pow(10,p.thr[0]/20), floor=Math.pow(10,p.range[0]/20);
-    const att=Math.exp(-1/(0.0008*sr)), rel=Math.exp(-1/(0.09*sr)), er=Math.exp(-1/(0.005*sr)), H=Math.floor(0.06*sr);
+    const att=Math.exp(-1/(Math.max(0.05,p.atk[0])*0.001*sr)), rel=Math.exp(-1/(p.rel[0]*0.001*sr)), er=Math.exp(-1/(0.005*sr)), H=Math.floor(p.hold[0]*0.001*sr);
     for(let s=0;s<n;s++){
       let pk=0; for(let c=0;c<i.length;c++){ const a=Math.abs(i[c][s]); if(a>pk) pk=a; }
       this.env = pk>this.env ? pk : this.env*er + pk*(1-er);
@@ -1012,6 +1027,7 @@ const GATE_SRC = `class SSGate extends AudioWorkletProcessor{
       this.g = target>this.g ? target+(this.g-target)*att : target+(this.g-target)*rel;
       for(let c=0;c<o.length;c++) o[c][s]=(i[c]||i[0])[s]*this.g;
     }
+    if((this.n+=n)>=2048){ this.n=0; this.port.postMessage(20*Math.log10(this.g+1e-9)); }
     return true;
   }
 }
@@ -1034,7 +1050,7 @@ function conSections(song){
 }
 const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0, hpOn:false, hpF:80, eqOn:true,
   eq:{ lf:0, lff:100, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0, hff:10000 },
-  gate:{ on:false, thr:-40 }, comp:{ on:false, thr:-18, ratio:3, atk:10, rel:150, mk:0 }, des:{ on:false, thr:-30 }, rev:FADER_MIN, dly:FADER_MIN });
+  gate:{ on:false, thr:-40, range:-60, atk:1, hold:60, rel:90 }, comp:{ on:false, thr:-18, ratio:3, knee:6, atk:10, rel:150, mk:0 }, des:{ on:false, thr:-30, freq:6000 }, rev:FADER_MIN, dly:FADER_MIN });
 function conInit(songId, start){
   const song=songById(songId), ch={};
   for(const k of song.mix){
@@ -1044,7 +1060,8 @@ function conInit(songId, start){
     if(start==='ref'){ const h=refHpf(song,k); if(h){ ch[k].hp=h; ch[k].hpF=h; ch[k].hpOn=true; } if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
   }
   return { song:songId, sec:0, sel:song.anchor, tab:'eq', start:start||'rough', ch,
-    fx:{ revType:'plate', revRet:0, dlyTime:'luke', dlyFb:0.3, dlyRet:-3 }, master:{ fader:0, glue:false, lim:true }, result:null };
+    fx:{ revType:'plate', revRet:0, revPre:20, revDecay:1, revLo:200, revHi:8000, dlyTime:'luke', dlyFb:0.3, dlyRet:-3, dlyHi:5000 },
+    master:{ fader:0, glue:false, glueThr:-18, glueRatio:2, lim:true, limCeil:-2 }, result:null };
 }
 function conEqList(e, hp, on=true){
   const z=on?1:0;
@@ -1066,8 +1083,9 @@ function conApply(k){
     const z=s.eqOn?1:0;
     set(n.hp.frequency, s.hp||10); set(n.lf.frequency, s.eq.lff); set(n.lf.gain, s.eq.lf*z); set(n.lm.frequency, s.eq.lmf); set(n.lm.gain, s.eq.lmg*z); set(n.lm.Q, s.eq.lmq);
     set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg*z); set(n.hm.Q, s.eq.hmq); set(n.hf.frequency, s.eq.hff); set(n.hf.gain, s.eq.hf*z);
-    if(n.gate){ set(n.gate.parameters.get('on'), s.gate.on?1:0); set(n.gate.parameters.get('thr'), s.gate.thr); }
-    set(n.comp.threshold, s.comp.on?s.comp.thr:0); set(n.comp.ratio, s.comp.on?s.comp.ratio:1); set(n.comp.knee, s.comp.on?6:0);
+    if(n.gate){ const gp=x=>n.gate.parameters.get(x); set(gp('on'), s.gate.on?1:0); set(gp('thr'), s.gate.thr); set(gp('range'), s.gate.range); set(gp('atk'), s.gate.atk); set(gp('hold'), s.gate.hold); set(gp('rel'), s.gate.rel); }
+    set(n.comp.threshold, s.comp.on?s.comp.thr:0); set(n.comp.ratio, s.comp.on?s.comp.ratio:1); set(n.comp.knee, s.comp.on?s.comp.knee:0);
+    set(n.dlo.frequency, s.des.freq); set(n.dhi.frequency, s.des.freq);
     n.comp.attack.value=s.comp.atk/1000; n.comp.release.value=s.comp.rel/1000; set(n.mk.gain, s.comp.on?db(s.comp.mk):1);
     set(n.dcomp.threshold, s.des.on?s.des.thr:0); set(n.dcomp.ratio, s.des.on?8:1);
     set(n.pan.pan, s.pan); set(n.fader.gain, conGainOf(key)); set(n.rev.gain, sendGain(s.rev)); set(n.dly.gain, sendGain(s.dly));
@@ -1076,9 +1094,10 @@ function conApply(k){
     const f=UI.con.fx, M=UI.con.master, song=conSong(), D=CON_DLY[f.dlyTime];
     set(CON.revRet.gain, sendGain(f.revRet)); set(CON.dlyRet.gain, sendGain(f.dlyRet));
     set(CON.dl.delayTime, song.beat*D.l); set(CON.dr.delayTime, song.beat*D.r); set(CON.dfbl.gain, f.dlyFb); set(CON.dfbr.gain, f.dlyFb);
-    if(CON.verb.typeNow!==f.revType){ CON.verb.buffer=impulseType(f.revType); CON.verb.typeNow=f.revType; }
-    set(CON.glue.threshold, M.glue?-18:0); set(CON.glue.ratio, M.glue?2:1);
-    set(CON.lim.threshold, M.lim?-2:0); set(CON.lim.ratio, M.lim?20:1);
+    const ir=f.revType+':'+f.revDecay; if(CON.verb.typeNow!==ir){ CON.verb.buffer=impulseType(f.revType, f.revDecay); CON.verb.typeNow=ir; }
+    set(CON.vpre.delayTime, f.revPre/1000); set(CON.vlo.frequency, f.revLo); set(CON.vhi.frequency, f.revHi); set(CON.dlp.frequency, f.dlyHi); set(CON.drp.frequency, f.dlyHi);
+    set(CON.glue.threshold, M.glue?M.glueThr:0); set(CON.glue.ratio, M.glue?M.glueRatio:1);
+    set(CON.lim.threshold, M.lim?M.limCeil:0); set(CON.lim.ratio, M.lim?20:1);
     set(CON.mfader.gain, db(M.fader));
   }
 }
@@ -1093,20 +1112,22 @@ function conStart(){
   const mfader=c.createGain(), man=c.createAnalyser(); man.fftSize=1024;
   bus.connect(glue).connect(lim).connect(mfader).connect(A.master); mfader.connect(man);
   // FX rack
-  const verb=c.createConvolver(); verb.buffer=impulseType(UI.con.fx.revType); verb.typeNow=UI.con.fx.revType;
-  const revRet=c.createGain(); revBus.connect(verb).connect(revRet).connect(bus);
+  const verb=c.createConvolver(); verb.buffer=impulseType(UI.con.fx.revType, UI.con.fx.revDecay); verb.typeNow=UI.con.fx.revType+':'+UI.con.fx.revDecay;
+  const vpre=c.createDelay(1), vlo=c.createBiquadFilter(), vhi=c.createBiquadFilter(); vlo.type='highpass'; vhi.type='lowpass';
+  const revRet=c.createGain(); revBus.connect(vpre).connect(vlo).connect(verb).connect(vhi).connect(revRet).connect(bus);
   const dm=c.createChannelMerger(2), dl=c.createDelay(4), dr=c.createDelay(4), dfbl=c.createGain(), dfbr=c.createGain(), dlp=c.createBiquadFilter(), drp=c.createBiquadFilter(), dlyRet=c.createGain();
   dlp.type=drp.type='lowpass'; dlp.frequency.value=drp.frequency.value=5000;
   dlyBus.connect(dl); dlyBus.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
   dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus);
-  Object.assign(CON, { bus, glue, lim, mfader, man, verb, revRet, dl, dr, dfbl, dfbr, dlyRet, nodes:{}, srcs:[], t0, off, dur });
+  Object.assign(CON, { bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
   for(const k of song.mix){
     const b=A.buf[`${song.id}:${k}`]; if(!b) continue;
     const src=c.createBufferSource(); src.buffer=b; src.loop=true; src.loopStart=off; src.loopEnd=Math.min(off+dur, b.duration); src.start(t0, off);
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707;
     const lf=eqNode(c,{type:'lowshelf',f:100}), lm=eqNode(c,{type:'peaking',f:300}), hm=eqNode(c,{type:'peaking',f:3000}), hf=eqNode(c,{type:'highshelf',f:10000});
     let n=src.connect(hp).connect(lf).connect(lm).connect(hm).connect(hf), gate=null;
-    if(A.gateOk){ gate=new AudioWorkletNode(c,'ss-gate',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n=n.connect(gate); }
+    const anIn=c.createAnalyser(); anIn.fftSize=1024; n.connect(anIn);   // what the gate and compressor "hear"
+    if(A.gateOk){ gate=new AudioWorkletNode(c,'ss-gate',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n=n.connect(gate); gate.port.onmessage=ev=>{ CON.gateG[k]=ev.data; }; }
     const comp=c.createDynamicsCompressor(), mk=c.createGain(); n=n.connect(comp).connect(mk);
     // de-esser: split at 6 kHz, squash only the top, add it back (in polarity for a flat sum)
     const dlo=c.createBiquadFilter(), dhi=c.createBiquadFilter(), dcomp=c.createDynamicsCompressor(), dinv=c.createGain(), dsum=c.createGain();
@@ -1116,7 +1137,7 @@ function conStart(){
     const pan=c.createStereoPanner(), fader=c.createGain(), an=c.createAnalyser(); an.fftSize=1024;
     dsum.connect(pan).connect(fader).connect(bus); fader.connect(an);
     const rev=c.createGain(), dly=c.createGain(); fader.connect(rev).connect(revBus); fader.connect(dly).connect(dlyBus);
-    CON.nodes[k]={ hp, lf, lm, hm, hf, gate, comp, mk, dcomp, pan, fader, an, rev, dly };
+    CON.nodes[k]={ hp, lf, lm, hm, hf, anIn, gate, comp, mk, dlo, dhi, dcomp, pan, fader, an, rev, dly };
     CON.srcs.push(src);
   }
   CON.playing=true; conApply();
@@ -1142,6 +1163,7 @@ function conMeters(){
     }
     const mm=document.getElementById('cm-master'); if(mm){ const p=conPeak(CON.man); mm.style.height=Math.max(0,Math.min(100,(p+60)/60*100))+'%'; mm.classList.toggle('hot', p>-1); }
     const gk=document.getElementById('con-gr'); if(gk && CON.nodes[UI.con.sel]){ const r=CON.nodes[UI.con.sel].comp.reduction; gk.textContent = UI.con.ch[UI.con.sel].comp.on ? `Gain reduction: ${Math.round(-r*10)/10} dB` : 'Compressor is off'; }
+    dynMeters();
     const now=document.getElementById('con-now'), song=conSong(); if(now && song.sections){ const sec=conSections(song)[UI.con.sec], len=(sec.bars[1]-sec.bars[0])*song.bar, t=((A.ctx.currentTime-CON.t0)%len+len)%len, x=sectionAt(song, sec.bars[0]+t/song.bar); now.textContent = x ? `Now playing: ${x.name}` : ''; }
   }, 70);
 }
@@ -1192,19 +1214,7 @@ function vConsole(){
   const tabs=['eq','dyn','sends'].map(t=>`<button class="chipbtn ${C.tab===t?'on':''}" data-act="conTab" data-t="${t}" aria-pressed="${C.tab===t}">${{eq:'EQ',dyn:'Plugins',sends:'Sends'}[t]}</button>`).join('');
   const sw=(p,on,label)=>`<div class="set" style="padding:8px 0"><div class="t"><b>${label}</b></div><button class="switch" role="switch" aria-checked="${on}" data-act="conToggle" data-k="${k}" data-p="${p}" aria-label="${label}"></button></div>`;
   const detail = C.tab==='eq' ? vM32Eq(k)
-    : C.tab==='dyn' ? `
-      <div class="plug"><h4>Gate</h4>${A.gateOk?`${sw('gate.on',s.gate.on,'Gate on')}${conKnob(k,'gate.thr','Threshold',-70,0,1,s.gate.thr,s.gate.thr+' dB',s.gate.on?'':'disabled')}
-        <p class="foot">Closes when the channel drops below the threshold: cleans up spill between hits on drums, or noise between lines.</p>`:'<p class="foot">This browser can\'t run the gate.</p>'}</div>
-      <div class="plug"><h4>Compressor</h4>${sw('comp.on',s.comp.on,'Compressor on')}
-        ${conKnob(k,'comp.thr','Threshold',-50,0,1,s.comp.thr,s.comp.thr+' dB',s.comp.on?'':'disabled')}
-        ${conKnob(k,'comp.ratio','Ratio',1,20,0.5,s.comp.ratio,s.comp.ratio+':1',s.comp.on?'':'disabled')}
-        ${conKnob(k,'comp.atk','Attack',1,100,1,s.comp.atk,s.comp.atk+' ms',s.comp.on?'':'disabled')}
-        ${conKnob(k,'comp.rel','Release',20,1000,10,s.comp.rel,s.comp.rel+' ms',s.comp.on?'':'disabled')}
-        ${conKnob(k,'comp.mk','Makeup',0,20,0.5,s.comp.mk,g(s.comp.mk),s.comp.on?'':'disabled')}
-        <p id="con-gr" class="disp" style="margin:6px 0 0;font-size:17px">${s.comp.on?'Gain reduction: …':'Compressor is off'}</p></div>
-      <div class="plug"><h4>De-esser</h4>${sw('des.on',s.des.on,'De-esser on')}${conKnob(k,'des.thr','Threshold',-60,0,1,s.des.thr,s.des.thr+' dB',s.des.on?'':'disabled')}
-        <p class="foot">Turns down only the "s" and "t" sounds above about 6 kHz. Mostly for vocals.</p></div>
-      ${onM32('')()?`<p class="foot">On the M32 the gate and compressor are on each channel's Dynamics page; RCC's Waves plugins (like a de-esser or a vocal compressor) go on the channel as inserts.</p>`:''}`
+    : C.tab==='dyn' ? vDyn(k)
     : `<div class="eqpanel">${conKnob(k,'rev','Reverb send',FADER_MIN,6,0.5,s.rev,fmtS(s.rev))}${conKnob(k,'dly','Delay send',FADER_MIN,6,0.5,s.dly,fmtS(s.dly))}</div>
       <p class="foot">Post-fader sends: if you pull the fader down, the effect goes down with it.</p>`;
   const f=C.fx, M=C.master, r=C.result;
@@ -1229,15 +1239,7 @@ function vConsole(){
       ${detail}
       <button class="btn ghost block" data-act="conTop" style="margin-top:12px;min-height:40px">Back to the faders</button>
     </section>
-    <section class="slide" style="margin-top:12px"><h2 style="font-size:20px">FX rack and main bus</h2>
-      <div class="eqpanel">
-        <label class="eqrow"><span>Reverb type</span><select class="hpf" data-act="conFxSel" data-p="revType" style="max-width:none">${Object.entries(REVERB_TYPES).map(([t,x])=>`<option value="${t}" ${f.revType===t?'selected':''}>${x.name}</option>`).join('')}</select><b></b></label>
-        <label class="eqrow"><span>Delay time</span><select class="hpf" data-act="conFxSel" data-p="dlyTime" style="max-width:none">${Object.entries(CON_DLY).map(([t,x])=>`<option value="${t}" ${f.dlyTime===t?'selected':''}>${x.name}</option>`).join('')}</select><b></b></label>
-        <label class="eqrow"><span>Delay feedback</span><input type="range" min="0" max="0.7" step="0.05" value="${f.dlyFb}" data-act="conFx" data-p="dlyFb"><b id="cf-dlyFb">${Math.round(f.dlyFb*100)}%</b></label>
-      </div>
-      <div class="set" style="padding:8px 0"><div class="t"><b>Glue compressor</b><span>Gently holds the whole mix together (2:1).</span></div><button class="switch" role="switch" aria-checked="${M.glue}" data-act="conMasterT" data-p="glue" aria-label="Glue compressor"></button></div>
-      <div class="set" style="padding:8px 0"><div class="t"><b>Limiter</b><span>Catches peaks so the main never clips.</span></div><button class="switch" role="switch" aria-checked="${M.lim}" data-act="conMasterT" data-p="lim" aria-label="Limiter"></button></div>
-    </section>
+    <section class="slide" style="margin-top:12px"><h2 style="font-size:20px;margin-bottom:8px">FX rack and main bus</h2>${vFxMain()}</section>
     ${r?`<section class="slide" style="margin-top:12px"><div style="display:flex;align-items:center;gap:16px"><div class="score ut" style="--u:${r.score>=70?'#1F7A3A':'#B4421F'}">${r.score}</div>
       <div><b class="disp" style="font-size:22px">${r.score>=90?'Sunday-ready!':r.score>=70?'Nice mix!':'Keep going'}</b><p style="margin:2px 0 0">Balance against Sona's ${S.mixStyle==='modern'?'modern worship':'gospel'} mix, judged around the lead vocal.</p></div></div>
       <ul class="notes">${r.notes.map(n=>`<li class="${n.bad?'bad':n.good?'good':''}">${esc(song.name[n.k])}<span>${n.msg}</span></li>`).join('')}</ul></section>`:''}
@@ -1296,17 +1298,28 @@ function vM32Eq(k){
 }
 // Set one EQ value and refresh just the EQ display, knobs and audio (no full redraw, so drags keep working).
 function conSetEq(k, p, v){
+  if(k==='_fx'||k==='_master'){ (k==='_fx'?UI.con.fx:UI.con.master)[p]=v; conApply(); const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v); return; }
   const s=UI.con.ch[k];
   if(p==='hpF'){ s.hpF=v; s.hp=s.hpOn?v:0; }
-  else { const [, b]=p.split('.'); s.eq[b]=v; }
+  else { const [a, b]=p.split('.'); s[a][b]=v; }
   conApply(k); UI.con.result=null;
+  if(/^(gate|comp)\./.test(p)){ const kind=p.split('.')[0], g=document.querySelector(`.dyngraph svg[aria-label="${kind} curve"]`); if(g) g.replaceWith(frag(dynCurve(kind, s[kind], 'dot-'+kind))); }
   const scr=document.getElementById('m32screen'); if(scr) scr.replaceChildren(frag(m32Graph(s)));
   const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v);
 }
 function knobShow(kn, v){
   const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', pos=log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min);
   kn.dataset.val=v; kn.setAttribute('aria-valuenow', v);
-  const p=kn.dataset.p, txt = /hpF|lff|lmf|hmf|hff/.test(p) ? fmtHz(v) : /q$/.test(p) ? v.toFixed(1) : `${v>0?'+':''}${v.toFixed(1).replace('.0','')}`;
+  const p=kn.dataset.p, rv=x=>Math.round(x*10)/10, txt =
+      /hpF|lff|lmf|hmf|hff|des\.freq|revLo|revHi|dlyHi/.test(p) ? fmtHz(v)
+    : /q$/.test(p) ? v.toFixed(1)
+    : /ratio|Ratio/.test(p) ? rv(v)+':1'
+    : /atk|hold|rel$|revPre/.test(p) ? rv(v)+'ms'
+    : p==='revDecay' ? (REVERB_TYPES[UI.con.fx.revType].rt*v).toFixed(1)+'s'
+    : p==='dlyFb' ? Math.round(v*100)+'%'
+    : /Ret$/.test(p) ? fmtS(v)
+    : /thr|Thr|range|knee|limCeil/.test(p) ? rv(v)+''
+    : `${v>0?'+':''}${v.toFixed(1).replace('.0','')}`;
   kn.setAttribute('aria-valuetext', txt); kn.querySelector('.kval').textContent=txt;
   kn.querySelector('.kdial i').style.transform=`rotate(${-135+Math.max(0,Math.min(1,pos))*270}deg)`;
 }
@@ -1314,8 +1327,9 @@ function knobStep(kn, dpos){
   const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', v=+kn.dataset.val;
   let pos=(log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))+dpos; pos=Math.max(0,Math.min(1,pos));
   let nv = log ? min*Math.pow(max/min,pos) : min+pos*(max-min);
-  nv = log ? (nv>=1000?Math.round(nv/10)*10:nv>=100?Math.round(nv):Math.round(nv*10)/10) : Math.round(nv*2)/2;
-  if(/q$/.test(kn.dataset.p)) nv=Math.round(nv*10)/10;
+  nv = log ? (nv>=1000?Math.round(nv/10)*10:nv>=100?Math.round(nv):Math.round(nv*10)/10) : (max-min<=2 ? Math.round(nv*100)/100 : Math.round(nv*2)/2);
+  if(/q$|ratio|Ratio/.test(kn.dataset.p)) nv=Math.round(nv*10)/10;
+  if(kn.dataset.p==='revDecay') nv=Math.round(nv*10)/10;
   conSetEq(kn.dataset.k, kn.dataset.p, nv);
 }
 // Pointer handling for knobs and the EQ display.
@@ -1346,6 +1360,72 @@ function knobStep(kn, dpos){
   document.addEventListener('dblclick', e=>{ const kn=e.target.closest('.knob[data-p]'); if(!kn||kn.classList.contains('dis')) return;
     const p=kn.dataset.p, d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) conSetEq(kn.dataset.k,p,d); });
 })();
+/* ----- M32-style dynamics, FX and main bus screens ----- */
+// Transfer curve: input level (x) against output level (y), -60..0 dB, with a dot for the live input.
+const TX = d => 30 + (d+60)/60*190, TY = d => 200 - (d+60)/60*190;
+function dynCurve(kind, s, id){
+  const pts=[];
+  for(let i=-60;i<=0;i+=1){
+    let o=i;
+    if(kind==='gate'){ if(i<s.thr) o=i+s.range; }
+    else { const T=s.thr, W=s.knee, R=s.ratio; o = i<T-W/2 ? i : i>T+W/2 ? T+(i-T)/R : i+(1/R-1)*Math.pow(i-T+W/2,2)/(2*W); }
+    pts.push(`${TX(i).toFixed(1)},${TY(Math.max(-60,o)).toFixed(1)}`);
+  }
+  const grid=[-60,-48,-36,-24,-12,0].map(d=>`<line x1="${TX(d)}" x2="${TX(d)}" y1="10" y2="200" class="mg"/><line x1="30" x2="220" y1="${TY(d)}" y2="${TY(d)}" class="mg"/><text x="${TX(d)}" y="214" class="ml" text-anchor="middle">${d}</text>`).join('');
+  return `<svg viewBox="0 0 230 222" class="m32svg dynsvg" role="img" aria-label="${kind} curve">${grid}
+    <line x1="30" y1="200" x2="220" y2="10" class="mz" stroke-dasharray="4 4"/>
+    <line x1="${TX(s.thr)}" x2="${TX(s.thr)}" y1="10" y2="200" class="mthr"/>
+    <polyline points="${pts.join(' ')}" class="mcurve ${s.on?'':'off'}"/>
+    <circle id="${id}" cx="30" cy="200" r="6" class="mdot"/></svg>`;
+}
+const grMeter = id => `<div class="grm" aria-hidden="true"><i id="${id}"></i></div>`;
+const panel = (title, on, act, k, body, extra='') => `<div class="m32eq mpanel">
+  <div class="m32top">${act?`<button class="m32btn ${on?'on':''}" data-act="${act}" data-k="${k}" aria-pressed="${on}">ON</button>`:''}<span>${title}</span>${extra}</div>${body}</div>`;
+const kgrid = items => `<div class="kgrid">${items.join('')}</div>`;
+function vDyn(k){
+  const C=UI.con, s=C.ch[k], G=s.gate, P=s.comp, D=s.des;
+  const gate = A.gateOk ? panel('GATE', G.on, 'conDynOn', k, `<div class="dynrow"><div class="dyngraph">${dynCurve('gate',G,'dot-gate')}</div>${grMeter('gr-gate')}<div class="led ${G.on?'':'dim'}" id="led-gate">OPEN</div></div>
+      ${kgrid([knob(k,'gate.thr','THRESH',G.thr,-80,0,G.thr+'',false,!G.on), knob(k,'gate.range','RANGE',G.range,-80,0,G.range+'',false,!G.on), knob(k,'gate.atk','ATTACK',G.atk,0.1,100,G.atk+'ms',true,!G.on), knob(k,'gate.hold','HOLD',G.hold,1,1000,G.hold+'ms',true,!G.on), knob(k,'gate.rel','RELEASE',G.rel,5,2000,G.rel+'ms',true,!G.on)])}
+      <p class="m32hint">The gate closes when the signal drops below the threshold, turning it down by the range. Great for drum spill.</p>`, `<em class="mtag">GATE</em>`)
+    : `<p class="foot">This browser can't run the gate.</p>`;
+  const comp = panel('DYNAMICS', P.on, 'conDynOn', k, `<div class="dynrow"><div class="dyngraph">${dynCurve('comp',P,'dot-comp')}</div>${grMeter('gr-comp')}<div class="grtxt" id="grtxt-comp"></div></div>
+      ${kgrid([knob(k,'comp.thr','THRESH',P.thr,-60,0,P.thr+'',false,!P.on), knob(k,'comp.ratio','RATIO',P.ratio,1,20,P.ratio+':1',true,!P.on), knob(k,'comp.knee','KNEE',P.knee,0,30,P.knee+'',false,!P.on), knob(k,'comp.atk','ATTACK',P.atk,1,100,P.atk+'ms',true,!P.on), knob(k,'comp.rel','RELEASE',P.rel,20,1000,P.rel+'ms',true,!P.on), knob(k,'comp.mk','GAIN',P.mk,0,24,'+'+P.mk,false,!P.on)])}
+      <p class="m32hint">Above the threshold the level is turned down by the ratio. Watch the gain-reduction meter: 2–6 dB is typical on a vocal.</p>`, `<em class="mtag">COMP</em>`);
+  const des = panel('DE-ESSER', D.on, 'conDesOn', k, `<div class="dynrow" style="min-height:0">${grMeter('gr-des')}<div class="grtxt" id="grtxt-des"></div></div>
+      ${kgrid([knob(k,'des.thr','THRESH',D.thr,-60,0,D.thr+'',false,!D.on), knob(k,'des.freq','FREQ',D.freq,3000,12000,fmtHz(D.freq),true,!D.on)])}
+      <p class="m32hint">Turns down only the "s" and "t" range above the frequency.${onM32('')()?' On RCC\'s M32 this would be a Waves de-esser on an insert.':''}</p>`, `<em class="mtag">INSERT</em>`);
+  return gate+comp+des;
+}
+function vFxMain(){
+  const f=UI.con.fx, M=UI.con.master;
+  const types=Object.entries(REVERB_TYPES).filter(([t])=>!t.startsWith('_')).map(([t,x])=>`<button class="m32btn ${f.revType===t?'on':''}" data-act="conRevType" data-t="${t}" aria-pressed="${f.revType===t}">${x.name.toUpperCase()}</button>`).join('');
+  const times=Object.entries(CON_DLY).map(([t,x])=>`<button class="m32btn ${f.dlyTime===t?'on':''}" data-act="conDlyTime" data-t="${t}" aria-pressed="${f.dlyTime===t}">${x.name.toUpperCase()}</button>`).join('');
+  const fx1 = panel('FX 1 · '+REVERB_TYPES[f.revType].name.toUpperCase()+' REVERB', true, '', '_fx', `<div class="btnrow">${types}</div>
+    ${kgrid([knob('_fx','revPre','PRE DLY',f.revPre,0,200,f.revPre+'ms',false), knob('_fx','revDecay','DECAY',f.revDecay,0.3,3,(REVERB_TYPES[f.revType].rt*f.revDecay).toFixed(1)+'s',true), knob('_fx','revLo','LO CUT',f.revLo,20,1000,fmtHz(f.revLo),true), knob('_fx','revHi','HI CUT',f.revHi,1000,20000,fmtHz(f.revHi),true), knob('_fx','revRet','RETURN',f.revRet,-40,6,fmtS(f.revRet),false)])}
+    <p class="m32hint">Send channels here with each channel's Reverb send. Pre-delay keeps the words clear before the tail starts.</p>`, `<em class="mtag">FX</em>`);
+  const fx2 = panel('FX 2 · STEREO DELAY', true, '', '_fx', `<div class="btnrow">${times}</div>
+    ${kgrid([knob('_fx','dlyFb','FEEDBACK',f.dlyFb,0,0.8,Math.round(f.dlyFb*100)+'%',false), knob('_fx','dlyHi','HI CUT',f.dlyHi,1000,16000,fmtHz(f.dlyHi),true), knob('_fx','dlyRet','RETURN',f.dlyRet,-40,6,fmtS(f.dlyRet),false)])}
+    <p class="m32hint">Timed to the song's tempo (${conSong().bpm} BPM).</p>`, `<em class="mtag">FX</em>`);
+  const main = panel('MAIN LR · DYNAMICS', M.glue, 'conMainOn', 'glue', `<div class="dynrow" style="min-height:0">${grMeter('gr-glue')}<div class="grtxt" id="grtxt-glue"></div></div>
+      ${kgrid([knob('_master','glueThr','THRESH',M.glueThr,-40,0,M.glueThr+'',false,!M.glue), knob('_master','glueRatio','RATIO',M.glueRatio,1,8,M.glueRatio+':1',true,!M.glue)])}
+      <p class="m32hint">A gentle "glue" compressor on the whole mix: 1–3 dB of gain reduction.</p>`, `<em class="mtag">BUS</em>`)
+    + panel('MAIN LR · LIMITER', M.lim, 'conMainOn', 'lim', `<div class="dynrow" style="min-height:0">${grMeter('gr-lim')}<div class="grtxt" id="grtxt-lim"></div></div>
+      ${kgrid([knob('_master','limCeil','CEILING',M.limCeil,-12,0,M.limCeil+' dB',false,!M.lim)])}
+      <p class="m32hint">Stops peaks from going over the ceiling, so the system and stream never clip.</p>`, `<em class="mtag">BUS</em>`);
+  return fx1+fx2+main;
+}
+// Live parts of those screens (called from the meter loop).
+function dynMeters(){
+  const k=UI.con.sel, n=CON.nodes[k], s=UI.con.ch[k]; if(!n) return;
+  const pin = n.anIn ? conPeak(n.anIn) : -90, setDot=(id,kind,st)=>{ const d=document.getElementById(id); if(!d) return; const x=Math.max(-60,Math.min(0,pin)); let o=x;
+      if(kind==='gate'){ if(st.on && x<st.thr) o=x+st.range; } else if(st.on){ const T=st.thr,W=st.knee,R=st.ratio; o= x<T-W/2?x : x>T+W/2? T+(x-T)/R : x+(1/R-1)*Math.pow(x-T+W/2,2)/(2*W); }
+      d.setAttribute('cx',TX(x)); d.setAttribute('cy',TY(Math.max(-60,o))); };
+  setDot('dot-gate','gate',s.gate); setDot('dot-comp','comp',s.comp);
+  const bar=(id,gr,txtId)=>{ const b=document.getElementById(id); if(b) b.style.height=Math.max(0,Math.min(100,-gr/20*100))+'%'; const t=txtId&&document.getElementById(txtId); if(t) t.textContent = gr<-0.3 ? `${gr.toFixed(1)} dB` : '0 dB'; };
+  const gg = CON.gateG[k] ?? 0; bar('gr-gate', s.gate.on?gg:0); const led=document.getElementById('led-gate'); if(led){ led.textContent = !s.gate.on ? 'OFF' : gg>-1 ? 'OPEN' : 'CLOSED'; led.className='led '+(!s.gate.on?'dim':gg>-1?'':'shut'); }
+  bar('gr-comp', s.comp.on?n.comp.reduction:0, 'grtxt-comp'); bar('gr-des', s.des.on?n.dcomp.reduction:0, 'grtxt-des');
+  bar('gr-glue', UI.con.master.glue?CON.glue.reduction:0, 'grtxt-glue'); bar('gr-lim', UI.con.master.lim?CON.lim.reduction:0, 'grtxt-lim');
+}
 // Re-render without losing your place in the fader bank.
 function conRender(){ const b=document.getElementById('cbank'), x=b?b.scrollLeft:0, y=window.scrollY; render(); const nb=document.getElementById('cbank'); if(nb) nb.scrollLeft=x; window.scrollTo(0,y); }
 
@@ -1463,9 +1543,9 @@ const REVERB_TYPES = {
   hall: { name:'Hall',  sub:'big and spacious, slow to build',       pre:0.035, rt:2.4, er:10, erSpan:0.09, f0:7000,  f1:1800, hp:0,   build:0.09,
     tip:'A hall has a short gap before it starts, distinct early echoes, a slow build and a dark, long tail: a big, natural space. Lovely on pads, strings and ambient moments, but it can push a vocal back.' }
 };
-function impulseType(type){
-  const key='type:'+type; if(A.irs[key]) return A.irs[key];
-  const P=REVERB_TYPES[type], sr=A.ctx.sampleRate, len=Math.ceil((P.pre+P.rt*1.15)*sr), b=A.ctx.createBuffer(2,len,sr);
+function impulseType(type, sc=1){
+  const key='type:'+type+(sc!==1?':'+sc:''); if(A.irs[key]) return A.irs[key];
+  const P={...REVERB_TYPES[type], rt:REVERB_TYPES[type].rt*sc}, sr=A.ctx.sampleRate, len=Math.ceil((P.pre+P.rt*1.15)*sr), b=A.ctx.createBuffer(2,len,sr);
   for(let ch=0; ch<2; ch++){
     const d=b.getChannelData(ch), start=Math.floor(P.pre*sr); let y=0, low=0;
     const ahp = P.hp ? 1-Math.exp(-2*Math.PI*P.hp/sr) : 0;
@@ -3619,6 +3699,11 @@ document.addEventListener('click', async e=>{
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
     case 'conEqFlat': { const s=UI.con.ch[el.dataset.k], f=conStrip(0); Object.assign(s,{eq:f.eq, hp:0, hpOn:false, hpF:80, eqOn:true}); conApply(el.dataset.k); conRender(); break; }
+    case 'conDynOn': { const s=UI.con.ch[el.dataset.k], which=el.closest('.mpanel').querySelector('.mtag').textContent==='GATE'?'gate':'comp'; s[which].on=!s[which].on; conApply(el.dataset.k); conRender(); break; }
+    case 'conDesOn': { const s=UI.con.ch[el.dataset.k]; s.des.on=!s.des.on; conApply(el.dataset.k); conRender(); break; }
+    case 'conMainOn': { const M=UI.con.master; M[el.dataset.k]=!M[el.dataset.k]; conApply(); conRender(); break; }
+    case 'conRevType': UI.con.fx.revType=el.dataset.t; conApply(); conRender(); break;
+    case 'conDlyTime': UI.con.fx.dlyTime=el.dataset.t; conApply(); conRender(); break;
     case 'conEqOn': { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
     case 'conHpOn': { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
     case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
