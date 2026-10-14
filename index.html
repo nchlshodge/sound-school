@@ -69,6 +69,10 @@ button:disabled{cursor:default}
 .eqg-lbl{fill:var(--ink2);font-size:10px}
 .eqg-moves{margin:6px 0 0;padding-left:20px}
 .eqg-moves li{margin:4px 0}
+.secrow{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;margin-bottom:4px;align-items:center;-webkit-overflow-scrolling:touch}
+.secrow span{font-weight:800;font-size:13px;color:var(--ink2);flex:none}
+.chipbtn{flex:none;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.chipbtn.on{background:var(--u,#3F3399);border-color:var(--u,#3F3399);color:#fff}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -449,23 +453,27 @@ const SONGS = [
       2:{ bars:[36,52], start:{kick:8,hat:7,bass:9,gtr1:-12,keys:10,b3:'off',tracks:10,chloe:-9,corbin:5,taylor:-8}, traps:{crowd:-4,smpte:-18} },
       3:{ bars:[16,56] } }
   },
-  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:6, clipBars:2, kind:'Life.Church live stems',
+  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:1, clipBars:2, kind:'Life.Church live stems',
     ch:[ {k:'drums',name:'Drums'},{k:'loop',name:'Loop'},{k:'bass',name:'Bass'},{k:'synth',name:'Synth bass'},{k:'acc',name:'Acoustic'},
          {k:'eg',name:'Electric 1'},{k:'eg2',name:'Electric 2'},{k:'eg3',name:'Electric 3'},{k:'keys',name:'Keys 1'},{k:'keys2',name:'Keys 2'},
-         {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'},
-         {k:'click',name:'Click',trap:1},{k:'cues',name:'Cues',trap:1},{k:'count',name:'Count',trap:1} ],
-    // Stems printed at the record's own balance (bars 6–43: verse 1, the build, verse 2 and the first chorus); lead nudged forward like wwy.
+         {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'} ],
+    // The whole song, printed at the record's own balance; lead nudged forward like wwy.
     ref:{ drums:0, loop:0, bass:0, synth:0, acc:0, eg:0, eg2:0, eg3:0, keys:0, keys2:0, pad:0, piano:0, lead:1.5, bgv:0, bgv2:0 },
     anchor:'lead', vocal:'lead', bed:'pad', drums:['drums'], bass:'bass', leads:['lead'], bgvs:['bgv','bgv2'],
-    win:{ verse:[8,10,12], gap:[22,25], full:[29,31,35,37,39,41] },
+    win:{ verse:[8,10,12,28,30], gap:[22,25], full:[35,37,39,41,77,79,81,83] },
+    // Song sections, from the band's cue track (a cue is spoken in the bar before each one). [first bar, bar after the last]
+    sections:[ {name:'Intro',bars:[3,7]}, {name:'Verse 1',bars:[7,15]}, {name:'Chorus 1',bars:[15,23]}, {name:'Turnaround',bars:[23,27]},
+      {name:'Verse 2',bars:[27,35]}, {name:'Chorus 2',bars:[35,43]}, {name:'Turnaround',bars:[43,47]}, {name:'Breakdown',bars:[47,51]},
+      {name:'Bridge',bars:[51,59]}, {name:'Bridge (big)',bars:[59,69]}, {name:'Interlude',bars:[69,73]}, {name:'Bridge (build)',bars:[73,77]},
+      {name:'Chorus (all in)',bars:[77,85]}, {name:'Bridge',bars:[85,93]}, {name:'Outro',bars:[93,101]}, {name:'Ending',bars:[101,105]} ],
     groups:[ null,
       {Drums:['drums','loop'], Bass:['bass','synth'], Guitars:['acc','eg','eg2','eg3'], Keys:['keys','keys2','pad','piano'], Vocals:['lead','bgv','bgv2']},
       {Drums:['drums'], Loop:['loop'], Bass:['bass','synth'], Acoustic:['acc'], Electrics:['eg','eg2','eg3'], Keys:['keys','keys2','pad'], Piano:['piano'], 'Lead vocal':['lead'], BGVs:['bgv','bgv2']},
       {Drums:['drums'], Bass:['bass'], 'Synth bass':['synth'], Acoustic:['acc'], 'Electric 1':['eg'], 'Electric 2':['eg2'], 'Keys 1':['keys'], Pad:['pad'], Piano:['piano'], 'Lead vocal':['lead'], 'BGV 1':['bgv'], 'BGV 2':['bgv2']} ],
     missions:{
       1:{ bars:[27,35], ch:['drums','bass','acc','eg','keys','lead','bgv'] },
-      2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'}, traps:{click:-5} },
-      3:{ bars:[6,43] } }
+      2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
+      3:{ bars:[3,105] } }
   },
   { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)',
     ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
@@ -2014,7 +2022,7 @@ function startMixerPlayback(){
   } else bus.connect(A.master);
   const run=UI.mix.run, t0=c.currentTime+0.1;
   Object.assign(MX, mixGraph(c, mixSong(), UI.mix.level, bus, chanGain, chanHpf, {loop:!run, t0, analyse:true, eqf:chanEq, probs:chanProbs}));
-  MX.playing=true; meterLoop();
+  MX.playing=true; MX.t0=t0; meterLoop(); nowLoop();
   if(run){ const song=mixSong(), bars=song.missions[UI.mix.level].bars, len=(bars[1]-bars[0])*song.bar;
     UI.mix.runLog=[]; UI.mix.result=null; MX.runT0=t0;
     MX.runTimer=setInterval(()=>runSample(song, bars), 500);
@@ -2043,7 +2051,7 @@ function eqResidual(prob, e){
   return Math.max(...tot.map(Math.abs));   // the worst point: an untouched problem is ~9 dB off
 }
 function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse, eqf=()=>EQ_FLAT, probs=()=>[]}){
-  const bars=song.missions[level].bars, off=at(song,bars[0]), dur=(bars[1]-bars[0])*song.bar;
+  const bars=mixBars(song, level), off=at(song,bars[0]), dur=(bars[1]-bars[0])*song.bar;
   const res={srcs:[], gains:{}, ans:{}, hp:{}, eq:{}}, send=c.createGain();
   const strip=(k, input)=>{
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=hpf(k);
@@ -2130,7 +2138,21 @@ function finishRun(){
   m.result={ score: Math.max(0, Math.round(score) - 25*leaks), notes, leaks };
   render();
 }
+// What the board plays: the mission's bars, or the section you picked to loop.
+function mixBars(song, level){
+  const m=UI.mix, sec = m && m.song===song.id && !m.run && song.sections && m.sec!=null ? song.sections[m.sec] : null;
+  return sec ? sec.bars : song.missions[level].bars;
+}
+// The section playing right now (for "Now playing" while you loop a long stretch).
+function sectionAt(song, bar){ return (song.sections||[]).find(x=>bar>=x.bars[0] && bar<x.bars[1]); }
+function nowLoop(){
+  clearInterval(MX.nowT); const song=mixSong(); if(!song.sections) return;
+  MX.nowT=setInterval(()=>{ const el=document.getElementById('mx-now'); if(!el||!MX.playing) return;
+    const bars=mixBars(song, UI.mix.level), len=(bars[1]-bars[0])*song.bar, t=((A.ctx.currentTime-MX.t0)%len+len)%len, x=sectionAt(song, bars[0]+t/song.bar);
+    el.textContent = x ? `Now playing: ${x.name}` : ''; }, 250);
+}
 function stopMixer(){
+  clearInterval(MX.nowT); const nowEl=document.getElementById('mx-now'); if(nowEl) nowEl.textContent='';
   clearInterval(MX.runTimer); clearTimeout(MX.runEnd);
   MX.srcs.forEach(s=>{ try{ s.stop(); }catch(e){} });
   if(MX.bus){ const b=MX.bus; b.gain.setTargetAtTime(0, A.ctx.currentTime, 0.01); setTimeout(()=>b.disconnect(),150); }
@@ -2652,7 +2674,11 @@ function vMixer(){
     ${m.run?'':`<div class="row" role="group" aria-label="Song" style="margin-bottom:8px">${tabs}</div>`}
     ${bc ? `<div class="row" style="margin-bottom:6px"><button class="btn ${m.phone?'':'ghost'}" data-act="mixPhone" aria-pressed="${!!m.phone}" style="flex:1;min-height:40px;font-size:14px">${m.phone?'Listening on a phone':'Check it on a phone'}</button></div>` : `<div class="row" role="group" aria-label="Mix style" style="margin-bottom:6px">${styles}</div>`}
     <div class="say">${mascot(bc?'penny':'sona','', !r?'happy':r.leaks?'surprised':r.score>=70?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${u.title} · ${levelName(u,m.unitLevel??m.level)}</span><p>${m.quick?'Faders up from zero, and one or two channels have a tone problem. Find it by ear and fix it with that channel\'s EQ. ':''}${m.level===2 && !(song.missions[2].traps && Object.keys(song.missions[2].traps).length) ? 'The last tech left this chorus a mess: some faders are way off and some channels are muted. Fix it.' : txt.brief}${!bc&&S.mixStyle==='modern'?' Modern worship: keep the vocals clearly on top, and high-pass everything except kick and bass.':''}</p></div></div>
-    <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · bars ${bars[0]+1}–${bars[1]} · ${m.run?'plays once':'loops'}</div>
+    <div class="kicker" style="color:var(--ink2);margin-bottom:6px">"${song.title}" · ${song.kind} · ${m.sec!=null&&song.sections?song.sections[m.sec].name:`bars ${bars[0]+1}–${bars[1]}`} · ${m.run?'plays once':'loops'}</div>
+    ${song.sections && !m.run ? `<div class="secrow" role="group" aria-label="Loop a section"><span>Loop:</span>
+      <button class="chipbtn ${m.sec==null?'on':''}" data-act="mixSec" data-i="" aria-pressed="${m.sec==null}">${m.level===3?'Whole song':'This mission'}</button>
+      ${song.sections.map((x,i)=>`<button class="chipbtn ${m.sec===i?'on':''}" data-act="mixSec" data-i="${i}" aria-pressed="${m.sec===i}">${x.name}</button>`).join('')}</div>
+      <p id="mx-now" class="ut" style="font-weight:800;margin:0 0 6px;min-height:1.4em"></p>` : ''}
     ${m.run ? `<div class="runbox"><div class="runbar"><i id="run-prog" style="width:${r?100:0}%"></i></div><p id="run-cue" class="disp">${r?'Run complete.':MX.playing?'…':'Press Start when you\'re ready. It plays once, start to finish.'}</p></div>` : ''}
     ${m.ref?`<p class="ut" style="font-weight:800;margin:0 0 6px">You're hearing Sona's reference mix.</p>`:''}
     <div class="board">${rows}</div>
@@ -3169,6 +3195,7 @@ document.addEventListener('click', async e=>{
     case 'runStart': UI.mix.result=null; startMixerPlayback(); render(); break;
     case 'runStop': stopMixer(); UI.mix.runLog=[]; render(); break;
     case 'mixPlay': if(MX.playing) stopMixer(); else startMixerPlayback(); render(); break;
+    case 'mixSec': { const m=UI.mix, was=MX.playing; m.sec = el.dataset.i==='' ? null : +el.dataset.i; if(was){ stopMixer(); startMixerPlayback(); } render(); break; }
     case 'mute': {
       const k=el.dataset.k, m=UI.mix; m.mute[k]=!m.mute[k]; updateGains();
       el.setAttribute('aria-pressed', m.mute[k]);
