@@ -142,6 +142,55 @@ button:disabled{cursor:default}
 .led.dim{background:#26282C;color:#7D838C;border-color:#3A3D43}
 .kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px 4px;background:#202226;border:1px solid #2E3136;border-radius:10px;padding:8px 4px;--b:#FFE14D}
 .btnrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.m32surface{background:linear-gradient(#26282C,#1B1C1F);border:1px solid #33363B;border-radius:16px;padding:10px 8px 12px;color:#E8EAED;margin:0 -6px}
+.layers{display:flex;gap:6px;margin-bottom:8px}
+.mb{font:inherit;font-size:10px;font-weight:800;letter-spacing:.06em;border:1px solid #3A3D43;background:#2C2E33;color:#9AA0A8;border-radius:5px;padding:6px 8px;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,.35)}
+.mb.on{color:#111}
+.mb.layer.on,.mb.page.on{background:#FFE14D;border-color:#FFE14D}
+.mb.selb.on{background:#3FE0F0;border-color:#3FE0F0}
+.mb.solo.on{background:#FFD23F;border-color:#FFD23F}
+.mb.mmute.on{background:#FF4136;border-color:#FF4136;color:#fff}
+.mbank{display:flex;gap:6px;align-items:stretch}
+.mbank .cbank{flex:1;padding:0 0 6px;gap:5px}
+.mstrip{flex:none;width:74px;background:linear-gradient(#34373C,#2A2C30);border:1px solid #3E4147;border-radius:10px;padding:5px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;scroll-snap-align:start}
+.mstrip.sel{border-color:#3FE0F0;box-shadow:0 0 0 2px rgba(63,224,240,.35)}
+.mstrip.dim .mfad{opacity:.55}
+.mstrip.main{border-color:#55585E;background:linear-gradient(#3A3D42,#2E3034)}
+.scrib{font:inherit;width:100%;border:0;border-radius:5px;background:var(--sc);color:#111;padding:3px 2px;display:flex;flex-direction:column;align-items:center;line-height:1.1;cursor:pointer;min-height:38px;justify-content:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.scrib span{font-size:9px;font-weight:800;opacity:.75}
+.scrib b{font-size:11px;font-weight:800;text-align:center;word-break:break-word}
+.scrib.small{width:auto;min-width:96px;padding:3px 10px;min-height:0;cursor:default}
+.mstrip .mb.selb{width:100%;padding:4px 0}
+.mstrip .cins{min-height:0;gap:2px}
+.mstrip .cins button{font-size:8px;padding:2px 4px;background:#1E2023;color:#7D838C}
+.mstrip .cins .on{background:#1F7A3A;color:#fff}
+.mrow{display:flex;gap:4px;width:100%;align-items:stretch}
+.mbs{display:flex;flex-direction:column;gap:4px;flex:1}
+.mbs .mb{padding:5px 0;font-size:9px}
+.mtiny{font-size:8px;font-weight:800;color:#7D838C;border:1px solid #3A3D43;border-radius:4px;text-align:center;padding:3px 0}
+.mtiny.on{color:#111;background:#3DDC84;border-color:#3DDC84}
+.leds{display:flex;flex-direction:column-reverse;gap:2px;width:9px;padding:2px;background:#111;border-radius:3px}
+.leds i{display:block;height:5px;border-radius:1px;background:#1D2A20}
+.leds i.y{background:#2E2A12}.leds i.r{background:#341614}
+.leds i.g.lit{background:#3DDC84;box-shadow:0 0 4px #3DDC84}.leds i.y.lit{background:#FFD23F;box-shadow:0 0 4px #FFD23F}.leds i.r.lit{background:#FF4136;box-shadow:0 0 4px #FF4136}
+.mfad{position:relative;height:190px;width:64px}
+.mscale{position:absolute;left:0;top:7px;bottom:7px;width:24px}
+.mscale span{position:absolute;right:0;transform:translateY(-50%);font-size:8px;font-weight:700;color:#8B9199;font-variant-numeric:tabular-nums}
+.mfad input[type=range]{position:absolute;width:176px;max-width:none;left:-46px;top:87px;transform:rotate(-90deg);margin:0;-webkit-appearance:none;appearance:none;background:transparent;height:30px}
+.mfad input[type=range]::-webkit-slider-runnable-track{height:6px;background:#0E0F11;border-radius:3px;border:1px solid #000}
+.mfad input[type=range]::-moz-range-track{height:6px;background:#0E0F11;border-radius:3px}
+.mfad input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:30px;margin-top:-13px;border-radius:3px;background:linear-gradient(90deg,#9EA3AA,#DADDE1 45%,#5A5E64 50%,#DADDE1 55%,#9EA3AA);border:1px solid #111;box-shadow:0 2px 3px rgba(0,0,0,.6)}
+.mfad input[type=range]::-moz-range-thumb{width:16px;height:30px;border-radius:3px;background:linear-gradient(90deg,#9EA3AA,#DADDE1 45%,#5A5E64 50%,#DADDE1 55%,#9EA3AA);border:1px solid #111}
+.mdb{font-size:11px;color:#E8EAED;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mscreenbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#17181B;border-radius:12px;padding:8px;margin:0 -4px 10px}
+.mscreenbar .scrib{background:var(--sc)}
+.pages{display:flex;gap:4px;flex-wrap:wrap}
+.kbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.kbtn span{font-size:9px;font-weight:800;letter-spacing:.06em;color:#8B9199}
+.pre{flex:1;height:16px;background:#0B0C0E;border:1px solid #2C2F34;border-radius:6px;position:relative;overflow:hidden}
+.prez{position:absolute;top:0;bottom:0;background:rgba(61,220,132,.18);border-left:1px solid #3DDC84;border-right:1px solid #3DDC84}
+.pre i{position:absolute;left:0;top:3px;bottom:3px;width:0;background:#8B9199;border-radius:3px}
+.pre i.ok{background:#3DDC84}.pre i.hot{background:#FF4136}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -1048,7 +1097,7 @@ function conSections(song){
   if(song.sections) return [whole, ...song.sections];
   return [{name:'Verse', bars:song.missions[1].bars}, {name:'Chorus', bars:song.missions[2].bars}, whole];
 }
-const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0, hpOn:false, hpF:80, eqOn:true,
+const conStrip = (fader) => ({ fader, mute:false, solo:false, pan:0, hp:0, hpOn:false, hpF:80, eqOn:true, gain:30, inv:false, p48:false, lr:true,
   eq:{ lf:0, lff:100, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0, hff:10000 },
   gate:{ on:false, thr:-40, range:-60, atk:1, hold:60, rel:90 }, comp:{ on:false, thr:-18, ratio:3, knee:6, atk:10, rel:150, mk:0 }, des:{ on:false, thr:-30, freq:6000 }, rev:FADER_MIN, dly:FADER_MIN });
 function conInit(songId, start){
@@ -1059,9 +1108,17 @@ function conInit(songId, start){
     ch[k]=conStrip(f);
     if(start==='ref'){ const h=refHpf(song,k); if(h){ ch[k].hp=h; ch[k].hpF=h; ch[k].hpOn=true; } if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
   }
-  return { song:songId, sec:0, sel:song.anchor, tab:'eq', start:start||'rough', ch,
+  return { song:songId, sec:0, sel:song.anchor, tab:'eq', layer:'in', cal:conCal(song), start:start||'rough', ch,
     fx:{ revType:'plate', revRet:0, revPre:20, revDecay:1, revLo:200, revHi:8000, dlyTime:'luke', dlyFb:0.3, dlyRet:-3, dlyHi:5000 },
     master:{ fader:0, glue:false, glueThr:-18, glueRatio:2, lim:true, limCeil:-2 }, result:null };
+}
+// Preamp calibration: the trim that puts each channel's loudest peaks at about -12 dBFS when its GAIN reads +30 dB.
+function conCal(song){
+  const cal={};
+  for(const k of song.mix){ const b=A.buf[`${song.id}:${k}`]; if(!b){ cal[k]=0; continue; } let pk=0;
+    for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=0;i<d.length;i+=3){ const a=d[i]<0?-d[i]:d[i]; if(a>pk) pk=a; } }
+    cal[k]=Math.round((-12-20*Math.log10(pk+1e-9))*2)/2; }
+  return cal;
 }
 function conEqList(e, hp, on=true){
   const z=on?1:0;
@@ -1081,6 +1138,7 @@ function conApply(k){
   for(const key of ks){
     const n=CON.nodes[key], s=UI.con.ch[key]; if(!n) continue;
     const z=s.eqOn?1:0;
+    set(n.pre.gain, db(s.gain-30+(UI.con.cal[key]||0))*(s.inv?-1:1)); set(n.lrG.gain, s.lr?1:0);
     set(n.hp.frequency, s.hp||10); set(n.lf.frequency, s.eq.lff); set(n.lf.gain, s.eq.lf*z); set(n.lm.frequency, s.eq.lmf); set(n.lm.gain, s.eq.lmg*z); set(n.lm.Q, s.eq.lmq);
     set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg*z); set(n.hm.Q, s.eq.hmq); set(n.hf.frequency, s.eq.hff); set(n.hf.gain, s.eq.hf*z);
     if(n.gate){ const gp=x=>n.gate.parameters.get(x); set(gp('on'), s.gate.on?1:0); set(gp('thr'), s.gate.thr); set(gp('range'), s.gate.range); set(gp('atk'), s.gate.atk); set(gp('hold'), s.gate.hold); set(gp('rel'), s.gate.rel); }
@@ -1114,18 +1172,21 @@ function conStart(){
   // FX rack
   const verb=c.createConvolver(); verb.buffer=impulseType(UI.con.fx.revType, UI.con.fx.revDecay); verb.typeNow=UI.con.fx.revType+':'+UI.con.fx.revDecay;
   const vpre=c.createDelay(1), vlo=c.createBiquadFilter(), vhi=c.createBiquadFilter(); vlo.type='highpass'; vhi.type='lowpass';
-  const revRet=c.createGain(); revBus.connect(vpre).connect(vlo).connect(verb).connect(vhi).connect(revRet).connect(bus);
+  const revRet=c.createGain(), revAn=c.createAnalyser(), dlyAn=c.createAnalyser(); revAn.fftSize=dlyAn.fftSize=1024; revBus.connect(vpre).connect(vlo).connect(verb).connect(vhi).connect(revRet).connect(bus); revRet.connect(revAn);
   const dm=c.createChannelMerger(2), dl=c.createDelay(4), dr=c.createDelay(4), dfbl=c.createGain(), dfbr=c.createGain(), dlp=c.createBiquadFilter(), drp=c.createBiquadFilter(), dlyRet=c.createGain();
   dlp.type=drp.type='lowpass'; dlp.frequency.value=drp.frequency.value=5000;
   dlyBus.connect(dl); dlyBus.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
-  dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus);
-  Object.assign(CON, { bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
+  dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus); dlyRet.connect(dlyAn);
+  Object.assign(CON, { revAn, dlyAn, bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
   for(const k of song.mix){
     const b=A.buf[`${song.id}:${k}`]; if(!b) continue;
     const src=c.createBufferSource(); src.buffer=b; src.loop=true; src.loopStart=off; src.loopEnd=Math.min(off+dur, b.duration); src.start(t0, off);
+    const pre=c.createGain(), anPre=c.createAnalyser(); anPre.fftSize=1024;   // preamp gain and polarity (CONFIG page)
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707;
     const lf=eqNode(c,{type:'lowshelf',f:100}), lm=eqNode(c,{type:'peaking',f:300}), hm=eqNode(c,{type:'peaking',f:3000}), hf=eqNode(c,{type:'highshelf',f:10000});
-    let n=src.connect(hp).connect(lf).connect(lm).connect(hm).connect(hf), gate=null;
+    const post=c.createGain(); post.gain.value=db(-(UI.con.cal[k]||0));   // undo the calibration, so the mix balance only moves when you move the gain
+    src.connect(pre); pre.connect(anPre);
+    let n=pre.connect(post).connect(hp).connect(lf).connect(lm).connect(hm).connect(hf), gate=null;
     const anIn=c.createAnalyser(); anIn.fftSize=1024; n.connect(anIn);   // what the gate and compressor "hear"
     if(A.gateOk){ gate=new AudioWorkletNode(c,'ss-gate',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n=n.connect(gate); gate.port.onmessage=ev=>{ CON.gateG[k]=ev.data; }; }
     const comp=c.createDynamicsCompressor(), mk=c.createGain(); n=n.connect(comp).connect(mk);
@@ -1134,15 +1195,15 @@ function conStart(){
     dlo.type='lowpass'; dhi.type='highpass'; dlo.frequency.value=dhi.frequency.value=6000; dlo.Q.value=dhi.Q.value=0.5; dinv.gain.value=-1;
     dcomp.attack.value=0.001; dcomp.release.value=0.05; dcomp.knee.value=0;
     n.connect(dlo).connect(dsum); n.connect(dhi).connect(dcomp).connect(dinv).connect(dsum);
-    const pan=c.createStereoPanner(), fader=c.createGain(), an=c.createAnalyser(); an.fftSize=1024;
-    dsum.connect(pan).connect(fader).connect(bus); fader.connect(an);
+    const pan=c.createStereoPanner(), fader=c.createGain(), lrG=c.createGain(), an=c.createAnalyser(); an.fftSize=1024;
+    dsum.connect(pan).connect(fader).connect(lrG).connect(bus); fader.connect(an);
     const rev=c.createGain(), dly=c.createGain(); fader.connect(rev).connect(revBus); fader.connect(dly).connect(dlyBus);
-    CON.nodes[k]={ hp, lf, lm, hm, hf, anIn, gate, comp, mk, dlo, dhi, dcomp, pan, fader, an, rev, dly };
+    CON.nodes[k]={ pre, anPre, lrG, hp, lf, lm, hm, hf, anIn, gate, comp, mk, dlo, dhi, dcomp, pan, fader, an, rev, dly };
     CON.srcs.push(src);
   }
   CON.playing=true; conApply();
   // set first values instantly (setTargetAtTime starts from defaults)
-  for(const k in CON.nodes){ CON.nodes[k].fader.gain.value=conGainOf(k); }
+  for(const k in CON.nodes){ CON.nodes[k].fader.gain.value=conGainOf(k); CON.nodes[k].pre.gain.value=db(UI.con.ch[k].gain-30+(UI.con.cal[k]||0))*(UI.con.ch[k].inv?-1:1); }
   conMeters();
 }
 function conStop(){
@@ -1158,10 +1219,12 @@ function conMeters(){
   CON.meterT=setInterval(()=>{
     if(!CON.playing || UI.screen!=='console') return;
     for(const k in CON.nodes){
-      const el=document.getElementById('cm-'+k); if(el) el.style.height=Math.max(0,Math.min(100,(conPeak(CON.nodes[k].an)+60)/60*100))+'%';
+      ledSet('cm-'+k, conPeak(CON.nodes[k].an));
       const gr=document.getElementById('cg-'+k); if(gr){ const r=CON.nodes[k].comp.reduction; gr.textContent = UI.con.ch[k].comp.on && r<-0.5 ? `${Math.round(r)} dB` : ''; }
     }
-    const mm=document.getElementById('cm-master'); if(mm){ const p=conPeak(CON.man); mm.style.height=Math.max(0,Math.min(100,(p+60)/60*100))+'%'; mm.classList.toggle('hot', p>-1); }
+    ledSet('cm-master', conPeak(CON.man));
+    if(UI.con.layer==='fx'){ ledSet('cm-revRet', CON.revAn?conPeak(CON.revAn):-90); ledSet('cm-dlyRet', CON.dlyAn?conPeak(CON.dlyAn):-90); }
+    const pm=document.getElementById('pre-m'), sel=CON.nodes[UI.con.sel]; if(pm && sel){ const p=conPeak(sel.anPre), x=Math.max(-60,Math.min(0,p)); pm.style.width=((x+60)/60*100)+'%'; pm.className = p>=GAIN_ZONE[0]&&p<=GAIN_ZONE[1] ? 'ok' : p>GAIN_ZONE[1] ? 'hot' : ''; const t=document.getElementById('pre-db'); if(t) t.textContent = p<-80 ? '−∞' : p.toFixed(1)+' dBFS'; }
     const gk=document.getElementById('con-gr'); if(gk && CON.nodes[UI.con.sel]){ const r=CON.nodes[UI.con.sel].comp.reduction; gk.textContent = UI.con.ch[UI.con.sel].comp.on ? `Gain reduction: ${Math.round(-r*10)/10} dB` : 'Compressor is off'; }
     dynMeters();
     const now=document.getElementById('con-now'), song=conSong(); if(now && song.sections){ const sec=conSections(song)[UI.con.sec], len=(sec.bars[1]-sec.bars[0])*song.bar, t=((A.ctx.currentTime-CON.t0)%len+len)%len, x=sectionAt(song, sec.bars[0]+t/song.bar); now.textContent = x ? `Now playing: ${x.name}` : ''; }
@@ -1169,7 +1232,7 @@ function conMeters(){
 }
 // Balance relative to the lead vocal (like the Sunday Mix), plus high-pass filters in modern style.
 function conScore(){
-  const C=UI.con, song=conSong(), eff=k=>{ const s=C.ch[k]; return s.mute ? FADER_MIN : s.fader; }, v=eff(song.anchor), notes=[];
+  const C=UI.con, song=conSong(), eff=k=>{ const s=C.ch[k]; return s.mute || !s.lr ? FADER_MIN : s.fader + (s.gain-30); }, v=eff(song.anchor), notes=[];
   if(v<=FADER_MIN) return { score:0, notes:[{k:song.anchor, bad:true, msg:'Off! The lead vocal carries the message.'}] };
   let pts=0, n=0;
   for(const k of song.mix.filter(k=>k!==song.anchor)){
@@ -1211,10 +1274,9 @@ function vConsole(){
       <b class="cdb" id="cv-${k}-fader">${fmtS(s.fader)}</b><span class="cgr" id="cg-${k}"></span>
     </div>`; };
   const k=C.sel, s=C.ch[k], e=s.eq, g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
-  const tabs=['eq','dyn','sends'].map(t=>`<button class="chipbtn ${C.tab===t?'on':''}" data-act="conTab" data-t="${t}" aria-pressed="${C.tab===t}">${{eq:'EQ',dyn:'Plugins',sends:'Sends'}[t]}</button>`).join('');
+  const tabs=['config','gate','dyn','eq','sends'].map(t=>`<button class="mb page ${C.tab===t?'on':''}" data-act="conTab" data-t="${t}" aria-pressed="${C.tab===t}">${t.toUpperCase()}</button>`).join('');
   const sw=(p,on,label)=>`<div class="set" style="padding:8px 0"><div class="t"><b>${label}</b></div><button class="switch" role="switch" aria-checked="${on}" data-act="conToggle" data-k="${k}" data-p="${p}" aria-label="${label}"></button></div>`;
-  const detail = C.tab==='eq' ? vM32Eq(k)
-    : C.tab==='dyn' ? vDyn(k)
+  const detail = C.tab==='eq' ? vM32Eq(k) : C.tab==='config' ? vConfig(k) : C.tab==='gate' ? vDyn(k,'gate') : C.tab==='dyn' ? vDyn(k,'dyn') : C.tab==='sends' ? vSends(k)
     : `<div class="eqpanel">${conKnob(k,'rev','Reverb send',FADER_MIN,6,0.5,s.rev,fmtS(s.rev))}${conKnob(k,'dly','Delay send',FADER_MIN,6,0.5,s.dly,fmtS(s.dly))}</div>
       <p class="foot">Post-fader sends: if you pull the fader down, the effect goes down with it.</p>`;
   const f=C.fx, M=C.master, r=C.result;
@@ -1226,16 +1288,9 @@ function vConsole(){
     </div>
     <div class="secrow" role="group" aria-label="Loop a section"><span>Loop:</span>${secs.map((x,i)=>`<button class="chipbtn ${C.sec===i?'on':''}" data-act="conSec" data-i="${i}" aria-pressed="${C.sec===i}">${x.name}</button>`).join('')}</div>
     <p id="con-now" class="ut" style="font-weight:800;margin:0 0 6px;min-height:1.4em"></p>
-    <div class="cbank" id="cbank">${song.mix.map(strip).join('')}
-      <div class="cstrip fxs"><b class="cname" style="cursor:default">Reverb</b><div class="cins"><i class="on">${REVERB_TYPES[f.revType].name.toUpperCase()}</i></div>
-        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i></i></div><input type="range" min="${FADER_MIN}" max="6" step="0.5" value="${f.revRet}" data-act="conFx" data-p="revRet" aria-label="Reverb return"></div><b class="cdb" id="cf-revRet">${fmtS(f.revRet)}</b></div>
-      <div class="cstrip fxs"><b class="cname" style="cursor:default">Delay</b><div class="cins"><i class="on">DLY</i></div>
-        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i></i></div><input type="range" min="${FADER_MIN}" max="6" step="0.5" value="${f.dlyRet}" data-act="conFx" data-p="dlyRet" aria-label="Delay return"></div><b class="cdb" id="cf-dlyRet">${fmtS(f.dlyRet)}</b></div>
-      <div class="cstrip mst"><b class="cname" style="cursor:default">Main LR</b><div class="cins"><i class="${M.glue?'on':''}">GLUE</i><i class="${M.lim?'on':''}">LIM</i></div>
-        <div class="cfad" style="margin-top:58px"><div class="cmeter"><i id="cm-master"></i></div><input type="range" min="-30" max="6" step="0.5" value="${M.fader}" data-act="conMaster" data-p="fader" aria-label="Main fader"></div><b class="cdb" id="cf-master">${fmtS(M.fader)}</b></div>
-    </div>
+    ${m32Bank()}
     <section class="slide" id="con-detail" style="margin-top:12px;scroll-margin-top:12px">
-      <div class="row" style="align-items:center;margin-bottom:8px"><h2 class="ut" style="font-size:20px;flex:1">${esc(song.name[k])}</h2><div class="row" style="gap:6px">${tabs}</div></div>
+      <div class="mscreenbar" style="--sc:${chColor(song,k)}"><span class="scrib small"><span>CH ${String(song.mix.indexOf(k)+1).padStart(2,'0')}</span><b>${esc(song.name[k])}</b></span><div class="pages" role="tablist">${tabs}</div></div>
       ${detail}
       <button class="btn ghost block" data-act="conTop" style="margin-top:12px;min-height:40px">Back to the faders</button>
     </section>
@@ -1301,6 +1356,7 @@ function conSetEq(k, p, v){
   if(k==='_fx'||k==='_master'){ (k==='_fx'?UI.con.fx:UI.con.master)[p]=v; conApply(); const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v); return; }
   const s=UI.con.ch[k];
   if(p==='hpF'){ s.hpF=v; s.hp=s.hpOn?v:0; }
+  else if(!p.includes('.')) s[p]=v;
   else { const [a, b]=p.split('.'); s[a][b]=v; }
   conApply(k); UI.con.result=null;
   if(/^(gate|comp)\./.test(p)){ const kind=p.split('.')[0], g=document.querySelector(`.dyngraph svg[aria-label="${kind} curve"]`); if(g) g.replaceWith(frag(dynCurve(kind, s[kind], 'dot-'+kind))); }
@@ -1317,7 +1373,9 @@ function knobShow(kn, v){
     : /atk|hold|rel$|revPre/.test(p) ? rv(v)+'ms'
     : p==='revDecay' ? (REVERB_TYPES[UI.con.fx.revType].rt*v).toFixed(1)+'s'
     : p==='dlyFb' ? Math.round(v*100)+'%'
-    : /Ret$/.test(p) ? fmtS(v)
+    : /Ret$|^rev$|^dly$/.test(p) ? fmtS(v)
+    : p==='pan' ? (Math.abs(v)<0.02 ? 'C' : (v<0?'L':'R')+Math.round(Math.abs(v)*100))
+    : p==='gain' ? '+'+v.toFixed(1)
     : /thr|Thr|range|knee|limCeil/.test(p) ? rv(v)+''
     : `${v>0?'+':''}${v.toFixed(1).replace('.0','')}`;
   kn.setAttribute('aria-valuetext', txt); kn.querySelector('.kval').textContent=txt;
@@ -1382,7 +1440,7 @@ const grMeter = id => `<div class="grm" aria-hidden="true"><i id="${id}"></i></d
 const panel = (title, on, act, k, body, extra='') => `<div class="m32eq mpanel">
   <div class="m32top">${act?`<button class="m32btn ${on?'on':''}" data-act="${act}" data-k="${k}" aria-pressed="${on}">ON</button>`:''}<span>${title}</span>${extra}</div>${body}</div>`;
 const kgrid = items => `<div class="kgrid">${items.join('')}</div>`;
-function vDyn(k){
+function vDyn(k, only){
   const C=UI.con, s=C.ch[k], G=s.gate, P=s.comp, D=s.des;
   const gate = A.gateOk ? panel('GATE', G.on, 'conDynOn', k, `<div class="dynrow"><div class="dyngraph">${dynCurve('gate',G,'dot-gate')}</div>${grMeter('gr-gate')}<div class="led ${G.on?'':'dim'}" id="led-gate">OPEN</div></div>
       ${kgrid([knob(k,'gate.thr','THRESH',G.thr,-80,0,G.thr+'',false,!G.on), knob(k,'gate.range','RANGE',G.range,-80,0,G.range+'',false,!G.on), knob(k,'gate.atk','ATTACK',G.atk,0.1,100,G.atk+'ms',true,!G.on), knob(k,'gate.hold','HOLD',G.hold,1,1000,G.hold+'ms',true,!G.on), knob(k,'gate.rel','RELEASE',G.rel,5,2000,G.rel+'ms',true,!G.on)])}
@@ -1394,7 +1452,7 @@ function vDyn(k){
   const des = panel('DE-ESSER', D.on, 'conDesOn', k, `<div class="dynrow" style="min-height:0">${grMeter('gr-des')}<div class="grtxt" id="grtxt-des"></div></div>
       ${kgrid([knob(k,'des.thr','THRESH',D.thr,-60,0,D.thr+'',false,!D.on), knob(k,'des.freq','FREQ',D.freq,3000,12000,fmtHz(D.freq),true,!D.on)])}
       <p class="m32hint">Turns down only the "s" and "t" range above the frequency.${onM32('')()?' On RCC\'s M32 this would be a Waves de-esser on an insert.':''}</p>`, `<em class="mtag">INSERT</em>`);
-  return gate+comp+des;
+  return only==='gate' ? gate : only==='dyn' ? comp+des : gate+comp+des;
 }
 function vFxMain(){
   const f=UI.con.fx, M=UI.con.master;
@@ -1425,6 +1483,71 @@ function dynMeters(){
   const gg = CON.gateG[k] ?? 0; bar('gr-gate', s.gate.on?gg:0); const led=document.getElementById('led-gate'); if(led){ led.textContent = !s.gate.on ? 'OFF' : gg>-1 ? 'OPEN' : 'CLOSED'; led.className='led '+(!s.gate.on?'dim':gg>-1?'':'shut'); }
   bar('gr-comp', s.comp.on?n.comp.reduction:0, 'grtxt-comp'); bar('gr-des', s.des.on?n.dcomp.reduction:0, 'grtxt-des');
   bar('gr-glue', UI.con.master.glue?CON.glue.reduction:0, 'grtxt-glue'); bar('gr-lim', UI.con.master.lim?CON.lim.reduction:0, 'grtxt-lim');
+}
+/* ----- The M32 surface: scribble strips, SEL / SOLO / MUTE, LED meters and faders with the console's scale ----- */
+// Scribble-strip colors, the way most churches color an M32: drums red, bass yellow, guitars blue, keys green, vocals cyan/magenta.
+function chColor(song, k){
+  if(song.leads && song.leads[0]===k) return '#3FE0F0';
+  if(isVocal(song,k)) return '#F25CE8';
+  if(/kick|snare|snbot|tom|rack|floor|hat|oh|drum|loop|tracks|perc/.test(k)) return '#FF5A4E';
+  if(/bass|synth/.test(k)) return '#FFE14D';
+  if(/acc|eg|gtr|horn/.test(k)) return '#4DA3FF';
+  if(/key|piano|pad|organ|b3/.test(k)) return '#3DDC84';
+  return '#E8EAED';
+}
+const LED_STEPS = [-48,-36,-24,-18,-12,-6,-3,-0.5];
+const leds = id => `<div class="leds" id="${id}" aria-hidden="true">${LED_STEPS.map((_,i)=>`<i class="${i>=7?'r':i>=5?'y':'g'}"></i>`).join('')}</div>`;
+function ledSet(id, pk){ const el=document.getElementById(id); if(!el) return; const n=LED_STEPS.filter(t=>pk>=t).length; el.querySelectorAll('i').forEach((x,i)=>x.classList.toggle('lit', i<n)); }
+const SCALE = [10,5,0,-5,-10,-20,-30,-40];
+const faderScale = (min,max) => `<div class="mscale" aria-hidden="true">${SCALE.filter(v=>v>=min&&v<=max).map(v=>`<span style="top:${(max-v)/(max-min)*100}%">${v===min?'−∞':v>0?'+'+v:v}</span>`).join('')}</div>`;
+function m32Strip(k, num){
+  const C=UI.con, song=conSong(), s=C.ch[k], solo=anySolo(), on=x=>x?'on':'';
+  const eqOn=(s.eqOn&&['lf','lmg','hmg','hf'].some(p=>Math.abs(s.eq[p])>0.2))||s.hpOn;
+  return `<div class="mstrip ${C.sel===k?'sel':''} ${s.mute||(solo&&!s.solo)||!s.lr?'dim':''}" style="--sc:${chColor(song,k)}">
+    <button class="scrib" data-act="conSel" data-k="${k}" aria-pressed="${C.sel===k}" aria-label="Select channel ${num}, ${esc(song.name[k])}"><span>CH ${String(num).padStart(2,'0')}</span><b>${esc(song.name[k])}</b></button>
+    <button class="mb selb ${on(C.sel===k)}" data-act="conSel" data-k="${k}" aria-hidden="true" tabindex="-1">SEL</button>
+    <div class="cins">${[['GT',s.gate.on,'gate','gate'],['DY',s.comp.on||s.des.on,'dyn','dynamics'],['EQ',eqOn,'eq','EQ']].map(([t,o,tab,lab])=>`<button class="${on(o)}" data-act="conOpen" data-k="${k}" data-t="${tab}" aria-label="${esc(song.name[k])} ${lab}">${t}</button>`).join('')}</div>
+    <div class="mrow">${leds('cm-'+k)}<div class="mbs"><button class="mb solo ${on(s.solo)}" data-act="conSolo" data-k="${k}" aria-pressed="${s.solo}">SOLO</button><button class="mb mmute ${on(s.mute)}" data-act="conMute" data-k="${k}" aria-pressed="${s.mute}">MUTE</button></div></div>
+    <div class="mfad">${faderScale(FADER_MIN,FADER_MAX)}<input type="range" min="${FADER_MIN}" max="${FADER_MAX}" step="0.5" value="${s.fader}" data-act="conParam" data-k="${k}" data-p="fader" aria-label="${esc(song.name[k])} fader"></div>
+    <b class="mdb" id="cv-${k}-fader">${fmtS(s.fader)}</b><span class="cgr" id="cg-${k}"></span>
+  </div>`;
+}
+function m32Bank(){
+  const C=UI.con, song=conSong(), f=C.fx, M=C.master;
+  const fxStrip=(p,name,sub)=>`<div class="mstrip fx" style="--sc:#B9A8FF"><div class="scrib"><span>${sub}</span><b>${name}</b></div><div class="mrow">${leds('cm-'+p)}<div class="mbs"></div></div>
+    <div class="mfad">${faderScale(FADER_MIN,6)}<input type="range" min="${FADER_MIN}" max="6" step="0.5" value="${f[p]}" data-act="conFx" data-p="${p}" aria-label="${name} return"></div><b class="mdb" id="cf-${p}">${fmtS(f[p])}</b></div>`;
+  const main=`<div class="mstrip main" style="--sc:#E8EAED"><div class="scrib"><span>MAIN</span><b>LR</b></div><div class="mrow">${leds('cm-master')}<div class="mbs"><span class="mtiny ${M.glue?'on':''}">COMP</span><span class="mtiny ${M.lim?'on':''}">LIM</span></div></div>
+    <div class="mfad">${faderScale(-30,6)}<input type="range" min="-30" max="6" step="0.5" value="${M.fader}" data-act="conMaster" data-p="fader" aria-label="Main LR fader"></div><b class="mdb" id="cf-master">${fmtS(M.fader)}</b></div>`;
+  const strips = C.layer==='fx' ? fxStrip('revRet', REVERB_TYPES[f.revType].name.toUpperCase(), 'FX 1 RTN')+fxStrip('dlyRet','DELAY','FX 2 RTN')
+    : song.mix.map((k,i)=>m32Strip(k,i+1)).join('');
+  return `<div class="m32surface">
+    <div class="layers" role="group" aria-label="Fader layer">
+      <button class="mb layer ${C.layer!=='fx'?'on':''}" data-act="conLayer" data-l="in" aria-pressed="${C.layer!=='fx'}">INPUTS 1–${song.mix.length}</button>
+      <button class="mb layer ${C.layer==='fx'?'on':''}" data-act="conLayer" data-l="fx" aria-pressed="${C.layer==='fx'}">FX RETURNS</button>
+    </div>
+    <div class="mbank"><div class="cbank" id="cbank">${strips}</div>${main}</div>
+  </div>`;
+}
+// M32 screen pages for the selected channel.
+function vConfig(k){
+  const s=UI.con.ch[k];
+  return `<div class="m32eq mpanel"><div class="m32top"><span>CONFIG · PREAMP</span><em class="mtag">INPUT</em></div>
+    <div class="dynrow" style="min-height:0;align-items:center"><div class="pre"><div class="prez" style="left:${(GAIN_ZONE[0]+60)/60*100}%;width:${(GAIN_ZONE[1]-GAIN_ZONE[0])/60*100}%"></div><i id="pre-m"></i></div><b class="grtxt" id="pre-db" style="min-width:70px">…</b></div>
+    <p class="m32hint" style="margin-top:-4px">Input level before the fader. Set the gain so the peaks sit in the green zone (about −18 to −6 dBFS).</p>
+    <div class="kgrid">${knob(k,'gain','GAIN',s.gain,6,54,'+'+s.gain.toFixed(1),false)}
+      <div class="kbtn"><button class="m32btn ${s.p48?'on':''}" data-act="conBtn" data-k="${k}" data-p="p48" aria-pressed="${s.p48}">48V</button><span>PHANTOM</span></div>
+      <div class="kbtn"><button class="m32btn ${s.inv?'on':''}" data-act="conBtn" data-k="${k}" data-p="inv" aria-pressed="${s.inv}">Ø</button><span>POLARITY</span></div>
+      <div class="kbtn"><button class="m32btn ${s.hpOn?'on':''}" data-act="conHpOn" data-k="${k}" aria-pressed="${s.hpOn}">LOW CUT</button><span>ON</span></div>
+      ${knob(k,'hpF','LOW CUT',s.hpF,20,400,fmtHz(s.hpF),true,!s.hpOn)}</div>
+    <p class="m32hint">${s.p48?'48V phantom power is for condenser mics and active DI boxes. It doesn\'t change the sound here, but on the M32 always mute the channel before switching it.':'Ø flips the polarity: use it when two mics on one source (like kick in and out) cancel each other.'}</p></div>`;
+}
+function vSends(k){
+  const s=UI.con.ch[k], panTxt = v => Math.abs(v)<0.02 ? 'C' : (v<0?'L':'R')+Math.round(Math.abs(v)*100);
+  return `<div class="m32eq mpanel"><div class="m32top"><span>SENDS · MAIN BUS</span><em class="mtag">BUS</em></div>
+    <div class="kgrid">${knob(k,'pan','PAN',s.pan,-1,1,panTxt(s.pan),false)}
+      <div class="kbtn"><button class="m32btn ${s.lr?'on':''}" data-act="conBtn" data-k="${k}" data-p="lr" aria-pressed="${s.lr}">MAIN LR</button><span>ASSIGN</span></div>
+      ${knob(k,'rev','FX 1 SEND',s.rev,FADER_MIN,6,fmtS(s.rev),false)}${knob(k,'dly','FX 2 SEND',s.dly,FADER_MIN,6,fmtS(s.dly),false)}</div>
+    <p class="m32hint">FX 1 is the ${REVERB_TYPES[UI.con.fx.revType].name.toLowerCase()} reverb, FX 2 the stereo delay. Sends are post-fader: pull the fader down and the effect follows. Main LR off takes the channel out of the main mix.</p></div>`;
 }
 // Re-render without losing your place in the fader bank.
 function conRender(){ const b=document.getElementById('cbank'), x=b?b.scrollLeft:0, y=window.scrollY; render(); const nb=document.getElementById('cbank'); if(nb) nb.scrollLeft=x; window.scrollTo(0,y); }
@@ -3694,7 +3817,7 @@ document.addEventListener('click', async e=>{
     case 'conSel': UI.con.sel=el.dataset.k; conRender(); break;
     case 'conTab': UI.con.tab=el.dataset.t; conRender(); break;
     case 'conTop': document.getElementById('cbank')?.scrollIntoView({behavior:'smooth', block:'center'}); break;
-    case 'conOpen': UI.con.sel=el.dataset.k; UI.con.tab=el.dataset.t; conRender(); document.getElementById('con-detail')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
+    case 'conOpen': UI.con.sel=el.dataset.k; UI.con.tab=el.dataset.t; UI.con.layer='in'; conRender(); document.getElementById('con-detail')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
@@ -3704,6 +3827,8 @@ document.addEventListener('click', async e=>{
     case 'conMainOn': { const M=UI.con.master; M[el.dataset.k]=!M[el.dataset.k]; conApply(); conRender(); break; }
     case 'conRevType': UI.con.fx.revType=el.dataset.t; conApply(); conRender(); break;
     case 'conDlyTime': UI.con.fx.dlyTime=el.dataset.t; conApply(); conRender(); break;
+    case 'conLayer': UI.con.layer=el.dataset.l; conRender(); break;
+    case 'conBtn': { const s=UI.con.ch[el.dataset.k]; s[el.dataset.p]=!s[el.dataset.p]; conApply(el.dataset.k); conRender(); break; }
     case 'conEqOn': { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
     case 'conHpOn': { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
     case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
