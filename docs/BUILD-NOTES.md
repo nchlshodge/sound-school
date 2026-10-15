@@ -10,6 +10,8 @@ How Sound School's audio was prepared and how its reference mixes were measured.
 | `lhc` | Let's Have Church | Live multitrack, 50 mics | 170 | Bars 12–52 | 17.938 s / 56.471 s |
 | `isg` | I'm So Glad I Met Jesus | Live multitrack, same band and mic list | 180 | Bars 16–56 | 27.652 s / 53.333 s |
 | `gsg` | God So Good | Life.Church live stems (15 stereo stems, raw files in `stems/GodsoGoodLifeChurch/`, not in git) | 77.5 | The whole song (bar 1 = 0:00) | 0 s / 326.3 s |
+| `rcc1` | RCC Song 1 (title TBD) | Our Feb 15 multitrack, 18:41–25:46 of the service | 136 (click) | Whole song, sections from the arrangement | 1121 s / 425 s |
+| `rcc2` | RCC Song 2 (title TBD) | Our Feb 15 multitrack, 31:30–39:20 | 136 (click) | Whole song, sections from the arrangement | 1890 s / 470 s |
 | `rcc` | RCC Sunday (Feb 15, 2026) | RCC's own live multitrack (Google Drive) | 136 | Bars 12–170 (song into the MC) | 43:00–48:45 of the service recording |
 
 Bar numbers for the live songs count from the first click (`lhc` first click at 0.997 s, `isg` at 6.319 s). Tempo came from the median spacing of click-track onsets.
@@ -60,9 +62,13 @@ Average Bethel target (octave bands 63 Hz–8 kHz, dB relative to the total):
 
 `OURS_TONE` (low shelf 150 Hz −3.2, peak 640 Hz +2.5 Q 0.5, high shelf 4 kHz −2.1) and `OURS_WIDE` (side-only peak 1370 Hz +8.5 Q 0.4) were fitted so the three clips land within about 2 dB of Bethel in each octave band. Every variant is level-matched at load.
 
+## Our other two songs and their sections
+
+The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 41:40–47:20 (`rcc`, RCC Sunday) and 1:42:30–1:54:35 after the sermon. The click runs at 136 BPM throughout with no accent, and no cue track was recorded during the songs, so sections were found from the arrangement: where the mix of instruments changes, snapped to the crash or kick hit at the change. Most land on 8- or 16-bar lengths. Sections that sound alike share a letter ("Part D (1)", "Part D (2)"); the names are placeholders until someone who knows the songs renames them. `rcc1` and `rcc2` use RCC Sunday's reference balance (same band, mics and board). Big songs (`rcc`, `rcc1`, `rcc2`, `gsg`) load only when opened.
+
 ## Speech
 
-`stems/speech/male.m4a` and `female.m4a` are an original sermon passage read by macOS voices (Reed and Samantha) with `say`, loudness-normalized. They're stand-ins until a real recording of a pastor (with their permission) replaces them.
+`stems/voices/pastor.m4a` is 50 seconds of our pastor's sermon mic (Lav 1, 1:13:22 into the Feb 15 service), loudness-normalized. It's private like the song stems. `stems/speech/female.m4a` is a synthetic voice (macOS Samantha) kept for variety.
 
 ## Hosting and sign-in
 

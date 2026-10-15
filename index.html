@@ -584,7 +584,7 @@ const SONGS = [
       2:{ bars:[36,52], start:{kick:8,hat:7,bass:9,gtr1:-12,keys:10,b3:'off',tracks:10,chloe:-9,corbin:5,taylor:-8}, traps:{crowd:-4,smpte:-18} },
       3:{ bars:[16,56] } }
   },
-  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:1, clipBars:2, kind:'Life.Church live stems',
+  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:1, clipBars:2, kind:'Life.Church live stems', lazy:true,
     ch:[ {k:'drums',name:'Drums'},{k:'loop',name:'Loop'},{k:'bass',name:'Bass'},{k:'synth',name:'Synth bass'},{k:'acc',name:'Acoustic'},
          {k:'eg',name:'Electric 1'},{k:'eg2',name:'Electric 2'},{k:'eg3',name:'Electric 3'},{k:'keys',name:'Keys 1'},{k:'keys2',name:'Keys 2'},
          {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'} ],
@@ -606,7 +606,47 @@ const SONGS = [
       2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
       3:{ bars:[3,105] } }
   },
-  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)',
+  // Our band's first two worship songs from the same Feb 15 service (song 1 at 18:41, song 2 at 31:30).
+  // Sections were found from where the band changes (no cue track was recorded); the names are placeholders to rename.
+  { id:'rcc1', title:'RCC Song 1', bpm:136, firstBar:1, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
+    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
+         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
+         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
+         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
+    // Same band, mics and board as RCC Sunday, so the same starting reference balance.
+    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11 },
+    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
+    groups:[ null,
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
+      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
+    win:{ verse:[48,56,64], gap:[93.5], full:[160,168,176,184,192,200] },
+    sections:[ {name:'Part A',bars:[1.57,15.5]}, {name:'Part B',bars:[15.5,31.25]}, {name:'Part C',bars:[31.25,47.27]}, {name:'Part D (1)',bars:[47.27,77.26]}, {name:'Part E (1)',bars:[77.26,87.27]}, {name:'Part D (2)',bars:[87.27,95.27]}, {name:'Part F',bars:[95.27,111.26]}, {name:'Part E (2)',bars:[111.26,126.62]}, {name:'Part G (1)',bars:[126.62,134.24]}, {name:'Part H',bars:[134.24,149.64]}, {name:'Part I (1)',bars:[149.64,159.26]}, {name:'Part G (2)',bars:[159.26,190.23]}, {name:'Part I (2)',bars:[190.23,215.26]}, {name:'Part J',bars:[215.26,224.92]}, {name:'Part K',bars:[224.92,241.27]} ],
+    missions:{
+      1:{ bars:[160,176], ch:['kick','snare','hat','oh','bass','acc','keys','vox3','vox2'] },
+      2:{ bars:[176,192], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
+      3:{ bars:[2,241] } }
+  },
+  { id:'rcc2', title:'RCC Song 2', bpm:136, firstBar:1, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
+    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
+         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
+         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
+         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
+    // Same band, mics and board as RCC Sunday, so the same starting reference balance.
+    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11 },
+    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
+    groups:[ null,
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
+      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
+      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
+    win:{ verse:[16,24,42], gap:[102.5], full:[161,169,177,186,200,214] },
+    sections:[ {name:'Part A',bars:[1.0,14.93]}, {name:'Part B',bars:[14.93,30.95]}, {name:'Part C',bars:[30.95,40.29]}, {name:'Part D',bars:[40.29,55.93]}, {name:'Part E',bars:[55.93,86.46]}, {name:'Part F (1)',bars:[86.46,104.45]}, {name:'Part G',bars:[104.45,121.3]}, {name:'Part H',bars:[121.3,136.43]}, {name:'Part F (2)',bars:[136.43,150.45]}, {name:'Part I (1)',bars:[150.45,160.45]}, {name:'Part J (1)',bars:[160.45,184.44]}, {name:'Part I (2)',bars:[184.44,232.2]}, {name:'Part J (2)',bars:[232.2,254.45]}, {name:'Part K',bars:[254.45,266.2]} ],
+    missions:{
+      1:{ bars:[161,177], ch:['kick','snare','hat','oh','bass','acc','keys','vox3','vox2'] },
+      2:{ bars:[186,202], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
+      3:{ bars:[1,266] } }
+  },
+  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
     ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
          {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
          {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
@@ -615,10 +655,12 @@ const SONGS = [
     // Our own Sunday (the song just before the welcome, 42–47 min into the Feb 15 service). Balanced around Vox 3,
     // measured over the full-band song (bars 28–118). Kick and snare are the replacement tracks; the rack tom is mostly spill.
     ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11, mc:0 },
-    // The MC starts talking at bar 153. Until we have permission to use the real MC mic, a stand-in voice speaks there.
-    speaker:{ bar:153, voice:'male', name:'MC (host)' },
+    // The MC starts talking at bar 153. The voice is our pastor's sermon mic (the MC's own mic isn't used).
+    speaker:{ bar:153, voice:'pastor', name:'MC (host)' },
     anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
     win:{ verse:[12,15], gap:[14,16], full:[30,40,50,64,80,96,110] },
+    // Placeholder names to rename; Part H is the pad under the MC starting to talk (bar 153).
+    sections:[ {name:'Part A',bars:[12.0,20.06]}, {name:'Part B',bars:[20.06,27.02]}, {name:'Part C',bars:[27.02,60.26]}, {name:'Part D',bars:[60.26,84.5]}, {name:'Part E',bars:[84.5,91.49]}, {name:'Part F',bars:[91.49,125.06]}, {name:'Part G',bars:[125.06,148.0]}, {name:'Part H',bars:[148.0,170.1]} ],
     groups:[ null,
       {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
       {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
@@ -717,10 +759,10 @@ function initAudio(){
     A.buf.noise = arrToBuffer(Float32Array.from({length:sr}, ()=>Math.random()*2-1));
     // Ground-loop hum with a buzzy edge, for the line check.
     A.buf.hum = normalize(arrToBuffer(Float32Array.from({length:n}, (_,i)=>{ const t=i/sr, w=2*Math.PI*60*t; return 0.5*Math.sin(w)+0.3*Math.sin(2*w)+0.25*Math.sin(3*w)+0.12*Math.sign(Math.sin(w))*Math.abs(Math.sin(5*w)); })), 1);
-    // A short sermon passage read by two synthetic voices (stems/speech/), standing in for a pastor's mic.
+    // Speaking voices: our pastor's real sermon mic (Feb 15, Lav 1; private like the song stems) and a synthetic female voice.
     A.speechDb = {};
     await Promise.all(VOICES.map(async v=>{
-      const res=await fetch(`stems/speech/${v}.m4a`); if(!res.ok) throw new Error(`Missing stems/speech/${v}.m4a`);
+      const path=voicePath(v), res=await fetch(v==='pastor' ? await stemURL(path) : path);   // the synthetic voice is public; the pastor isn't if(!res.ok) throw new Error(`Missing ${path}`);
       const data=await res.arrayBuffer(), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
       A.buf['speech:'+v]=b;
       // loudness of the speaking parts only (skip the pauses), so every voice plays at the vocal-drill level
@@ -730,7 +772,7 @@ function initAudio(){
       A.speechDb[v] = VOCAL_TARGET + 3 - 10*Math.log10(ms+1e-12);
     }));
     await loadSong(SONGS[0], true);
-    SONGS.slice(1).forEach(s=>loadSong(s).catch(e=>console.warn(e)));   // the rest load quietly in the background
+    SONGS.slice(1).filter(s=>!s.lazy).forEach(s=>loadSong(s).catch(e=>console.warn(e)));   // the smaller songs load quietly in the background; big ones load when opened
   })().catch(e=>{ A.ready=null; throw e; });
   return A.ready;
 }
@@ -2008,7 +2050,8 @@ const chainOf = (...fx) => (c,inp)=>fx.reduce((n,f)=>f(c,n), inp);
 const LUKE_DELAY = s => fxStereoDelay({l:s.beat/2, r:s.beat*0.75, fb:0.3, wet:-6, mod:true});   // eighth left, dotted eighth right
 const LUKE_SLAP = () => fxStereoDelay({l:0.128, r:0.166, fb:0, wet:-4});
 /* ----- the spoken word: voices, mics and feedback ----- */
-const VOICES = ['male','female'], SPEECH_LEN = 6;
+const VOICES = ['pastor','female'], SPEECH_LEN = 6;
+const voicePath = v => v==='pastor' ? 'stems/voices/pastor.m4a' : `stems/speech/${v}.m4a`;
 // A 6-second slice of the sermon passage.
 function VOICE(v=pick(VOICES), off){
   const b=A.buf['speech:'+v]; off = off ?? Math.random()*Math.max(0, b.duration-SPEECH_LEN-0.5);
@@ -2173,7 +2216,7 @@ const FX_TYPES = {
     fx:()=> (c,inp)=>{ const p=c.createStereoPanner(); p.pan.value=0; lfo(c,0.5,0.9,p.pan); inp.connect(p); return p; } }
 };
 // Which instrument each effect usually lives on, per song.
-const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad'} };
+const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg',rcc1:'acc',rcc2:'acc'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys',rcc1:'keys',rcc2:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad',rcc1:'keys',rcc2:'keys'} };
 const FX_ON = { chorus:['guitar','keys','vocal'], doubler:['vocal'], flanger:['guitar'], phaser:['keys','guitar'], tremolo:['guitar','keys'], rotary:['organ'], drive:['guitar'], pingpong:['vocal','guitar'], tape:['vocal','guitar'], digital:['vocal','guitar'], autopan:['keys'] };
 function fxSource(s, kind){
   const off=pickWin(s, kind==='vocal'?'verse':'full');
@@ -3175,9 +3218,9 @@ const UNITS = [
     {t:'Starting points', p:['Every instrument has a usual place to start: where to high-pass, what to cut, and what (if anything) to boost.','<button class="btn ghost" data-act="eqGuide" data-back="learn">Open EQ starting points</button>']},
     {t:'Sweep to find it', p:['Can\'t tell where a problem is? Boost a narrow band, sweep slowly until the problem jumps out, then turn that boost into a cut.']},
     {t:'EQ for the spoken word', p:['A speaking voice needs to be clear, not big. High-pass every speaking mic around 80–120 Hz, cut mud around 200–300 Hz if it sounds thick, and add only a touch around 2–4 kHz for clarity.','These voices are computer-generated stand-ins for a pastor; the EQ moves are the same.'],
-      demos:[{label:'Natural',spec:()=>({src:VOICE('male',4)})},{label:'Muddy',spec:()=>({src:VOICE('male',4),chain:fxEQ(300,9,1.4)})},{label:'Clear',spec:()=>({src:VOICE('male',4),chain:chainOf(fxEQ(300,-3,1.4),fxEQ(3000,3,1))})}]},
+      demos:[{label:'Natural',spec:()=>({src:VOICE('pastor',4)})},{label:'Muddy',spec:()=>({src:VOICE('pastor',4),chain:fxEQ(300,9,1.4)})},{label:'Clear',spec:()=>({src:VOICE('pastor',4),chain:chainOf(fxEQ(300,-3,1.4),fxEQ(3000,3,1))})}]},
     {t:'Three mics, three problems', p:['Handheld: held too close it gets boomy (proximity effect), with "p" pops and handling noise.','Headset: right at the mouth it gets harsh "S" sounds and breaths. Lapel: on the chest it sounds boxy and dull, picks up clothing rustle, and drops when the speaker turns their head.'],
-      demos:[{label:'Handheld',spec:()=>({src:VOICE('male',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('female',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('male',10),chain:MICS.lapel.chain()})}]},
+      demos:[{label:'Handheld',spec:()=>({src:VOICE('pastor',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('female',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('pastor',10),chain:MICS.lapel.chain()})}]},
     {t:'Feedback and ringing', p:['Feedback is a loop: the mic hears the speakers and one frequency builds into a ring. Lapels ring most, because they sit farther from the mouth and need more gain.','In a service, pull the fader down a little first. Then find the ring with a narrow EQ cut, and take out only what you need.'],
       demos:[{label:'Ringing',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500})),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500,state:{f:2500}})),tail:1.5})}]}
   ]},

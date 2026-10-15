@@ -15,6 +15,9 @@
       "stems/isg/**",
       "stems/lhc/**",
       "stems/rcc/**",
+      "stems/rcc1/**",
+      "stems/rcc2/**",
+      "stems/voices/**",
       "stems/wwy/**",
       "storage.rules",
       "tools/**"
