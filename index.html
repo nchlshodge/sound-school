@@ -204,6 +204,15 @@ button:disabled{cursor:default}
 .ctarget i{position:absolute;top:-4px;bottom:-4px;width:4px;margin-left:-2px;background:#FFE14D;border-radius:2px;box-shadow:0 0 6px #FFE14D}
 #cplot .mdot{display:none}
 .ctscale{display:flex;justify-content:space-between;font-size:10px;color:#7D838C;margin-top:2px}
+.dlytime{display:flex;align-items:center;gap:8px;background:#0B0C0E;border:1px solid #2C2F34;border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.dlytime>div{flex:1;display:flex;flex-direction:column}
+.dlytime b{font-size:24px;color:#FFE14D;font-variant-numeric:tabular-nums;font-family:'Fredoka',sans-serif}
+.dlytime span{font-size:11px;color:#8B9199}
+.m32btn.tap{min-width:64px;min-height:44px;font-size:14px}
+.facrow{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.facrow span{font-size:10px;font-weight:800;letter-spacing:.06em;color:#8B9199;width:42px}
+.facrow .m32btn{padding:5px 7px;font-size:11px}
+#con-dly{scroll-margin-top:12px}
 .teampic{display:block;width:100%;height:auto;aspect-ratio:1100/553;margin:14px 0 4px}
 .hero.up{display:block;margin-top:6px}
 .hero.up .bubble::after{left:50%;top:-9px;bottom:auto;margin-left:-7px;border-left:2px solid var(--line);border-top:2px solid var(--line);border-bottom:0}
@@ -1144,6 +1153,9 @@ function ensureGate(){
 }
 const CON_HPF = [0,40,60,80,100,120,150,200,250,300,400];
 const CON_DLY = { q:{name:'1/4 note', l:1, r:1}, de:{name:'Dotted 1/8', l:0.75, r:0.75}, luke:{name:'1/8 + dotted 1/8', l:0.5, r:0.75} };
+// Delay note values, as a fraction of the TIME knob (a quarter note when it's synced to the song).
+const DLY_FACTORS = [[0.25,'1/16'],[0.5,'1/8'],[0.667,'1/4 T'],[0.75,'1/8 .'],[1,'1/4'],[1.5,'1/4 .'],[2,'1/2']];
+const dlyName = v => (DLY_FACTORS.find(f=>Math.abs(f[0]-v)<0.01)||[0,'?'])[1];
 const CON = { playing:false, nodes:{}, srcs:[], meterT:0 };
 const conSong = () => songById(UI.con.song);
 // What you can loop: the song's sections if it has them, otherwise its verse, chorus and the whole mission.
@@ -1164,7 +1176,7 @@ function conInit(songId, start){
     if(start==='ref'){ const h=refHpf(song,k); if(h){ ch[k].hp=h; ch[k].hpF=h; ch[k].hpOn=true; } if(isVocal(song,k)){ ch[k].rev=-10; ch[k].dly=-16; } }
   }
   return { song:songId, sec:0, sel:song.anchor, tab:'eq', layer:'in', cal:conCal(song), start:start||'rough', ch,
-    fx:{ revType:'plate', revRet:0, revPre:20, revDecay:1, revLo:200, revHi:8000, dlyTime:'luke', dlyFb:0.3, dlyRet:-3, dlyHi:5000 },
+    fx:{ revType:'plate', revRet:0, revPre:20, revDecay:1, revLo:200, revHi:8000, dlyMs:Math.round(song.beat*1000), facL:0.5, facR:0.75, dlyFb:0.3, dlyRet:-3, dlyHi:5000, dlyLo:200 },
     master:{ fader:0, glue:false, glueThr:-18, glueRatio:2, lim:true, limCeil:-2 }, result:null };
 }
 // Preamp calibration: the trim that puts each channel's loudest peaks at about -12 dBFS when its GAIN reads +30 dB.
@@ -1204,9 +1216,9 @@ function conApply(k){
     set(n.pan.pan, s.pan); set(n.fader.gain, conGainOf(key)); set(n.rev.gain, sendGain(s.rev)); set(n.dly.gain, sendGain(s.dly));
   }
   if(!k){
-    const f=UI.con.fx, M=UI.con.master, song=conSong(), D=CON_DLY[f.dlyTime];
+    const f=UI.con.fx, M=UI.con.master, song=conSong();
     set(CON.revRet.gain, sendGain(f.revRet)); set(CON.dlyRet.gain, sendGain(f.dlyRet));
-    set(CON.dl.delayTime, song.beat*D.l); set(CON.dr.delayTime, song.beat*D.r); set(CON.dfbl.gain, f.dlyFb); set(CON.dfbr.gain, f.dlyFb);
+    set(CON.dl.delayTime, Math.min(3.9, f.dlyMs/1000*f.facL)); set(CON.dr.delayTime, Math.min(3.9, f.dlyMs/1000*f.facR)); set(CON.dhp.frequency, f.dlyLo); set(CON.dfbl.gain, f.dlyFb); set(CON.dfbr.gain, f.dlyFb);
     const ir=f.revType+':'+f.revDecay; if(CON.verb.typeNow!==ir){ CON.verb.buffer=impulseType(f.revType, f.revDecay); CON.verb.typeNow=ir; }
     set(CON.vpre.delayTime, f.revPre/1000); set(CON.vlo.frequency, f.revLo); set(CON.vhi.frequency, f.revHi); set(CON.dlp.frequency, f.dlyHi); set(CON.drp.frequency, f.dlyHi);
     set(CON.glue.threshold, M.glue?M.glueThr:0); set(CON.glue.ratio, M.glue?M.glueRatio:1);
@@ -1230,9 +1242,9 @@ function conStart(){
   const revRet=c.createGain(), revAn=c.createAnalyser(), dlyAn=c.createAnalyser(); revAn.fftSize=dlyAn.fftSize=1024; revBus.connect(vpre).connect(vlo).connect(verb).connect(vhi).connect(revRet).connect(bus); revRet.connect(revAn);
   const dm=c.createChannelMerger(2), dl=c.createDelay(4), dr=c.createDelay(4), dfbl=c.createGain(), dfbr=c.createGain(), dlp=c.createBiquadFilter(), drp=c.createBiquadFilter(), dlyRet=c.createGain();
   dlp.type=drp.type='lowpass'; dlp.frequency.value=drp.frequency.value=5000;
-  dlyBus.connect(dl); dlyBus.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
+  const dhp=c.createBiquadFilter(); dhp.type='highpass'; dlyBus.connect(dhp); dhp.connect(dl); dhp.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
   dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus); dlyRet.connect(dlyAn);
-  Object.assign(CON, { revAn, dlyAn, bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
+  Object.assign(CON, { dhp, revAn, dlyAn, bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
   for(const k of song.mix){
     const b=A.buf[`${song.id}:${k}`]; if(!b) continue;
     const src=c.createBufferSource(); src.buffer=b; src.loop=true; src.loopStart=off; src.loopEnd=Math.min(off+dur, b.duration); src.start(t0, off);
@@ -1351,7 +1363,7 @@ function vConsole(){
       ${detail}
       <button class="btn ghost block" data-act="conTop" style="margin-top:12px;min-height:40px">Back to the faders</button>
     </section>
-    <section class="slide" style="margin-top:12px"><h2 style="font-size:20px;margin-bottom:8px">FX rack and main bus</h2>${vFxMain()}</section>
+    <section class="slide" id="con-fx" style="margin-top:12px;scroll-margin-top:12px"><h2 style="font-size:20px;margin-bottom:8px">FX rack and main bus</h2>${vFxMain()}</section>
     ${r?`<section class="slide" style="margin-top:12px"><div style="display:flex;align-items:center;gap:16px"><div class="score ut" style="--u:${r.score>=70?'#1F7A3A':'#B4421F'}">${r.score}</div>
       <div><b class="disp" style="font-size:22px">${r.score>=90?'Sunday-ready!':r.score>=70?'Nice mix!':'Keep going'}</b><p style="margin:2px 0 0">Balance against Sona's ${S.mixStyle==='modern'?'modern worship':'gospel'} mix, judged around the lead vocal.</p></div></div>
       <ul class="notes">${r.notes.map(n=>`<li class="${n.bad?'bad':n.good?'good':''}">${esc(song.name[n.k])}<span>${n.msg}</span></li>`).join('')}</ul></section>`:''}
@@ -1410,7 +1422,7 @@ function vM32Eq(k){
 }
 // Set one EQ value and refresh just the EQ display, knobs and audio (no full redraw, so drags keep working).
 function conSetEq(k, p, v){
-  if(k==='_fx'||k==='_master'){ (k==='_fx'?UI.con.fx:UI.con.master)[p]=v; conApply(); const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v); return; }
+  if(k==='_fx'||k==='_master'){ (k==='_fx'?UI.con.fx:UI.con.master)[p]=v; conApply(); const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v); if(p==='dlyMs') dlyReadout(); return; }
   const s=UI.con.ch[k];
   if(p==='hpF'){ s.hpF=v; s.hp=s.hpOn?v:0; }
   else if(!p.includes('.')) s[p]=v;
@@ -1420,16 +1432,22 @@ function conSetEq(k, p, v){
   const scr=document.getElementById('m32screen'); if(scr) scr.replaceChildren(frag(m32Graph(s)));
   const kn=document.querySelector(`.knob[data-k="${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v);
 }
+function dlyReadout(){
+  const f=UI.con.fx, song=conSong(), a=document.getElementById('dly-ms'), b=document.getElementById('dly-sub'), c=document.getElementById('dly-lr'), q=Math.round(song.beat*1000);
+  if(a) a.textContent=`${Math.round(f.dlyMs)} ms`; if(b) b.textContent = Math.abs(f.dlyMs-q)<=1 ? `Synced: 1/4 note at ${song.bpm} BPM` : `${Math.round(60000/f.dlyMs)} BPM`;
+  if(c) c.textContent=`Left ${Math.round(f.dlyMs*f.facL)} ms · Right ${Math.round(f.dlyMs*f.facR)} ms`;
+}
 function knobShow(kn, v){
   const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', pos=log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min);
   kn.dataset.val=v; kn.setAttribute('aria-valuenow', v);
   const p=kn.dataset.p, rv=x=>Math.round(x*10)/10, txt =
-      /hpF|lff|lmf|hmf|hff|des\.freq|revLo|revHi|dlyHi/.test(p) ? fmtHz(v)
+      /hpF|lff|lmf|hmf|hff|des\.freq|revLo|revHi|dlyHi|dlyLo/.test(p) ? fmtHz(v)
     : /q$/.test(p) ? v.toFixed(1)
     : /ratio|Ratio/.test(p) ? rv(v)+':1'
     : /atk|hold|rel$|revPre/.test(p) ? rv(v)+'ms'
     : p==='revDecay' ? (REVERB_TYPES[UI.con.fx.revType].rt*v).toFixed(1)+'s'
     : p==='dlyFb' ? Math.round(v*100)+'%'
+    : p==='dlyMs' ? Math.round(v)+'ms'
     : /Ret$|^rev$|^dly$/.test(p) ? fmtS(v)
     : p==='pan' ? (Math.abs(v)<0.02 ? 'C' : (v<0?'L':'R')+Math.round(Math.abs(v)*100))
     : p==='gain' ? '+'+v.toFixed(1)
@@ -1515,13 +1533,21 @@ function vDyn(k, only){
 function vFxMain(){
   const f=UI.con.fx, M=UI.con.master;
   const types=Object.entries(REVERB_TYPES).filter(([t])=>!t.startsWith('_')).map(([t,x])=>`<button class="m32btn ${f.revType===t?'on':''}" data-act="conRevType" data-t="${t}" aria-pressed="${f.revType===t}">${x.name.toUpperCase()}</button>`).join('');
-  const times=Object.entries(CON_DLY).map(([t,x])=>`<button class="m32btn ${f.dlyTime===t?'on':''}" data-act="conDlyTime" data-t="${t}" aria-pressed="${f.dlyTime===t}">${x.name.toUpperCase()}</button>`).join('');
+  const song=conSong(), q=Math.round(song.beat*1000), synced=Math.abs(f.dlyMs-q)<=1;
+  const facRow=side=>`<div class="facrow"><span>${side==='facL'?'LEFT':'RIGHT'}</span>${DLY_FACTORS.map(([v,n])=>`<button class="m32btn ${Math.abs(f[side]-v)<0.01?'on':''}" data-act="conDlyFac" data-side="${side}" data-v="${v}" aria-pressed="${Math.abs(f[side]-v)<0.01}">${n}</button>`).join('')}</div>`;
+  const presets=Object.entries(CON_DLY).map(([t,x])=>`<button class="m32btn ${Math.abs(f.facL-x.l)<0.01&&Math.abs(f.facR-x.r)<0.01?'on':''}" data-act="conDlyPreset" data-t="${t}">${x.name.toUpperCase()}</button>`).join('');
   const fx1 = panel('FX 1 · '+REVERB_TYPES[f.revType].name.toUpperCase()+' REVERB', true, '', '_fx', `<div class="btnrow">${types}</div>
     ${kgrid([knob('_fx','revPre','PRE DLY',f.revPre,0,200,f.revPre+'ms',false), knob('_fx','revDecay','DECAY',f.revDecay,0.3,3,(REVERB_TYPES[f.revType].rt*f.revDecay).toFixed(1)+'s',true), knob('_fx','revLo','LO CUT',f.revLo,20,1000,fmtHz(f.revLo),true), knob('_fx','revHi','HI CUT',f.revHi,1000,20000,fmtHz(f.revHi),true), knob('_fx','revRet','RETURN',f.revRet,-40,6,fmtS(f.revRet),false)])}
     <p class="m32hint">Send channels here with each channel's Reverb send. Pre-delay keeps the words clear before the tail starts.</p>`, `<em class="mtag">FX</em>`);
-  const fx2 = panel('FX 2 · STEREO DELAY', true, '', '_fx', `<div class="btnrow">${times}</div>
-    ${kgrid([knob('_fx','dlyFb','FEEDBACK',f.dlyFb,0,0.8,Math.round(f.dlyFb*100)+'%',false), knob('_fx','dlyHi','HI CUT',f.dlyHi,1000,16000,fmtHz(f.dlyHi),true), knob('_fx','dlyRet','RETURN',f.dlyRet,-40,6,fmtS(f.dlyRet),false)])}
-    <p class="m32hint">Timed to the song's tempo (${conSong().bpm} BPM).</p>`, `<em class="mtag">FX</em>`);
+  const fx2 = `<div id="con-dly">`+panel('FX 2 · STEREO DELAY', true, '', '_fx', `
+    <div class="dlytime"><div><b id="dly-ms">${Math.round(f.dlyMs)} ms</b><span id="dly-sub">${synced?`Synced: 1/4 note at ${song.bpm} BPM`:`${Math.round(60000/f.dlyMs)} BPM`}</span></div>
+      <button class="m32btn tap" data-act="conTap">TAP</button><button class="m32btn ${synced?'on':''}" data-act="conDlySync" aria-pressed="${synced}">SYNC</button></div>
+    <p class="m32hint" style="margin:-2px 0 8px">Tap along with the song four times, or press SYNC to lock it to the song's tempo.</p>
+    ${facRow('facL')}${facRow('facR')}
+    <p class="m32hint" id="dly-lr" style="margin:6px 0 8px;color:#E8EAED">Left ${Math.round(f.dlyMs*f.facL)} ms · Right ${Math.round(f.dlyMs*f.facR)} ms</p>
+    <div class="btnrow">${presets}</div>
+    ${kgrid([knob('_fx','dlyMs','TIME',f.dlyMs,50,2000,Math.round(f.dlyMs)+'ms',true), knob('_fx','dlyFb','FEEDBACK',f.dlyFb,0,0.8,Math.round(f.dlyFb*100)+'%',false), knob('_fx','dlyLo','LO CUT',f.dlyLo,20,1000,fmtHz(f.dlyLo),true), knob('_fx','dlyHi','HI CUT',f.dlyHi,1000,16000,fmtHz(f.dlyHi),true), knob('_fx','dlyRet','RETURN',f.dlyRet,-40,6,fmtS(f.dlyRet),false)])}
+    <p class="m32hint">Send channels here with FX 2 on each channel's SENDS page. A little delay on the lead vocal (an eighth on one side, a dotted eighth on the other) adds space without washing out the words.${onM32('')()?' On the M32 this is the Stereo Delay in an FX slot: TIME, FACTOR L/R, FEEDBACK, LO and HI CUT, with TAP on the Effects screen.':''}</p>`, `<em class="mtag">FX</em>`)+`</div>`;
   const main = panel('MAIN LR · DYNAMICS', M.glue, 'conMainOn', 'glue', `<div class="dynrow" style="min-height:0">${grMeter('gr-glue')}<div class="grtxt" id="grtxt-glue"></div></div>
       ${kgrid([knob('_master','glueThr','THRESH',M.glueThr,-40,0,M.glueThr+'',false,!M.glue), knob('_master','glueRatio','RATIO',M.glueRatio,1,8,M.glueRatio+':1',true,!M.glue)])}
       <p class="m32hint">A gentle "glue" compressor on the whole mix: 1–3 dB of gain reduction.</p>`, `<em class="mtag">BUS</em>`)
@@ -1582,6 +1608,7 @@ function m32Bank(){
     <div class="layers" role="group" aria-label="Fader layer">
       <button class="mb layer ${C.layer!=='fx'?'on':''}" data-act="conLayer" data-l="in" aria-pressed="${C.layer!=='fx'}">INPUTS 1–${song.mix.length}</button>
       <button class="mb layer ${C.layer==='fx'?'on':''}" data-act="conLayer" data-l="fx" aria-pressed="${C.layer==='fx'}">FX RETURNS</button>
+      <button class="mb" data-act="conFxJump" data-to="con-fx" style="margin-left:auto">FX RACK ↓</button>
     </div>
     <div class="mbank"><div class="cbank" id="cbank">${strips}</div>${main}</div>
   </div>`;
@@ -1605,6 +1632,7 @@ function vSends(k){
     <div class="kgrid">${knob(k,'pan','PAN',s.pan,-1,1,panTxt(s.pan),false)}
       <div class="kbtn"><button class="m32btn ${s.lr?'on':''}" data-act="conBtn" data-k="${k}" data-p="lr" aria-pressed="${s.lr}">MAIN LR</button><span>ASSIGN</span></div>
       ${knob(k,'rev','FX 1 SEND',s.rev,FADER_MIN,6,fmtS(s.rev),false)}${knob(k,'dly','FX 2 SEND',s.dly,FADER_MIN,6,fmtS(s.dly),false)}</div>
+    <div class="row" style="margin-top:8px"><button class="m32btn" data-act="conFxJump" data-to="con-fx" style="flex:1">EDIT FX 1 REVERB</button><button class="m32btn" data-act="conFxJump" data-to="con-dly" style="flex:1">EDIT FX 2 DELAY</button></div>
     <p class="m32hint">FX 1 is the ${REVERB_TYPES[UI.con.fx.revType].name.toLowerCase()} reverb, FX 2 the stereo delay. Sends are post-fader: pull the fader down and the effect follows. Main LR off takes the channel out of the main mix.</p></div>`;
 }
 /* ============================================================
@@ -4171,7 +4199,14 @@ document.addEventListener('click', async e=>{
     case 'conDesOn': { const s=UI.con.ch[el.dataset.k]; s.des.on=!s.des.on; conApply(el.dataset.k); conRender(); break; }
     case 'conMainOn': { const M=UI.con.master; M[el.dataset.k]=!M[el.dataset.k]; conApply(); conRender(); break; }
     case 'conRevType': UI.con.fx.revType=el.dataset.t; conApply(); conRender(); break;
-    case 'conDlyTime': UI.con.fx.dlyTime=el.dataset.t; conApply(); conRender(); break;
+    case 'conDlyFac': UI.con.fx[el.dataset.side]=+el.dataset.v; conApply(); conRender(); break;
+    case 'conDlyPreset': { const x=CON_DLY[el.dataset.t]; Object.assign(UI.con.fx,{facL:x.l, facR:x.r}); conApply(); conRender(); break; }
+    case 'conDlySync': UI.con.fx.dlyMs=Math.round(conSong().beat*1000); conApply(); conRender(); break;
+    case 'conTap': {   // tap tempo: the average of the last few taps
+      const now=performance.now(), T=(A.taps=(A.taps||[]).filter(t=>now-t<2500)); T.push(now);
+      if(T.length>=2){ const d=(T[T.length-1]-T[0])/(T.length-1); if(d>=50&&d<=2000){ UI.con.fx.dlyMs=Math.round(d); conApply(); dlyReadout(); const kn=document.querySelector('.knob[data-k="_fx"][data-p="dlyMs"]'); if(kn) knobShow(kn, UI.con.fx.dlyMs); const sb=document.querySelector('[data-act=conDlySync]'); if(sb) sb.classList.toggle('on', Math.abs(UI.con.fx.dlyMs-Math.round(conSong().beat*1000))<=1); } }
+      el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),90); break; }
+    case 'conFxJump': document.getElementById(el.dataset.to||'con-fx')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'conLayer': UI.con.layer=el.dataset.l; conRender(); break;
     case 'conBtn': { const s=UI.con.ch[el.dataset.k]; s[el.dataset.p]=!s[el.dataset.p]; conApply(el.dataset.k); conRender(); break; }
     case 'conEqOn': { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
