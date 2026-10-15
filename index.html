@@ -1144,7 +1144,27 @@ const GATE_SRC = `class SSGate extends AudioWorkletProcessor{
     return true;
   }
 }
-registerProcessor('ss-gate', SSGate);`;
+registerProcessor('ss-gate', SSGate);
+class SSDeess extends AudioWorkletProcessor{
+  static get parameterDescriptors(){ return [{name:'on',defaultValue:0},{name:'thr',defaultValue:-30},{name:'freq',defaultValue:6000}]; }
+  constructor(){ super(); this.lp=[0,0]; this.env=0; this.g=1; this.n=0; }
+  process(ins, outs, p){
+    const i=ins[0], o=outs[0]; if(!i || !i.length) return true;
+    const n=i[0].length, sr=sampleRate, on=p.on[0]>0.5, thr=Math.pow(10,p.thr[0]/20), a=Math.exp(-2*Math.PI*p.freq[0]/sr);
+    const att=Math.exp(-1/(0.0008*sr)), rel=Math.exp(-1/(0.06*sr)), er=Math.exp(-1/(0.01*sr));
+    for(let s=0;s<n;s++){
+      let pk=0; const hf=[];
+      for(let c=0;c<o.length;c++){ const x=(i[c]||i[0])[s]; this.lp[c]+= (1-a)*(x-this.lp[c]); const h=x-this.lp[c]; hf.push(h); const ah=h<0?-h:h; if(ah>pk) pk=ah; }
+      this.env = pk>this.env ? pk : this.env*er + pk*(1-er);
+      const t = on && this.env>thr ? Math.pow(thr/this.env, 1-1/6) : 1;   // 6:1 on the "s" range only
+      this.g = t<this.g ? t+(this.g-t)*att : t+(this.g-t)*rel;
+      for(let c=0;c<o.length;c++) o[c][s] = this.lp[c] + hf[c]*this.g;   // with no reduction this is exactly the input
+    }
+    if((this.n+=n)>=2048){ this.n=0; this.port.postMessage(20*Math.log10(this.g+1e-9)); }
+    return true;
+  }
+}
+registerProcessor('ss-deess', SSDeess);`;
 function ensureGate(){
   if(A.gateP) return A.gateP;
   if(!A.ctx.audioWorklet) return (A.gateP=Promise.resolve(false));
@@ -1210,9 +1230,9 @@ function conApply(k){
     set(n.hm.frequency, s.eq.hmf); set(n.hm.gain, s.eq.hmg*z); set(n.hm.Q, s.eq.hmq); set(n.hf.frequency, s.eq.hff); set(n.hf.gain, s.eq.hf*z);
     if(n.gate){ const gp=x=>n.gate.parameters.get(x); set(gp('on'), s.gate.on?1:0); set(gp('thr'), s.gate.thr); set(gp('range'), s.gate.range); set(gp('atk'), s.gate.atk); set(gp('hold'), s.gate.hold); set(gp('rel'), s.gate.rel); }
     set(n.comp.threshold, s.comp.on?s.comp.thr:0); set(n.comp.ratio, s.comp.on?s.comp.ratio:1); set(n.comp.knee, s.comp.on?s.comp.knee:0);
-    set(n.dlo.frequency, s.des.freq); set(n.dhi.frequency, s.des.freq);
+    if(n.des){ const dp=x=>n.des.parameters.get(x); set(dp('on'), s.des.on?1:0); set(dp('thr'), s.des.thr); set(dp('freq'), s.des.freq); }
     n.comp.attack.value=s.comp.atk/1000; n.comp.release.value=s.comp.rel/1000; set(n.mk.gain, s.comp.on?db(s.comp.mk+autoMakeupCancelDb(s.comp)):1);
-    set(n.dcomp.threshold, s.des.on?s.des.thr:0); set(n.dcomp.ratio, s.des.on?8:1);
+
     set(n.pan.pan, s.pan); set(n.fader.gain, conGainOf(key)); set(n.rev.gain, sendGain(s.rev)); set(n.dly.gain, sendGain(s.dly));
   }
   if(!k){
@@ -1244,7 +1264,7 @@ function conStart(){
   dlp.type=drp.type='lowpass'; dlp.frequency.value=drp.frequency.value=5000;
   const dhp=c.createBiquadFilter(); dhp.type='highpass'; dlyBus.connect(dhp); dhp.connect(dl); dhp.connect(dr); dl.connect(dlp).connect(dfbl).connect(dl); dr.connect(drp).connect(dfbr).connect(dr);
   dlp.connect(dm,0,0); drp.connect(dm,0,1); dm.connect(dlyRet).connect(bus); dlyRet.connect(dlyAn);
-  Object.assign(CON, { dhp, revAn, dlyAn, bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, t0, off, dur });
+  Object.assign(CON, { dhp, revAn, dlyAn, bus, glue, lim, mfader, man, verb, vpre, vlo, vhi, revRet, dl, dr, dfbl, dfbr, dlp, drp, dlyRet, nodes:{}, srcs:[], gateG:{}, desG:{}, t0, off, dur });
   for(const k of song.mix){
     const b=A.buf[`${song.id}:${k}`]; if(!b) continue;
     const src=c.createBufferSource(); src.buffer=b; src.loop=true; src.loopStart=off; src.loopEnd=Math.min(off+dur, b.duration); src.start(t0, off);
@@ -1257,15 +1277,13 @@ function conStart(){
     const anIn=c.createAnalyser(); anIn.fftSize=1024; n.connect(anIn);   // what the gate and compressor "hear"
     if(A.gateOk){ gate=new AudioWorkletNode(c,'ss-gate',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n=n.connect(gate); gate.port.onmessage=ev=>{ CON.gateG[k]=ev.data; }; }
     const comp=c.createDynamicsCompressor(), mk=c.createGain(); n=n.connect(comp).connect(mk);
-    // de-esser: split at 6 kHz, squash only the top, add it back (in polarity for a flat sum)
-    const dlo=c.createBiquadFilter(), dhi=c.createBiquadFilter(), dcomp=c.createDynamicsCompressor(), dinv=c.createGain(), dsum=c.createGain();
-    dlo.type='lowpass'; dhi.type='highpass'; dlo.frequency.value=dhi.frequency.value=6000; dlo.Q.value=dhi.Q.value=0.5; dinv.gain.value=-1;
-    dcomp.attack.value=0.001; dcomp.release.value=0.05; dcomp.knee.value=0;
-    n.connect(dlo).connect(dsum); n.connect(dhi).connect(dcomp).connect(dinv).connect(dsum);
+    // de-esser: a processor that turns down only the "s" range; untouched when it isn't working
+    let des=null, dsum=n;
+    if(A.gateOk){ des=new AudioWorkletNode(c,'ss-deess',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]}); n.connect(des); dsum=des; des.port.onmessage=ev=>{ CON.desG[k]=ev.data; }; }
     const pan=c.createStereoPanner(), fader=c.createGain(), lrG=c.createGain(), an=c.createAnalyser(); an.fftSize=1024;
     dsum.connect(pan).connect(fader).connect(lrG).connect(bus); fader.connect(an);
     const rev=c.createGain(), dly=c.createGain(); fader.connect(rev).connect(revBus); fader.connect(dly).connect(dlyBus);
-    CON.nodes[k]={ pre, anPre, lrG, hp, lf, lm, hm, hf, anIn, gate, comp, mk, dlo, dhi, dcomp, pan, fader, an, rev, dly };
+    CON.nodes[k]={ pre, anPre, lrG, hp, lf, lm, hm, hf, anIn, gate, comp, mk, des, pan, fader, an, rev, dly };
     CON.srcs.push(src);
   }
   CON.playing=true; conApply();
@@ -1565,7 +1583,7 @@ function dynMeters(){
   setDot('dot-gate','gate',s.gate); setDot('dot-comp','comp',s.comp);
   const bar=(id,gr,txtId)=>{ const b=document.getElementById(id); if(b) b.style.height=Math.max(0,Math.min(100,-gr/20*100))+'%'; const t=txtId&&document.getElementById(txtId); if(t) t.textContent = gr<-0.3 ? `${gr.toFixed(1)} dB` : '0 dB'; };
   const gg = CON.gateG[k] ?? 0; bar('gr-gate', s.gate.on?gg:0); const led=document.getElementById('led-gate'); if(led){ led.textContent = !s.gate.on ? 'OFF' : gg>-1 ? 'OPEN' : 'CLOSED'; led.className='led '+(!s.gate.on?'dim':gg>-1?'':'shut'); }
-  bar('gr-comp', s.comp.on?n.comp.reduction:0, 'grtxt-comp'); bar('gr-des', s.des.on?n.dcomp.reduction:0, 'grtxt-des');
+  bar('gr-comp', s.comp.on?n.comp.reduction:0, 'grtxt-comp'); bar('gr-des', s.des.on?(CON.desG[k]??0):0, 'grtxt-des');
   bar('gr-glue', UI.con.master.glue?CON.glue.reduction:0, 'grtxt-glue'); bar('gr-lim', UI.con.master.lim?CON.lim.reduction:0, 'grtxt-lim');
 }
 /* ----- The M32 surface: scribble strips, SEL / SOLO / MUTE, LED meters and faders with the console's scale ----- */

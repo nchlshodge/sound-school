@@ -16,7 +16,7 @@ How Sound School's audio was prepared and how its reference mixes were measured.
 
 Bar numbers for the live songs count from the first click (`lhc` first click at 0.997 s, `isg` at 6.319 s). Tempo came from the median spacing of click-track onsets.
 
-**Studio stems** were cut with ffmpeg and encoded to AAC at 96 kbps stereo; click and cues at 48 kbps mono.
+**Encoding:** every stem is AAC from Apple's encoder (`-c:a aac_at`, macOS): 96 kbps mono, 128 kbps stereo, 48 kbps for click and cues. ffmpeg's built-in AAC at 48–64 kbps (used at first) cut God So Good's cymbals above 14 kHz and left swishy artifacts; the re-encode kept every music channel within 0.5 dB of its old level, so the reference mixes didn't move. Stereo stems folded to mono use the -3 dB pan law (`pan=mono|c0=0.7071*c0+0.7071*c1`).
 
 **Live songs** were combined into console-style channels with `tools/encode_live_song.sh`:
 
