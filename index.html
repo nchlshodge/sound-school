@@ -909,6 +909,7 @@ async function calibrate(song){
   song.cal.pink=await match({src:PINK(song)}, band.rms-3);
   song.cal.hpf=await match({src:BAND(song,{},wb,0,true)}, band.rms);
   song.cal.luke=await match({src:VOCAL(song,wv),chain:fxLukeEq(song)}, voc.rms);
+  song.cal.lowcut=await match({src:BAND(song,{},wb),chain:fxLowCut()}, band.rms);
   if(song.xtra && song.xtra.includes('mb1')) await calOurs(song);
 }
 
@@ -1327,11 +1328,14 @@ function conScore(){
   }
   let filt=1;
   if(S.mixStyle==='modern'){ let ok=0, tot=0; for(const k of song.mix){ const ruled=HPF_LOW.includes(k)||HPF_CHORD.includes(k)||isVocal(song,k); if(!ruled) continue; tot++; const msg=hpfCheck(song,k,C.ch[k].hp); if(msg) notes.push({k, hp:1, msg:'Filter: '+msg}); else ok++; } filt=tot?ok/tot:1; }
+  // Mostly mono in the house: a sole instrument panned hard disappears for half the room.
+  let panPen=0;
+  for(const k of song.mix){ const p=C.ch[k].pan, light=['oh','rack','floor','toms'].includes(k); if(Math.abs(p)>(light?0.6:0.4) && !C.ch[k].mute){ panPen+=5; notes.push({k, bad:true, msg:`Panned ${p<0?'left':'right'} ${Math.round(Math.abs(p)*100)}: in most rooms half the seats will barely hear it. Keep it near the center.`}); } }
   const lead=C.ch[song.anchor];
   if(!lead.comp.on) notes.push({k:song.anchor, tip:1, msg:'Tip: a little compression (2–6 dB of gain reduction) keeps the lead vocal steady.'});
   if(lead.rev<=FADER_MIN && lead.dly<=FADER_MIN) notes.push({k:song.anchor, tip:1, msg:'Tip: send the lead vocal to the reverb or delay so it doesn\'t sound dry.'});
   notes.sort((x,y)=>(y.bad-x.bad)||((y.err||0)-(x.err||0)));
-  const bal=pts/n; return { score: Math.round(S.mixStyle==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal), notes };
+  const bal=pts/n; return { score: Math.max(0, Math.round((S.mixStyle==='modern' ? 100*(0.7*bal+0.3*filt) : 100*bal) - Math.min(20,panPen))), notes };
 }
 async function openConsole(songId, start){
   const was=CON.playing;
@@ -1917,6 +1921,80 @@ function vBuildCard(song){
 }
 // Re-render without losing your place in the fader bank.
 function conRender(){ const b=document.getElementById('cbank'), x=b?b.scrollLeft:0, y=window.scrollY; render(); const nb=document.getElementById('cbank'); if(nb) nb.scrollLeft=x; window.scrollTo(0,y); }
+
+/* ============================================================
+   SUNDAY HABITS, from "Church Audio Hot Takes" (Nathan Fox and Jacob Lackey, The Worship Initiative), in our own words.
+   ============================================================ */
+const HOT_CREDIT = '<span class="foot" style="display:block;margin-top:6px">From <i>Church Audio Hot Takes</i> with Nathan Fox and Jacob Lackey (The Worship Initiative).</span>';
+// First option is correct.
+const FEEDBACK_TEXT = [
+  {prompt:'A mic starts to ring during the sermon. What\'s your first move?', options:['Pull that fader down a little, then fix the cause','Cut the ringing frequency on that person\'s channel EQ','Turn off the whole system'], explain:'Break the loop first: a little less of that mic stops the ring right away. Then fix why it happened, usually where the mic or the person is.'},
+  {prompt:'Why not fix feedback with the EQ on that person\'s channel?', options:['It changes how their voice sounds, and the cause is usually where the mic or person is standing','Channel EQ can\'t cut high frequencies','It\'s against the rules on an M32'], explain:'Cutting a band on their channel just to stop a ring also changes their voice. Move the mic or the person instead, especially away from floor wedges.'},
+  {prompt:'You find yourself cutting the same frequency on every vocal mic. Where should that cut go?', options:['A few dB on the main L/R EQ','A bigger cut on each channel','On the reverb return'], explain:'If every mic rings at the same frequency, it\'s the room and the system. A small cut on the main L/R (or having the system tuned) fixes it once.'},
+  {prompt:'What causes most feedback at church?', options:['A mic in front of the speakers or pointed at a floor wedge','A broken speaker','Too much reverb'], explain:'Feedback is a loop from the speakers back into the mic. Keep mics and people behind the main speakers, and watch the wedges.'}
+];
+const VOLUME_TEXT = [
+  {prompt:'Someone says "it\'s too loud." What should you NOT do?', options:['Cut the low end to make it quieter','Ask where they were sitting and what was sticking out','Check whether something harsh in the upper mids is poking out'], explain:'Cutting the lows makes the highs feel brighter and harsher. A full, balanced mix with healthy low end feels less loud.'},
+  {prompt:'Where does a mix start to feel harsh and intense?', options:['The upper mids and highs','The low end','Below 60 Hz'], explain:'Our ears are most sensitive in the upper mids and highs. Harshness almost never comes from the low end.'},
+  {prompt:'Two mixes read the same number on the dB meter. Which one feels louder?', options:['The harsh, unbalanced one','The full, balanced one','They always feel the same'], explain:'A balanced mix is a warm hug; a harsh one is a pinprick. Use the meter as a reference, not the final word.'}
+];
+const CUE_TEXT = [
+  {prompt:'The song has about 30 seconds left. What should you be doing?', options:['Finding who\'s up next and putting a hand on their fader','Fine-tuning the snare EQ','Checking the livestream chat'], explain:'People don\'t remember a great snare sound, but they notice a pastor\'s mic that isn\'t on. Know who\'s next and have your hand ready.'},
+  {prompt:'When should the band mix mostly be done?', options:['In soundcheck and rehearsal','During the first song','During the sermon'], explain:'Get the band mix done before the service so during it you can focus on who\'s leading and who\'s speaking next.'}
+];
+// Two mixes at the same level: balanced, and with the low end cut (which reads the same but feels harsher).
+const fxLowCut = () => chainOf(fxShelf('lowshelf',220,-10));
+function fxShelf(type, f, g){ return (c,inp)=>{ const b=c.createBiquadFilter(); b.type=type; b.frequency.value=f; b.gain.value=g; inp.connect(b); return b; }; }
+function lowcutQ(s){
+  const w=pickWin(s,'full');
+  return Object.assign(abQ({ prompt:'These two mixes are the same level on the meter. Which one feels harsher?', yes:{src:BAND(s,{},w), chain:fxLowCut(), gain:s.cal.lowcut||0}, no:{src:BAND(s,{},w)}, yesName:'Low end cut', noName:'Balanced',
+    explain:L=>`${L} had the low end cut, then turned up to the same level. It reads the same on the meter, but the highs feel brighter and harsher. A full, balanced mix with healthy low end is a warm hug, not a pinprick.` }), {tag:'Balance vs. loudness'});
+}
+// A singer with reverb, then they start talking. The reverb is left on, muted at the return (the tail cuts off), or muted at the send (the tail fades naturally).
+function talkFxSpec(s, mode){
+  const v=VOCAL(s)[0], sp={b:'speech:pastor', db:A.speechDb.pastor, off:3, dur:5}, sw=3.2;
+  return { src:[], len:sw+5.6, synth:(c,bus,t0)=>{
+    const send=c.createGain(), ret=c.createGain(), cv=c.createConvolver(); cv.buffer=impulseType('hall', 1.2); ret.gain.value=db(-2); send.connect(cv).connect(ret).connect(bus);
+    const play=(x,at,dur)=>{ const n=c.createBufferSource(); n.buffer=bufOf(x); const g=c.createGain(); g.gain.value=db(x.db); n.connect(g).connect(bus); g.connect(send); n.start(t0+at, x.off, dur); return n; };
+    play(v,0,sw); play(sp,sw+0.25,5);
+    const T=t0+sw+0.1; if(mode==='ret') ret.gain.setValueAtTime(0,T); if(mode==='send') send.gain.setValueAtTime(0,T);
+  } };
+}
+function talkFxQ(s){
+  const C=[{k:'on',label:'Reverb left on',sub:'the talking is washed in reverb'},{k:'ret',label:'Return muted',sub:'the singing\'s reverb cuts off suddenly'},{k:'send',label:'Send muted',sub:'the tail fades naturally and the talking is dry'}], c=pick(C);
+  return Object.assign(choiceQ({ prompt:'The worship leader finishes singing and starts talking. How was the vocal reverb handled?', clips:[{label:'Play',spec:talkFxSpec(s,c.k)}], choices:C, correct:c,
+    explain:{ on:'The reverb was left on, so the talking sounded like it was in a cave. Before someone speaks, pull the vocal reverb down.',
+      ret:'The reverb return was muted, so the singing\'s tail stopped dead. Better: mute the send that feeds the reverb. What\'s already ringing fades out naturally, even if you\'re a little late.',
+      send:'The send was muted: the last sung note\'s reverb faded out naturally and the talking was dry. That\'s the smooth way to do it.' }[c.k] }), {tag:'Reverb when someone talks'});
+}
+/* ----- Troubleshooting, one step at a time ----- */
+const TROUBLE = [
+  { title:'"The keyboard isn\'t coming through."', steps:[
+    { q:'Before touching anything, what\'s the first move?', options:['Stay calm and work it out together','Find out who unplugged it','Go get the backup keyboard'], why:'Start with your attitude. You\'re on the same team, and "fault" doesn\'t fix anything.' },
+    { q:'What do you check first?', options:['The basics: it\'s on, its volume is up, it isn\'t muted, and the cable is in at both ends','Reboot the console','Replace the snake'], why:'Most problems are simple. Check power, volume, mute and both ends of the cable.' },
+    { q:'Still nothing. What\'s most likely broken?', options:['The smallest, easiest thing, like a cable','The snake','The console'], why:'Assume the smallest failure first. A bad cable is far more likely than a broken snake or console.' },
+    { q:'How do you find which part is bad?', options:['Plug the keys\' XLR into a DI you know works, like the acoustic\'s','Turn the gain all the way up','Swap the whole keyboard'], why:'Isolate the chain. If the signal shows up through a working DI, the XLR, snake and console are fine.' },
+    { q:'It works through the acoustic\'s DI. What next?', options:['Plug the keyboard\'s 1/4" cable into that working DI','Replace the XLR cable','Call it a broken console'], why:'If the keyboard works through the good DI, the problem is the keyboard\'s own DI, or often a setting on the keyboard itself.' } ] },
+  { title:'"The pastor\'s wireless mic is dead."', steps:[
+    { q:'What\'s the first move?', options:['Stay calm, and have a backup mic ready for the pastor','Blame whoever charged the batteries','Unplug the receiver'], why:'Keep the service moving: a spare handheld or wired mic buys you time while you work it out together.' },
+    { q:'What do you check first?', options:['The basics: the pack is on, the battery is good, and its mute switch is off','The main speakers','The console\'s firmware'], why:'Power, battery and the pack\'s own mute switch cause most wireless problems.' },
+    { q:'The receiver shows a signal, but the channel meter is silent. Where do you look?', options:['The console channel: its mute, gain and routing','The battery again','The transmitter\'s antenna'], why:'If the receiver gets it, the wireless part works. Follow the signal to the console: is the channel muted, the gain down, or not routed to the main?' },
+    { q:'It keeps cutting in and out. What\'s the usual cause?', options:['Something blocking the antenna, like a hand cupping the bottom of the mic or a body between the pack and the receiver','The EQ','The reverb'], why:'Wireless needs line of sight. The antenna is at the bottom of a handheld, so hold it in the middle.' } ] }
+];
+function troubleQ(){
+  const sc=pick(TROUBLE);
+  return { tool:'steps', dispUnit:'found', text:true, scen:sc, step:0, misses:0, last:null, prompt:`Troubleshoot it: ${sc.title}`, hint:'Pick the next step. Work it from the simplest thing outward.', clips:[], options:['done'], answer:0, explain:'' };
+}
+function vStepsTool(q, answered){
+  const sc=q.scen, st=sc.steps[q.step];
+  const done=sc.steps.slice(0,q.step).map((x,i)=>`<li class="good">${i+1}. ${x.options[0]}<span>${x.why}</span></li>`).join('');
+  if(answered) return `<ul class="notes">${done}</ul>`;
+  const opts=(q.order=q.order||{})[q.step] || (q.order[q.step]=shuffle(st.options.map((t,i)=>({t,i}))));
+  return `${done?`<ul class="notes">${done}</ul>`:''}
+    <div class="slide" style="margin-top:10px"><p style="margin:0 0 10px"><b>Step ${q.step+1} of ${sc.steps.length}.</b> ${st.q}</p>
+      ${q.last?`<p class="foot" role="status" style="color:#B4421F;text-align:left;margin:0 0 8px">Not that one: ${q.last}</p>`:''}
+      <div class="opts" role="group">${opts.map(o=>`<button class="opt" data-act="stepPick" data-i="${o.i}">${o.t}</button>`).join('')}</div></div>`;
+}
 
 /* ----- Our Mix vs. Bethel -----
    Master Burn (our board's stereo mix, Feb 15) measured against Bethel's livestream: ours has more 125 Hz,
@@ -2510,7 +2588,8 @@ const GEN = {
       extra:l===3?['Same']:null, explain:L=>`${L} was ${d} dB louder. ${dbTalk(d)}` });
   },
   eq(l, s, o={}){
-    const r=Math.random(), kind=o.kind;   // kind: 'music' | 'voice' | 'mic' | 'ring' | 'ringout' (exercises ask for one)
+    const r=Math.random(), kind=o.kind;   // kind: 'music' | 'voice' | 'mic' | 'ring' | 'ringout' | 'feedback' (exercises ask for one)
+    if(kind==='feedback' || (!kind && l>=2 && Math.random()<0.12)) return Object.assign(textQ(pick(FEEDBACK_TEXT)), {dispUnit:'eq'});
     if(!kind && EQG.cal && Math.random()<0.25) return fixQuestion(l);   // about one in four: fix it yourself
     if(kind==='voice' || (!kind && l===1 && r<0.5)){
       const v=pick(VOICES), src=VOICE(v), p=pick(VOICE_PROBS);
@@ -2530,7 +2609,7 @@ const GEN = {
     if(kind==='ringout' || (!kind && l===3 && r<0.65)){
       // The ring-out game: sweep a narrow cut until the ring stops.
       const v=pick(VOICES), f=pick([400,630,1000,1600,2500,3150,4000])*Math.pow(2,(Math.random()-0.5)/4), state={f:1000};
-      return { tool:'ringout', voice:true, ring:f, state, prompt:'Ring it out! Play the mic, then slide the narrow cut until the ringing stops.',
+      return { tool:'ringout', voice:true, ring:f, state, prompt:'This ring happens on every mic in the room, so ring it out on the main L/R EQ. Play it, then slide the narrow cut until the ringing stops.',
         clips:[{label:'Play',spec:{src:VOICE_LOOP(v),chain:chainOf(MICS.lapel.chain(),fxRing({f,fb:1.4,state}))}}], options:['Lock it in'], answer:0, explain:'' };
     }
     const bands = l===1 ? EQ3 : EQB;
@@ -2599,6 +2678,7 @@ const GEN = {
       explain:L=>`${L} was set to ${s.ms} ms, exactly one beat at ${s.bpm} BPM (60,000 ÷ ${s.bpm}). The other one's repeats fight the groove.` });
   },
   verb(l, s, o={}){
+    if(o.kind==='talk' || (!o.kind && l>=2 && Math.random()<0.25)) return talkFxQ(s);
     const w=pickWin(s,'verse'), kind=o.kind, r=Math.random();
     if(kind==='type' || (!kind && l>=2 && r<0.45)){
       // Plate, hall or room? Same source, three reverbs to compare (after answering, on Hard).
@@ -2633,7 +2713,8 @@ const GEN = {
       yesName:'Vocals forward', noName:'Bass heavy',
       explain:L=>`${L} had the vocals pushed up. The bass-heavy mix may sound great in the room, but on a phone the bass vanishes and the vocals get lost.` });
   },
-  mix(l, s){
+  mix(l, s, o={}){
+    if(o.kind==='lowcut' || (!o.kind && l>=2 && Math.random()<0.2)) return Math.random()<0.6 || o.kind==='lowcut' ? lowcutQ(s) : textQ(pick(VOLUME_TEXT));
     // Easy: 4 groups. Medium: 6 groups. Hard: single channels, and sometimes something is too quiet.
     const G=s.groups[l], names=Object.keys(G), name=pick(names), quiet = l===3 && Math.random()<0.35;
     const amt = quiet ? -10 : l===1?9 : l===2?7 : 5, w=pickWin(s,'full');
@@ -2871,9 +2952,11 @@ const GEN = {
   walk(l){
     return { tool:'walkup', dispUnit:'found', needBand:l>=2, voiceName:pick(VOICES), state:{}, options:['done'], answer:0, explain:'', clips:[],
       prompt: l===1 ? 'The song is ending and the pastor is about to speak. Bring the pastor\'s mic up before the first word.' : 'This time the band keeps playing. Bring the pastor\'s mic up before the first word, and the band down under him as he starts.',
-      hint: l===3 ? 'Less warning this time. Watch closely!' : 'Press Start, then watch the stage.' };
+      hint: l===3 ? 'Less warning this time. Watch closely!' : 'Like the last 30 seconds of a song: find the pastor\'s fader and get your hand on it. Press Start, then watch the stage.' };
   },
-  found(l){
+  found(l, s, o={}){
+    if(o.kind==='trouble' || (!o.kind && l>=2 && Math.random()<0.2)) return troubleQ();
+    if(!o.kind && Math.random()<0.12) return Object.assign(textQ(pick(CUE_TEXT)), {dispUnit:'found'});
     if(!FOUND[l-1].length) FOUND[l-1]=FOUND_ALL[l-1].slice();
     const q=FOUND[l-1].splice(Math.floor(Math.random()*FOUND[l-1].length),1)[0];
     const opts=shuffle(q.options.map((t,i)=>({t,i})));
@@ -3071,7 +3154,7 @@ function runCue(bar){
   if(bar<16) return 'Soft opening: keys, acoustic and vocals.';
   if(bar<20) return 'Get ready: the full band comes in at bar 20…';
   if(bar<118) return 'Full band. Keep the vocals on top.';
-  if(bar<125) return 'The song is ending soon…';
+  if(bar<125) return 'The song is ending soon. Find the MC\'s fader and put your hand on it.';
   if(bar<145) return 'The band drops out: keys pad and Vox 3.';
   if(bar<153) return 'The MC is walking up to speak…';
   return 'The MC is speaking.';
@@ -3267,7 +3350,7 @@ const UNITS = [
       demos:[{label:'Natural',spec:()=>({src:VOICE('pastor',4)})},{label:'Muddy',spec:()=>({src:VOICE('pastor',4),chain:fxEQ(300,9,1.4)})},{label:'Clear',spec:()=>({src:VOICE('pastor',4),chain:chainOf(fxEQ(300,-3,1.4),fxEQ(3000,3,1))})}]},
     {t:'Three mics, three problems', p:['Handheld: held too close it gets boomy (proximity effect), with "p" pops and handling noise.','Headset: right at the mouth it gets harsh "S" sounds and breaths. Lapel: on the chest it sounds boxy and dull, picks up clothing rustle, and drops when the speaker turns their head.'],
       demos:[{label:'Handheld',spec:()=>({src:VOICE('pastor',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('female',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('pastor',10),chain:MICS.lapel.chain()})}]},
-    {t:'Feedback and ringing', p:['Feedback is a loop: the mic hears the speakers and one frequency builds into a ring. Lapels ring most, because they sit farther from the mouth and need more gain.','In a service, pull the fader down a little first. Then find the ring with a narrow EQ cut, and take out only what you need.'],
+    {t:'Feedback and ringing', p:['Feedback is a loop: the mic hears the speakers and one frequency builds into a ring. Lapels ring most, because they sit farther from the mouth and need more gain.','Break the loop first: pull that fader down a little. Then fix the cause. Keep mics and people behind the main speakers, and away from floor wedges.','Don\'t cut the ring on that person\'s channel: it changes their voice. If the same frequency rings on every mic, cut a few dB of it on the main L/R EQ (or have the system tuned).'+HOT_CREDIT],
       demos:[{label:'Ringing',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500})),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500,state:{f:2500}})),tail:1.5})}]}
   ]},
   { id:'phase', title:'Phase & Polarity', mascot:'fenn', who:'Fenn the fennec fox', color:'#B45309', blurb:'Hear two mics fight, flip the polarity, and fix timing.', learn:[
@@ -3316,7 +3399,9 @@ const UNITS = [
     {t:'Plate vs. hall', p:['A plate is dense and bright from the very first instant: smooth, with no sense of a real room. It\'s the classic way to make a vocal shine and sit forward.','A hall starts after a short gap, has distinct early echoes, builds slowly and rings long and dark: big and spacious, for pads and ambient moments. A room is short and natural.'],
       demos:[{label:'Plate',spec:()=>({src:VOCAL(D()),chain:fxVerbType('plate'),tail:2.6})},{label:'Hall',spec:()=>({src:VOCAL(D()),chain:fxVerbType('hall'),tail:2.6})},{label:'Room',spec:()=>({src:VOCAL(D()),chain:fxVerbType('room'),tail:1.2})}]},
     {t:'Choosing a reverb', p:['Vocals: a plate with 20–40 ms of pre-delay is a common starting point, so the words speak first. Pads and ambient moments: a hall. Drums: a short room, or a plate on the snare.','Luke Hendrickson runs two reverbs on buses: one for the drums and one for the vocals. Two well-chosen reverbs beat ten.']},
-    {t:'Hold back', p:['Our sanctuary already adds its own reverb. Add a little to singers, and almost none to speaking.','If you can clearly hear the reverb, it\'s probably too much.']}
+    {t:'Hold back', p:['Our sanctuary already adds its own reverb. Add a little to singers, and almost none to speaking.','If you can clearly hear the reverb, it\'s probably too much.']},
+    {t:'When the leader starts talking', p:['A worship leader sings with reverb, then reads Scripture into the same mic. Pull the reverb down before they speak.','The smooth way: mute the send that feeds the reverb, not the reverb return. What\'s already ringing fades out naturally, even if you\'re a little late.'+HOT_CREDIT],
+      demos:[{label:'Left on',spec:()=>talkFxSpec(D(),'on')},{label:'Return muted',spec:()=>talkFxSpec(D(),'ret')},{label:'Send muted',spec:()=>talkFxSpec(D(),'send')}]}
   ]},
   { id:'moreFx', title:'More Effects', mascot:'echo', who:'Echo the parrot', color:'#1D5FA8', blurb:'Chorus, doubler, flanger, phaser, tremolo, rotary, drive and delay flavors.', learn:[
     {t:'Two families of effects', p:['Time effects (delay and reverb) and modulation effects (chorus, flanger, phaser, tremolo, rotary), plus drive.','Most modulation and drive live on the musicians\' pedalboards and keyboards. At the console you\'ll mostly add reverb, delay and maybe a doubler. Knowing them all helps you talk with the band and spot problems.']},
@@ -3342,7 +3427,10 @@ const UNITS = [
     {t:'Start with the message', p:['The words carry the message, so the pastor or lead vocal always ends up on top.','You build a song\'s mix from the drums up (drums, bass, band), then set the vocal on top of it. The message is where you finish, not where you start.']},
     {t:'What\'s too loud?', p:['Most mix problems are one thing too loud. Before you boost anything, ask what you can turn down.'],
       demos:[{label:'Balanced',spec:()=>({src:BAND(D())})},{label:'Drums too loud',spec:()=>({src:BAND(D(),{drums:8})})},{label:'Vocals buried',spec:()=>({src:BAND(D(),{lv1:-10,lv2:-10})})}]},
-    {t:'Serve the moment', p:['A quiet prayer needs a different mix than a big chorus. Watch the stage, know the setlist, and move before the moment, not after.']}
+    {t:'A warm hug, not a pinprick', p:['When it feels too loud, look for what\'s sticking out, usually harsh upper mids or a buried vocal under a loud band.','Don\'t cut the low end to make it quieter: the highs then feel brighter and harsher. A full, balanced mix with healthy low end feels less loud, even at the same number on the meter.'+HOT_CREDIT],
+      demos:[{label:'Balanced',spec:()=>({src:BAND(D())})},{label:'Low end cut (same level)',spec:()=>({src:BAND(D()),chain:fxLowCut(),gain:D().cal.lowcut||0})}]},
+    {t:'Mostly mono in the house', p:['In most rooms only the seats near the middle hear both speakers. Pan the electric hard left and one side of the room loses it.','Keep sole instruments (one acoustic, the keys, the vocals) near the center. A little panning, like toms, is fine.'+HOT_CREDIT]},
+    {t:'Serve the moment', p:['A quiet prayer needs a different mix than a big chorus. Watch the stage, know the setlist, and move before the moment, not after.','In the last 30 seconds of every song, find who\'s up next, find their fader, and put your hand on it.'+HOT_CREDIT]}
   ]},
   { id:'keys', title:'Keys & Auto-Tune', mascot:'echo', who:'Echo the parrot', color:'#6D28D9', blurb:'The Nashville Number System, and when to set Auto-Tune to major, chromatic or off.', learn:[
     {t:'Why numbers?', p:['The Nashville Number System names chords by where they sit in the key, not by letter. In the key of G, G is the 1, C is the 4 and D is the 5.','Change the key and the numbers stay the same. That\'s why bands use them, and why a sound tech who knows them can follow every call.']},
@@ -3394,7 +3482,7 @@ const UNITS = [
     {t:'A real Sunday', p:['This challenge uses a song from one of our own services, recorded off the board. You\'ll do what you\'d do on a Sunday, in order.']},
     {t:'1. Soundcheck', p:['The band plays a chorus on a loop and the MC tests their mic. Set every channel\'s gain so its peaks land around -18 to -6 dBFS.','The MC\'s lav is recorded quietly, so it needs a lot more gain than the band.']},
     {t:'2. The song', p:['The whole song plays once, start to finish: a soft opening, then the full band at bar 20. Ride the faders and EQ to keep the vocals on top the whole way. You\'re scored on how balanced it stays over time.']},
-    {t:'3. Into speaking', p:['When the song ends, the keys hold a pad under Vox 3, and then the MC walks up. Get their mic up before the first word, tuck the pad underneath, and keep the click and crowd mics out of the house.']}
+    {t:'3. Into speaking', p:['When the song ends, the keys hold a pad under Vox 3, and then the MC walks up. Get their mic up before the first word, tuck the pad underneath, and keep the click and crowd mics out of the house.','In the last 30 seconds of the song, find the MC\'s fader and put your hand on it.']}
   ]},
   { id:'bcast', title:'The Livestream Mix', mascot:'penny', who:'Penny the pigeon', color:'#7A5900', blurb:'Mix for the people watching at home, the way Bethel mixes its broadcast.', levels:['Learn','Verse','Chorus','Song'], learn:[
     {t:'A different room', p:['The people in the sanctuary hear the speakers and the room. The people at home only hear your console, usually on a phone, a laptop or earbuds.','Luke Hendrickson says the broadcast and the room use the same approach at Bethel: same EQ and compression, same instruments, different tools to get there.']},
@@ -3451,6 +3539,8 @@ const EXERCISES = [
     plan:[['line',1],['line',1],['line',2],['line',2],['line',3],['line',3]] },
   { id:'walkup',  title:'Pastor walks up',     mascot:'sona',  color:'#3F3399', blurb:'Get the pastor\'s mic up before the first word, and the band down under him.', units:['found','mix'],
     plan:[['walk',1],['walk',1],['walk',2],['walk',2],['walk',3]] },
+  { id:'sunday', title:'Sunday moments', mascot:'sona', color:'#C2410C', blurb:'The moments that matter: the pastor walking up, reverb when someone talks, feedback, harsh volume and troubleshooting.', units:['found','verb','eq','mix'],
+    plan:[['walk',1],['verb',2,{kind:'talk'}],['found',2,{kind:'trouble'}],['eq',2,{kind:'feedback'}],['mix',2,{kind:'lowcut'}],['walk',2],['verb',3,{kind:'talk'}],['found',3,{kind:'trouble'}]] },
   { id:'gatefix', title:'Fix the gate', mascot:'kit', color:'#2F7A2F', blurb:'Hands-on: set the gate on real tom and kick mics so every hit comes through and the spill disappears.', units:['gate'], needs:'gate',
     plan:[['gate',1,{kind:'fix'}],['gate',1,{kind:'fix'}],['gate',2,{kind:'fix'}],['gate',2,{kind:'fix'}],['gate',3,{kind:'fix'}],['gate',3,{kind:'fix'}]] },
   { id:'compfix', title:'Fix the compressor', mascot:'hugo', color:'#B8336F', blurb:'Hands-on: fix a squashed vocal, a jumpy vocal and drums that lost their punch, watching the gain-reduction meter.', units:['comp'], needs:'gate',
@@ -3610,6 +3700,7 @@ function vLesson(){
           ${q.needBand?`<button class="btn ghost" data-act="walkBand" style="flex:1" ${q.state.band!=null||answered?'disabled':''}>Bring the band down</button>`:''}</div>`
           : `<button class="btn block" data-act="walkStart">Start</button>`}</div>`
     : q.tool==='eqfix' ? vFixTool(q, answered)
+    : q.tool==='steps' ? vStepsTool(q, answered)
     : q.tool==='gatefix' ? vGateTool(q, answered)
     : q.tool==='compfix' ? vCompTool(q, answered)
     : q.tool==='ringout' ? `<div class="slide" style="text-align:center">
@@ -4155,6 +4246,12 @@ document.addEventListener('click', async e=>{
       st.mic=A.ctx.currentTime-st.t0; st.mic_g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.05); el.disabled=true; break; }
     case 'walkBand': { const q=lessonQ(UI.lesson), st=q.state; if(!st.running||st.band!=null) return;
       st.band=A.ctx.currentTime-st.t0; st.bandBus.gain.setTargetAtTime(db(-15), A.ctx.currentTime, 0.4); el.disabled=true; break; }
+    case 'stepPick': {
+      const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return; const st=q.scen.steps[q.step], i=+el.dataset.i;
+      if(i===0){ q.step++; q.last=null; } else { q.misses++; q.last=st.why; }
+      if(q.step>=q.scen.steps.length){ const ok=q.misses<=1; L.picked=ok?0:1; q.right=ok; if(ok) L.correct++;
+        q.explain = ok ? `Nice and systematic${q.misses?' (one wrong turn)':''}: stay calm, check the basics, assume the simplest failure, then isolate the chain.` : `You got there with ${q.misses} wrong turns. The order matters: attitude, basics, the smallest likely failure, then isolate one part at a time.`; }
+      render(); break; }
     case 'dynLock': {
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const {ok, why} = q.tool==='gatefix' ? gateExplain(q) : compExplain(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
@@ -4173,7 +4270,7 @@ document.addEventListener('click', async e=>{
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const oct=Math.abs(Math.log2(q.state.f/q.ring)), ok=oct<=1/3;
       L.picked = ok ? 0 : 1; q.right=ok; if(ok) L.correct++;
-      q.explain = ok ? `You found it: the ring was near ${hz(Math.round(q.ring/10)*10)} and your cut was at ${hz(Math.round(q.state.f/10)*10)}. On a real console, use a narrow cut (a high Q) of a few dB, just enough to stop the ring.`
+      q.explain = ok ? `You found it: the ring was near ${hz(Math.round(q.ring/10)*10)} and your cut was at ${hz(Math.round(q.state.f/10)*10)}. Put a narrow cut (a high Q) of just a few dB on the main L/R EQ, not on each person's channel. And ask why it rang: is a mic in front of the speakers or near a wedge?`
                      : `The ring was near ${hz(Math.round(q.ring/10)*10)}, but your cut was at ${hz(Math.round(q.state.f/10)*10)}. Tip: sweep slowly and listen for the moment the ringing suddenly disappears.`;
       stopAll(); markPlaying(null); render(); break; }
     case 'answer': {
