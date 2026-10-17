@@ -982,6 +982,18 @@ function eqgSpec(it, on){
   const song=songById(EQG.song), cal=EQG.cal&&EQG.cal[it.id]||{off:0,trim:0,match:0};
   return { src:[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], chain:on?eqStartChain(it.eq):null, gain:on?cal.match:0 };
 }
+// Which starting point each "Let's Have Church" channel uses for the whole-band example.
+const EQG_BAND = { kick:'kick', snare:'snare', toms:'toms', hat:'cymbals', oh:'cymbals', bass:'bass', acc:'acoustic', gtr1:'electric', gtr2:'electric',
+  keys:'keys', b3:'keys', tracks:'perc', melinda:'vocals', corbin:'bgv', taylor:'bgv', chloe:'bgv' };
+// The whole band (bars 42-47, where everyone is playing), flat or with every channel's starting point at once.
+function eqBandSpec(on){
+  const song=songById(EQG.song), off=at(song,42), dur=6*song.bar;
+  return { src:[], len:dur, gain:on ? (EQG.bandMatch||0) : 0, synth:(c,bus,t0)=>{
+    for(const [k,id] of Object.entries(EQG_BAND)){ const b=A.buf[`${song.id}:${k}`], it=EQ_START.find(x=>x.id===id); if(!b) continue;
+      const n=c.createBufferSource(); n.buffer=b; const g=c.createGain(); g.gain.value=db(chDb(song,k)); n.connect(g);
+      (on ? eqStartChain(it.eq)(c,g) : g).connect(bus); n.start(t0, off, dur); }
+  } };
+}
 async function prepEqGuide(){
   if(EQG.cal) return;
   const song=songById(EQG.song), cal={};
@@ -997,6 +1009,7 @@ async function prepEqGuide(){
     if(it.id==='acoustic') cal.acousticAsBass = BAND_TARGET-(await measure({src:[{b:`${song.id}:${eqgCh(it)}`,db:trim,off,dur:6}],chain:eqStartChain(ACOUSTIC_AS_BASS)})).rms;
   }
   EQG.cal=cal;
+  EQG.bandMatch = (await measure(eqBandSpec(false))).rms - (await measure(eqBandSpec(true))).rms;   // level-matched, so you hear the EQ and not the volume
 }
 // The EQ curve, drawn from the same filters the audio uses.
 function eqCurve(eq){
@@ -1023,6 +1036,13 @@ function vEqGuide(){
     <div class="say">${mascot('fenn','','happy')}<div class="bubble"><span class="bt">Where to start, instrument by instrument</span>
       <p>These are starting points, not rules. Every room, system and band is different, so use your ears. Each one plays our live band soloed, level-matched, so you hear the EQ and not the volume.</p></div></div>
     ${cards}
+    <section class="slide eqg-card" style="margin-top:14px">
+      <h2 class="ut" style="font-size:22px">The whole band</h2>
+      <p style="margin:6px 0 0">Now every channel at once: first flat, then with each instrument's starting point. Listen for the low end getting clearer (only the kick and bass down there), the vocals sitting forward, and the mud thinning out. It's level-matched, so it's the EQ you hear, not the volume.</p>
+      <div class="demos">${clipBtn('gbf','Whole band flat','',true)}${clipBtn('gbe','Whole band, starting points','',true)}</div>
+    </section>
+    ${UI.sp ? `<section class="slide" style="margin-top:14px;text-align:center"><p style="margin:0 0 10px"><b>Listened to them all?</b> Take the quick quiz to finish this step and unlock EQ · Easy.</p>
+      <button class="btn block" data-act="exStart" data-ex="eqstart">Take the starting points quiz</button></section>` : ''}
     <p class="foot" style="margin-top:18px">Settings from <b>The Church Audio EQ Guide</b> by MxU. For more EQ help, visit <a href="https://www.getmxu.com" target="_blank" rel="noopener">getmxu.com</a>. Notes from Luke Hendrickson's approach to modern worship mixing.</p>
   </main>`;
 }
@@ -3514,7 +3534,11 @@ const UNITS = [
   ]}
 ];
 const LEVEL_NAMES = ['Learn','Easy','Medium','Hard'];
-const levelName = (u,l) => (u.levels||LEVEL_NAMES)[l];
+const levelName = (u,l) => l==='sp' ? 'Starting points' : (u.levels||LEVEL_NAMES)[l];
+// EQ starting points is a required step in the EQ unit. Passing its quiz anywhere (the path or the Practice list) counts.
+const spDone = () => (S.ex && S.ex.eqstart || 0) >= 6;
+const unitNodes = u => u.id==='eq' ? [0,'sp',1,2,3] : [0,1,2,3];
+const passedNode = (u,l) => l==='sp' ? spDone() : passed(u,l);
 const unitById = id => UNITS.find(u=>u.id===id);
 
 /* ---------- progress rules ---------- */
@@ -3531,7 +3555,8 @@ const EXPERIENCE = [
   {k:'regular', label:'I run sound regularly', sub:'Sundays are mostly on me'},
   {k:'lead', label:'I lead or train the team', sub:'I want to check my ears and teach'} ];
 const PLACE_LEVELS = [[0,'Getting started','We\'ll start at the beginning and build your ears step by step.'],[0.4,'Building skills','You\'ve got some basics. You\'ll skip what you know and focus on the rest.'],[0.7,'Experienced','Your ears are in good shape. Jump into the areas that need work, then the mixing units.'],[0.9,'Ready to lead','Great ears! Everything is open. Use the mixing units and trainer tools to help your team.']];
-const nodeOpen = (i,l) => unitOpen(i) && (S.unlockAll || l===0 || passed(UNITS[i],l-1));
+const nodeOpen = (i,l) => unitOpen(i) && (S.unlockAll || l===0 || (l==='sp' ? passed(UNITS[i],0)
+  : passed(UNITS[i],l-1) && (UNITS[i].id!=='eq' || l!==1 || spDone() || passed(UNITS[i],1))));
 
 /* ============================================================
    VIEWS
@@ -3617,7 +3642,7 @@ function vTop(){
 }
 // Fill gaps first (any open unit's Learn or Easy level), then go deeper.
 function findNext(){
-  for(const maxL of [1,3]) for(let i=0;i<UNITS.length;i++) for(let l=0;l<=maxL;l++) if(!passed(UNITS[i],l) && nodeOpen(i,l)) return {u:UNITS[i],l};
+  for(const maxL of [1,3]) for(let i=0;i<UNITS.length;i++) for(const l of unitNodes(UNITS[i])) if((l==='sp' || l<=maxL) && !passedNode(UNITS[i],l) && nodeOpen(i,l)) return {u:UNITS[i],l};
   return null;
 }
 function vHome(){
@@ -3646,9 +3671,9 @@ function vUnit(u,i,next){
   return `<section class="unit ${open?'':'locked'}" style="--u:${u.color}" aria-label="${u.title} unit">
     <div class="uhead"><div class="m tint" aria-hidden="true">${mascotArt(u.mascot, open?'happy':'sleeping')}</div>
       <div><div class="who ut">${u.id==='final'?'Final unit':['bcast','run'].includes(u.id)?'Bonus unit':'Unit '+(i+1)} · ${u.who}</div><h2>${u.title}</h2><p>${u.blurb}</p></div></div>
-    <div class="nodes">${[0,1,2,3].map(l=>{
-      const ok=nodeOpen(i,l), done=passed(u,l), isNext=next&&next.u===u&&next.l===l;
-      const icon = done?I.check : !ok?I.lock : l===0?I.book : ['final','bcast','run'].includes(u.id)?I.sliders : l;
+    <div class="nodes" style="${u.id==='eq'?'grid-template-columns:repeat(5,1fr)':''}">${unitNodes(u).map(l=>{
+      const ok=nodeOpen(i,l), done=passedNode(u,l), isNext=next&&next.u===u&&next.l===l;
+      const icon = done?I.check : !ok?I.lock : l===0?I.book : l==='sp'?I.sliders : ['final','bcast','run'].includes(u.id)?I.sliders : l;
       return `<button class="node ${done?'done':''} ${!ok?'lock':''} ${isNext?'next':''}" data-act="open" data-u="${u.id}" data-l="${l}" ${ok?'':'disabled'} aria-label="${u.title} ${levelName(u,l)}${done?', complete':''}${ok?'':', locked'}">
         <span class="dot">${icon}</span>${levelName(u,l)}</button>`;
     }).join('')}</div>
@@ -3935,6 +3960,7 @@ function vResult(){
     return `<main class="wrap center big">${mascot(x.mascot,'','celebrating')}
       <h1 style="font-size:34px" class="ut">${r.correct===r.total?'Perfect!':'Nice work!'}</h1>
       <p style="color:var(--ink2);margin:6px 0 0">${x.title}: ${r.correct} of ${r.total} right.</p>
+      ${r.exercise==='eqstart' ? `<p style="margin:8px 0 0"><b>${r.correct>=6 ? 'Starting points step complete. EQ · Easy is unlocked.' : 'Get 6 of 8 to finish the Starting points step and unlock EQ · Easy.'}</b></p>` : ''}
       <div class="stats"><div class="stat"><b>${r.correct}/${r.total}</b><span>Correct</span></div><div class="stat"><b>+${r.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div></div>
       <div class="row"><button class="btn" data-act="exStart" data-ex="${x.id}" style="flex:1">Go again</button><button class="btn ghost" data-act="home" style="flex:1">Home</button></div>
     </main>`; }
@@ -4174,7 +4200,7 @@ function finishLesson(){
 function clipSpec(k){
   if(k==='test') return {src:PINK(SONGS[0])};
   if(UI.screen==='learn') return unitById(UI.unit).learn[UI.slide].demos[+k.slice(1)].spec();
-  if(UI.screen==='eqguide'){ const m=k.match(/^g(\d+)([fe])$/); return eqgSpec(EQ_START[+m[1]], m[2]==='e'); }
+  if(UI.screen==='eqguide'){ if(k==='gbf'||k==='gbe') return eqBandSpec(k==='gbe'); const m=k.match(/^g(\d+)([fe])$/); return eqgSpec(EQ_START[+m[1]], m[2]==='e'); }
   const q=lessonQ(UI.lesson);
   return (k[0]==='a'?q.after:k[0]==='r'?q.refs:q.clips)[+k.slice(1)].spec;
 }
@@ -4269,7 +4295,7 @@ document.addEventListener('click', async e=>{
     case 'placeStart': stopAll(); await withAudio(startPlacement); window.scrollTo(0,0); break;
     case 'placeSkip': S.placement = S.placement || null; go({screen:'home'}); break;
     case 'placeAgain': go({screen:'place'}); break;
-    case 'open': openLevel(el.dataset.u, +el.dataset.l); break;
+    case 'open': if(el.dataset.l==='sp'){ await openEqGuide('home'); UI.sp=true; render(); } else openLevel(el.dataset.u, +el.dataset.l); break;
     case 'practice': stopAll(); await withAudio(startPractice); window.scrollTo(0,0); break;
     case 'slide': go(Object.assign({}, UI, {slide:Math.max(0,UI.slide+(+el.dataset.d))})); break;
     case 'learnDone': {
