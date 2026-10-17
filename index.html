@@ -991,7 +991,7 @@ function eqBandOne(it, mode, chain, store){
 }
 function eqmixQ(l){
   const ids = l===1 ? ['snare','toms','cymbals','acoustic','electric','vocals','keys','bgv','perc'] : ['kick','snare','toms','bass','acoustic','electric','vocals','keys','bgv'];
-  const pid=pick(ids.filter(id=>EQG.cal[id])), it=EQ_START.find(x=>x.id===pid), name=it.name.toLowerCase(), state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
+  const pid=fresh(ids.filter(id=>EQG.cal[id]), id=>`${EQG.song}:${id}`), it=EQ_START.find(x=>x.id===pid), name=it.name.toLowerCase(), state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
   const prompt = l===1 ? `Set the high-pass on the ${name} so it sits in the band.` : l===2 ? `Set the EQ on the ${name} in the mix: its high-pass and its most important cut.` : `Set the ${name} in the mix from scratch: the high-pass, the key cut, and no big boosts.`;
   return { tool:'eqmix', dispUnit:'eq', song:EQG.song, it, level:l, state, prompt,
     hint:`The rest of the band already has its starting-point EQ. Press Play (it loops). Use Solo to hear the ${name} alone, then put it back in the band. The starting point, and why: ${eqWhy(it)}`,
@@ -1127,10 +1127,12 @@ function fixQuestion(l){
     if(f.type==='peaking') f.f=Math.round(f.f*Math.pow(2,(Math.random()-0.5)*0.8));   // move it around so you have to sweep
     f.g = Math.sign(f.g)*g; return {...t, f}; };
   if(l<3){
-    const id=pick(Object.keys(FIX_PROBS)); it=pick(its.filter(x=>FIX_PROBS[id].includes(x.id))); probs=[mk(id, l===1?11:9)];
+    const u=lessonUsed(), ids=Object.keys(FIX_PROBS), open=ids.filter(id=>its.some(x=>FIX_PROBS[id].includes(x.id) && !u.has(`${EQG.song}:${x.id}`)));
+    const id=pick(open.length?open:ids); it=fresh(its.filter(x=>FIX_PROBS[id].includes(x.id)), x=>`${EQG.song}:${x.id}`); probs=[mk(id, l===1?11:9)];
   } else {
-    const a=pick(['mud','boxy','honk','harsh']), b=pick(['boom','dull']);
-    it=pick(its.filter(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id))); probs=[mk(a,8),mk(b,8)];
+    const u=lessonUsed(), pairs=['mud','boxy','honk','harsh'].flatMap(a=>['boom','dull'].map(b=>[a,b])).filter(([a,b])=>its.some(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id)));
+    const open=pairs.filter(([a,b])=>its.some(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id)&&!u.has(`${EQG.song}:${x.id}`))), [a,b]=pick(open.length?open:pairs);
+    it=fresh(its.filter(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id)), x=>`${EQG.song}:${x.id}`); probs=[mk(a,8),mk(b,8)];
   }
   const state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
   const cal=EQG.cal[it.id], song=songById(EQG.song);
@@ -1744,7 +1746,7 @@ function gateSim(x, sr, P){
   return out;
 }
 /* ----- Fix the gate ----- */
-const GATE_SRCS = [['lhc','toms','Toms'],['lhc','kick','Kick'],['rcc','floor','Floor tom'],['rcc','rack','Rack tom']];
+const GATE_SRCS = [['lhc','toms','Toms'],['lhc','kick','Kick'],['isg','toms','Toms'],['isg','kick','Kick'],['rcc','floor','Floor tom'],['rcc','rack','Rack tom']];
 let FIXG = [];
 // Find 6-second stretches with clear hits and spill between them, on every loaded drum mic.
 function prepGateFix(){
@@ -1804,14 +1806,14 @@ function gateFixQuestion(l){
   const kind = l===1 ? 'chop' : l===2 ? pick(['open','choke']) : 'scratch';
   let w, D, best, P, tries=0;
   // Pick a clip where a good gate setting exists and the starting setup really has the problem.
-  for(const cand of shuffle(FIXG.slice())){
+  for(const cand of freshFirst(FIXG, w=>`${w.song}:${w.k}`)){
     if(++tries>12) break;
     const d=gateData(cand); if(d.hits.length<2 || d.minHit-d.spill<8 || d.minHit-d.spill>40) continue;
     const b=gateBest(d); if(!b || b.R.closed<0.6) continue;
     const p = { chop:{thr:Math.min(-1,Math.round(d.minHit+5)), range:-40, hold:80, rel:150}, open:{thr:Math.round(d.spill-8), range:-40, hold:80, rel:150},
       choke:{thr:Math.round(d.minHit-3), range:-40, hold:2, rel:8}, scratch:{thr:-70, range:-6, hold:5, rel:20} }[kind];
     if(gatePass(d, p, b.R.closed)) continue;
-    w=cand; D=d; best=b; P=p; break;
+    w=cand; D=d; best=b; P=p; markUsed(`${w.song}:${w.k}`); break;
   }
   if(!w) return null;
   const good=best.P;
@@ -2572,7 +2574,8 @@ const chWord = n => /^(kick|snare|bass|acoustic|keys|hi-hat|overheads|rack|floor
 const GAIN_WHY = 'Peaks around -18 to -6 dBFS leave headroom for when they play or sing louder in the service, and keep the hiss well below the music. Then the fader does the mixing.';
 function gainSetQ(l){
   const songs=readySongs().filter(x=>x.mix.every(k=>A.buf[`${x.id}:${k}`])), gs=pick(songs.length?songs:[D()]), off=pickWin(gs,'full');
-  const pool=shuffle(gs.mix.filter(k=>!gs.traps.includes(k) && soloSrc(gs,k,off).rms>-45)), n=l===3?3:1;
+  const pool=freshFirst(gs.mix.filter(k=>!gs.traps.includes(k) && soloSrc(gs,k,off).rms>-45), k=>`${gs.id}:${k}`), n=l===3?3:1;
+  pool.slice(0,n).forEach(k=>markUsed(`${gs.id}:${k}`));
   const chs=pool.slice(0,n).map(k=>{
     const b=A.buf[`${gs.id}:${k}`], sr=b.sampleRate, d=b.getChannelData(0), s0=Math.floor(off*sr), e=Math.min(d.length, s0+Math.floor(gs.len*sr)); let pk=0; for(let i=s0;i<e;i++) pk=Math.max(pk,Math.abs(d[i]));
     const rawPk=20*Math.log10(pk+1e-9), aim = l===1 ? pick([-42,4]) : pick([-36,-30,-1,3]);
@@ -2630,7 +2633,7 @@ function fitQ(l){
   const live=liveChannels(song,off).filter(k=>!song.traps.includes(k));
   const easy=live.filter(k=>['lead vocal','bass','kick','snare','acoustic'].includes(fitRole(song,k)[0]));
   const subtle=live.filter(k=>['lead vocal','background vocal','keys','acoustic','electric'].includes(fitRole(song,k)[0]));
-  const k=pick(l===1 && easy.length ? easy : l===3 && subtle.length ? subtle : live), [role, why]=fitRole(song,k);
+  const k=fresh(l===1 && easy.length ? easy : l===3 && subtle.length ? subtle : live, k=>`${song.id}:${k}`), [role, why]=fitRole(song,k);
   const target=Math.round(-12+Math.random()*10), far = l===1 ? 10+Math.random()*4 : l===2 ? 6+Math.random()*3 : 4+Math.random()*2.5;
   const v0=Math.max(FADER_MIN+2, Math.min(10, Math.round((target+(coin()?far:-far))*2)/2));
   const state={ v:v0, target, mute:false, node:null }, tol = l===1 ? 3.5 : l===2 ? 2.5 : 2;
@@ -2698,6 +2701,12 @@ const fxPhone = song => (c,inp)=>{
 /* ---------- question helpers ---------- */
 const pick = a => a[Math.floor(Math.random()*a.length)];
 const coin = () => Math.random()<0.5;
+// Within one lesson, don't give the same instrument from the same song twice (until every choice has been used).
+// When everything has been used, the one used longest ago comes first, so they rotate.
+const lessonUsed = () => { const L=typeof UI!=='undefined' && UI.lesson; return L ? (L.used = L.used || new Map()) : new Map(); };
+const freshFirst = (items, key) => { const u=lessonUsed(), age=x=>u.has(key(x)) ? u.get(key(x)) : -1; return shuffle(items).sort((a,b)=>age(a)-age(b)); };
+const markUsed = key => { const u=lessonUsed(); u.set(key, u.size ? Math.max(...u.values())+1 : 0); };
+function fresh(items, key){ const x=freshFirst(items, key)[0]; if(x!==undefined) markUsed(key(x)); return x; }
 const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 // A/B question: which clip is the "yes" one? Clip names are revealed after answering.
 function abQ({prompt, yes, no, yesName, noName, explain, extra}){
@@ -2896,7 +2905,7 @@ const GEN = {
       return Object.assign(abQ({ prompt:'Which acoustic guitar leaves room for the kick and bass?', yes:eqgSpec(it,true), no:sw, yesName:'High-passed (the guide\'s picture)', noName:'Bass settings (the table\'s mistake)',
         explain:L=>`${L} was high-passed and cut around 300 Hz. The other used the bass settings that the guide\'s acoustic table repeats by mistake: it adds low end right where the kick and bass live.` }), tag);
     }
-    const it=pick(EQ_START.filter(x=>EQG.cal[x.id]));
+    const it=fresh(EQ_START.filter(x=>EQG.cal[x.id]), x=>`${EQG.song}:${x.id}`);
     return Object.assign(abQ({ prompt:`Which ${it.name.toLowerCase()} clip has the starting-point EQ?`, yes:eqgSpec(it,true), no:eqgSpec(it,false), yesName:'Starting point', noName:'Flat',
       explain:L=>`${L} had it. Here's why each move helps: ${eqWhy(it)}` }), tag);
   },
@@ -4264,7 +4273,7 @@ async function openExercise(id){
   if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
     await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
       UI.mix.quick=true; UI.mix.build=false; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
-  else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
+  else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
   else if(x.guide){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startExercise(id); render(); }
   else await withAudio(()=>startExercise(id), x.plan.some(p=>p[0]==='ours')?'rcc':undefined);
   window.scrollTo(0,0);
@@ -4334,7 +4343,7 @@ async function openLevel(id, l){
     if(!(await withAudio())) return;
     const songs=mixSongs(dest), song=songs[S.mixTurn%songs.length];
     await withAudio(()=>startMixer(l, song.id, dest), song.id);
-  } else if(id==='gate' || id==='comp'){ if(!(await withAudio(null,'lhc'))) return; A.gateOk=await ensureGate(); prepGateFix(); startLesson(id,l); render(); }
+  } else if(id==='gate' || id==='comp'){ if(!(await withAudio(null,'lhc'))) return; await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startLesson(id,l); render(); }
   else if(id==='eq'){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startLesson(id,l); render(); }
   else await withAudio(()=>startLesson(id,l), id==='ours'?'rcc':undefined);
   window.scrollTo(0,0);
