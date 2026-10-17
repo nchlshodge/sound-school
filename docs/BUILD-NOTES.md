@@ -10,9 +10,7 @@ How Sound School's audio was prepared and how its reference mixes were measured.
 | `lhc` | Let's Have Church | Live multitrack, 50 mics | 170 | Bars 12–52 | 17.938 s / 56.471 s |
 | `isg` | I'm So Glad I Met Jesus | Live multitrack, same band and mic list | 180 | Bars 16–56 | 27.652 s / 53.333 s |
 | `gsg` | God So Good | Life.Church live stems (15 stereo stems, raw files in `stems/GodsoGoodLifeChurch/`, not in git) | 77.5 | The whole song (bar 1 = 0:00) | 0 s / 326.3 s |
-| `rcc1` | RCC Song 1 (title TBD) | Our Feb 15 multitrack, 18:41–25:46 of the service | 136 (click) | Whole song, sections from the arrangement | 1121 s / 425 s |
-| `rcc2` | RCC Song 2 (title TBD) | Our Feb 15 multitrack, 31:30–39:20 | 136 (click) | Whole song, sections from the arrangement | 1890 s / 470 s |
-| `rcc` | RCC Sunday (Feb 15, 2026) | RCC's own live multitrack (Google Drive) | 136 | Bars 12–170 (song into the MC) | 43:00–48:45 of the service recording |
+| `rcc` | RCC Sunday (Feb 15, 2026), **hidden** | RCC's own live multitrack (Google Drive). Not in the song lists or drills (`hidden:true`); it still powers the soundcheck, the Sunday run, the tom gates and "Our mix vs. Bethel" until it's replaced by another service. RCC Song 1 and 2 (`rcc1`, `rcc2`) were removed from the app; their stems are still in `stems/` and Storage. | 136 | Bars 12–170 (song into the MC) | 43:00–48:45 of the service recording |
 
 Bar numbers for the live songs count from the first click (`lhc` first click at 0.997 s, `isg` at 6.319 s). Tempo came from the median spacing of click-track onsets.
 
@@ -82,3 +80,8 @@ The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 4
 - **Budget:** a $5/month budget on the billing account emails at 50%, 90% and 100%.
 - **Song stems** are kept out of public hosting (`firebase.json`) and load from Firebase Storage, which `storage.rules` limits to approved people. Storage needs the Blaze plan.
 - **Local copies** (localhost or the Wi-Fi test server) skip sign-in and load stems from this folder. Add `?cloud` to the URL to test sign-in locally.
+
+## Hands-on games (Oct 2026)
+- **Set the gain** (`gainSetQ`, tool `gainset`): real channels from any loaded song. Easy starts very low or clipping; Hard is a three-channel soundcheck with Listen buttons. Graded on the true peak over the loop (raw peak + gain) against -18 to -6 dBFS.
+- **Fit it in the mix** (`fitQ`, tool `volfit`): one channel's fader starts 4–14 dB off. The target fader position is random, so the number gives nothing away. Graded within 3.5 / 2.5 / 2 dB. Each channel's role (`fitRole`) is repeated in the hint and the feedback.
+- **Set it in the mix** (`eqmixQ`): the band at its starting points, with one instrument flat. The feedback repeats that instrument's starting-point reasons (`eqWhy`), and so do Fix the EQ and the starting-points quiz.

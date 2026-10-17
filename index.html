@@ -619,47 +619,8 @@ const SONGS = [
       2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
       3:{ bars:[3,105] } }
   },
-  // Our band's first two worship songs from the same Feb 15 service (song 1 at 18:41, song 2 at 31:30).
-  // Sections were found from where the band changes (no cue track was recorded); the names are placeholders to rename.
-  { id:'rcc1', title:'RCC Song 1', bpm:136, firstBar:1, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
-    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
-         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
-         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
-         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
-    // Same band, mics and board as RCC Sunday, so the same starting reference balance.
-    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11 },
-    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
-    groups:[ null,
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
-      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
-    win:{ verse:[48,56,64], gap:[93.5], full:[160,168,176,184,192,200] },
-    sections:[ {name:'Part A',bars:[1.57,15.5]}, {name:'Part B',bars:[15.5,31.25]}, {name:'Part C',bars:[31.25,47.27]}, {name:'Part D (1)',bars:[47.27,77.26]}, {name:'Part E (1)',bars:[77.26,87.27]}, {name:'Part D (2)',bars:[87.27,95.27]}, {name:'Part F',bars:[95.27,111.26]}, {name:'Part E (2)',bars:[111.26,126.62]}, {name:'Part G (1)',bars:[126.62,134.24]}, {name:'Part H',bars:[134.24,149.64]}, {name:'Part I (1)',bars:[149.64,159.26]}, {name:'Part G (2)',bars:[159.26,190.23]}, {name:'Part I (2)',bars:[190.23,215.26]}, {name:'Part J',bars:[215.26,224.92]}, {name:'Part K',bars:[224.92,241.27]} ],
-    missions:{
-      1:{ bars:[160,176], ch:['kick','snare','hat','oh','bass','acc','keys','vox3','vox2'] },
-      2:{ bars:[176,192], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
-      3:{ bars:[2,241] } }
-  },
-  { id:'rcc2', title:'RCC Song 2', bpm:136, firstBar:1, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
-    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
-         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
-         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
-         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
-    // Same band, mics and board as RCC Sunday, so the same starting reference balance.
-    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11 },
-    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
-    groups:[ null,
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
-      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
-    win:{ verse:[16,24,42], gap:[102.5], full:[161,169,177,186,200,214] },
-    sections:[ {name:'Part A',bars:[1.0,14.93]}, {name:'Part B',bars:[14.93,30.95]}, {name:'Part C',bars:[30.95,40.29]}, {name:'Part D',bars:[40.29,55.93]}, {name:'Part E',bars:[55.93,86.46]}, {name:'Part F (1)',bars:[86.46,104.45]}, {name:'Part G',bars:[104.45,121.3]}, {name:'Part H',bars:[121.3,136.43]}, {name:'Part F (2)',bars:[136.43,150.45]}, {name:'Part I (1)',bars:[150.45,160.45]}, {name:'Part J (1)',bars:[160.45,184.44]}, {name:'Part I (2)',bars:[184.44,232.2]}, {name:'Part J (2)',bars:[232.2,254.45]}, {name:'Part K',bars:[254.45,266.2]} ],
-    missions:{
-      1:{ bars:[161,177], ch:['kick','snare','hat','oh','bass','acc','keys','vox3','vox2'] },
-      2:{ bars:[186,202], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
-      3:{ bars:[1,266] } }
-  },
-  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true,
+  // hidden: not in the song lists or drills (to be replaced by another service); still powers the soundcheck, the Sunday run, tom gates and "Our mix vs. Bethel".
+  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true, hidden:true,
     ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
          {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
          {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
@@ -694,6 +655,7 @@ for(const s of SONGS){
   s.ref0={...s.ref}; s.ready=false; s.trim=0; s.vtrim=0;
 }
 const songById = id => SONGS.find(s=>s.id===id);
+const LISTED = () => SONGS.filter(s=>!s.hidden);   // the songs people pick and drill with
 const at = (song, bar) => (bar-song.firstBar)*song.bar;           // song bar -> seconds into the stem files
 const pickWin = (song, kind) => at(song, pick(song.win[kind]));
 function applySavedRefs(){ for(const s of SONGS) s.ref = {...s.ref0, ...((S.refs||{})[s.id]||{})}; }
@@ -824,7 +786,7 @@ function loadSong(song, show){
     song.ready=true;
   })().catch(e=>{ A.loading[song.id]=null; throw e; });
 }
-const readySongs = () => SONGS.filter(s=>s.ready);
+const readySongs = () => LISTED().filter(s=>s.ready);
 
 function offline(dur, build){
   const sr=A.ctx.sampleRate, c=new OfflineAudioContext(1, Math.ceil(dur*sr), sr);
@@ -994,6 +956,57 @@ function eqBandSpec(on){
       (on ? eqStartChain(it.eq)(c,g) : g).connect(bus); n.start(t0, off, dur); }
   } };
 }
+/* ----- Why each starting point helps the mix, and "Set it in the mix" (hands-on) -----
+   checks: the moves that matter most for that instrument, judged with the channel EQ (high-pass, low 120 Hz, mid, high 8 kHz). */
+// The starting point's own reasons, repeated wherever someone sets or fixes that instrument.
+const eqWhy = it => it.moves.map(([k,f,w])=>`${k} ${f}: ${w}.`).join(' ');
+const inR = (v,a,b) => v>=a && v<=b;
+const midCut = (e,a,b,d=-3) => e.mg<=d && inR(e.mf,a,b);
+const EQ_MIX = {
+  kick:{ checks:[ {t:e=>e.hp<=40, tip:'Leave the high-pass off (or at 40 Hz at most): the kick owns the low end.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness: a few dB somewhere around 400–700 Hz.'} ] },
+  snare:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'High-pass the snare around 80–120 Hz: it has no useful sub.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
+  toms:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'High-pass the toms around 90–120 Hz, just under their note.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
+  cymbals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the overheads around 200 Hz.'} ] },
+  bass:{ checks:[ {t:e=>e.hp<=60, tip:'Keep the bass\'s low end: high-pass no higher than about 40–60 Hz.'}, {t:e=>midCut(e,120,260,-2) || (e.mg>=2 && inR(e.mf,450,1000)), tip:'Shape it: a small cut around 160 Hz (less low-mid buildup) or a boost around 600–700 Hz (growl you can hear).'} ] },
+  acoustic:{ checks:[ {t:e=>inR(e.hp,100,250), tip:'High-pass the acoustic around 140 Hz (higher in a full band).'}, {t:e=>midCut(e,200,450), tip:'Cut the low-mid mud around 300 Hz.'} ] },
+  electric:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the electric around 200 Hz.'}, {t:e=>midCut(e,300,550) || midCut(e,2000,4500), tip:'Make room: cut around 400 Hz (buildup) or 2–4 kHz (space for the vocal).'} ] },
+  vocals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the vocal around 200–250 Hz (a bit lower for a deep voice).'}, {t:e=>midCut(e,250,450), tip:'Cut the mud around 300–350 Hz.'} ] },
+  keys:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the keys around 200 Hz.'}, {t:e=>midCut(e,2000,4500,-2) || e.hi<=-2, tip:'Make room for the vocal: a small dip around 3 kHz.'} ] },
+  perc:{ checks:[ {t:e=>inR(e.hp,40,80), tip:'High-pass the loop low, around 45–60 Hz: keep its weight.'} ] },
+  bgv:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the background vocals around 200 Hz.'}, {t:e=>midCut(e,2500,4500,-2) || e.hi<=-2, tip:'Tuck them behind the lead: cut a little around 3 kHz or turn the highs down.'} ] }
+};
+// The band at its starting points, with one instrument either flat, at its starting point (level-matched), or through `chain`.
+function eqBandOne(it, mode, chain, store){
+  const song=songById(EQG.song), off=at(song,42), dur=6*song.bar, tk=eqgCh(it);
+  return { src:[], len: store ? 600 : dur, synth:(c,bus,t0)=>{
+    const others=c.createGain(); others.connect(bus); if(store) store.others=others;
+    for(const [k,id] of Object.entries(EQG_BAND)){ const b=A.buf[`${song.id}:${k}`], x=EQ_START.find(y=>y.id===id); if(!b) continue;
+      const n=c.createBufferSource(); n.buffer=b; if(store){ n.loop=true; n.loopStart=off; n.loopEnd=off+dur; }
+      const g=c.createGain(); g.gain.value=db(chDb(song,k)); n.connect(g);
+      if(k===tk){ g.gain.value=db(chDb(song,k) + (mode==='on' ? (EQG.cal[it.id]?.match||0) : 0));   // the starting point is level-matched to the flat version
+        (mode==='on' ? eqStartChain(it.eq)(c,g) : mode==='user' ? chain(c,g) : g).connect(bus); }
+      else eqStartChain(x.eq)(c,g).connect(others);
+      if(store) n.start(t0, off); else n.start(t0, off, dur); }
+  } };
+}
+function eqmixQ(l){
+  const ids = l===1 ? ['snare','toms','cymbals','acoustic','electric','vocals','keys','bgv','perc'] : ['kick','snare','toms','bass','acoustic','electric','vocals','keys','bgv'];
+  const pid=pick(ids.filter(id=>EQG.cal[id])), it=EQ_START.find(x=>x.id===pid), name=it.name.toLowerCase(), state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
+  const prompt = l===1 ? `Set the high-pass on the ${name} so it sits in the band.` : l===2 ? `Set the EQ on the ${name} in the mix: its high-pass and its most important cut.` : `Set the ${name} in the mix from scratch: the high-pass, the key cut, and no big boosts.`;
+  return { tool:'eqmix', dispUnit:'eq', song:EQG.song, it, level:l, state, prompt,
+    hint:`The rest of the band already has its starting-point EQ. Press Play (it loops). Use Solo to hear the ${name} alone, then put it back in the band. The starting point, and why: ${eqWhy(it)}`,
+    clips:[{label:'Play', spec:eqBandOne(it,'user',fixChain([], state.eq, state), state)}], options:['Lock it in'], answer:0, explain:'' };
+}
+function eqmixGrade(q){
+  const e={...q.state.eq}, M=EQ_MIX[q.it.id], checks = q.level===1 ? M.checks.slice(0,1) : M.checks, fails=checks.filter(c=>!c.t(e)).map(c=>c.tip);
+  if(q.level===3 && (e.lo>6 || e.mg>6 || e.hi>6)) fails.push('Go easy on boosts: starting points are mostly cuts. Keep any boost under about 6 dB.');
+  const ok=!fails.length;
+  q.after=[{label:'with your EQ', spec:eqBandOne(q.it,'user',fixChain([], e))}, {label:'with the starting point', spec:eqBandOne(q.it,'on')}, {label:`with the ${q.it.name.toLowerCase()} flat`, spec:eqBandOne(q.it,'flat')}];
+  return { ok, why: (ok ? 'That\'s it. ' : 'Not quite. '+fails.join(' ')+' ') + `Remember why: ${eqWhy(q.it)}` };
+}
+function vMixTool(q, answered){
+  return `<div class="row" style="margin-bottom:8px"><button class="btn ghost" data-act="mixSolo" aria-pressed="${!!q.state.solo}" style="flex:1" ${answered?'disabled':''}>${q.state.solo?`Soloed: ${q.it.name}`:`Solo the ${q.it.name.toLowerCase()}`}</button></div>`+vFixTool(q, answered);
+}
 async function prepEqGuide(){
   if(EQG.cal) return;
   const song=songById(EQG.song), cal={};
@@ -1029,7 +1042,10 @@ function vEqGuide(){
       <ul class="eqg-moves">${it.moves.map(([k,f,why])=>`<li><b>${k} ${f}</b>: ${why}</li>`).join('')}</ul>
       ${it.note?`<p class="foot" style="margin:6px 0 0">${it.note}</p>`:''}
       ${it.luke?`<p style="margin:8px 0 0;color:var(--ink2)"><b>Luke Hendrickson:</b> ${it.luke}</p>`:''}
-      <div class="demos">${clipBtn('g'+i+'f','Flat','',true)}${clipBtn('g'+i+'e','Starting point','',true)}</div>
+      <div class="kicker" style="color:var(--ink2);margin:10px 0 2px">Soloed</div>
+      <div class="demos" style="margin-top:4px">${clipBtn('g'+i+'f','Flat','',true)}${clipBtn('g'+i+'e','Starting point','',true)}</div>
+      ${EQG_BAND && Object.values(EQG_BAND).includes(it.id) ? `<div class="kicker" style="color:var(--ink2);margin:10px 0 2px">In the band</div>
+      <div class="demos" style="margin-top:4px">${clipBtn('g'+i+'m','Flat','',true)}${clipBtn('g'+i+'n','Starting point','',true)}</div>` : ''}
     </section>`).join('');
   return `<div class="lbar"><button class="iconbtn" data-act="${UI.back||'home'}" aria-label="Back">${I.back}</button><h1 style="font-size:24px">EQ starting points</h1></div>
   <main class="wrap" style="padding-bottom:40px">
@@ -1158,6 +1174,7 @@ function fixGrade(q){
     : !hpOk ? `The tone is ${res<=4.5?'fixed':'closer'}, but the high-pass for ${it.name.toLowerCase()} usually starts ${ref?`around ${hz(ref)}`:'off (the kick needs its low end)'}. It was ${names}: ${where}.`
     : `Not quite. It was ${names}: ${where}. The fix: ${fix}. Your EQ still leaves it about ${Math.round(res)} dB off.`;
   if(ref && hpOk && !hpHigh && (q.needHp || !ok)) why += ` Starting-point high-pass for ${it.name.toLowerCase()}: about ${hz(ref)}.`;
+  why += ` Remember the ${it.name.toLowerCase()} starting point, and why: ${eqWhy(it)}`;
   const song=songById(EQG.song), cal=EQG.cal[it.id], src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], flat={hp:0,lo:0,mg:0,mf:1000,hi:0};
   q.after=[{label:'with the problem', spec:{src, chain:fixChain(q.probs, flat)}}, {label:'with your EQ', spec:{src, chain:fixChain(q.probs, e)}}, {label:'fixed right', spec:{src, chain:fixChain(q.probs, fixBest(q.probs,it))}}];
   return {ok, why};
@@ -1416,7 +1433,7 @@ function vConsole(){
   return `<div class="lbar"><button class="iconbtn" data-act="conQuit" aria-label="Leave the console">${I.close}</button><h1 style="font-size:22px;flex:1">Mixing console</h1></div>
   <main class="wrap" style="padding-bottom:110px;max-width:1100px">
     <div class="row" style="margin-bottom:8px;align-items:center;gap:8px">
-      <select class="hpf" data-act="conSong" aria-label="Song" style="flex:1;max-width:none;min-height:40px">${SONGS.map(x=>`<option value="${x.id}" ${x.id===song.id?'selected':''}>${esc(x.title)}</option>`).join('')}</select>
+      <select class="hpf" data-act="conSong" aria-label="Song" style="flex:1;max-width:none;min-height:40px">${LISTED().map(x=>`<option value="${x.id}" ${x.id===song.id?'selected':''}>${esc(x.title)}</option>`).join('')}</select>
       <select class="hpf" data-act="conStartSel" aria-label="Start from" style="flex:1;max-width:none;min-height:40px">${[['rough','Start: rough mix'],['down','Start: all faders down'],['ref','Start: Sona\'s mix']].map(([v,t])=>`<option value="${v}" ${C.start===v?'selected':''}>${t}</option>`).join('')}</select>
     </div>
     <div class="secrow" role="group" aria-label="Loop a section"><span>Loop:</span>${secs.map((x,i)=>`<button class="chipbtn ${C.sec===i?'on':''}" data-act="conSec" data-i="${i}" aria-pressed="${C.sec===i}">${x.name}</button>`).join('')}</div>
@@ -2382,7 +2399,7 @@ const FX_TYPES = {
     fx:()=> (c,inp)=>{ const p=c.createStereoPanner(); p.pan.value=0; lfo(c,0.5,0.9,p.pan); inp.connect(p); return p; } }
 };
 // Which instrument each effect usually lives on, per song.
-const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg',rcc1:'acc',rcc2:'acc'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys',rcc1:'keys',rcc2:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad',rcc1:'keys',rcc2:'keys'} };
+const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad'} };
 const FX_ON = { chorus:['guitar','keys','vocal'], doubler:['vocal'], flanger:['guitar'], phaser:['keys','guitar'], tremolo:['guitar','keys'], rotary:['organ'], drive:['guitar'], pingpong:['vocal','guitar'], tape:['vocal','guitar'], digital:['vocal','guitar'], autopan:['keys'] };
 function fxSource(s, kind){
   const off=pickWin(s, kind==='vocal'?'verse':'full');
@@ -2538,15 +2555,113 @@ const fxComb = ms => (c,inp)=>{ const out=c.createGain(); out.gain.value=db(-4);
 /* ----- Gain staging: a live channel meter ----- */
 function gainMeterLoop(q){
   const st=q.state, buf=new Float32Array(2048);
-  const tick=()=>{
-    const bar=document.getElementById('gm-bar');
-    st.an.getFloatTimeDomainData(buf); let pk=0; for(const x of buf) pk=Math.max(pk,Math.abs(x));
-    const d=20*Math.log10(pk*db(st.gainDb)+1e-9); st.hist.push([performance.now(), d]); st.hist=st.hist.filter(h=>performance.now()-h[0]<3000);
-    const hold=Math.max(...st.hist.map(h=>h[1]));
+  const tick=()=>st.chs.forEach((ch,i)=>{
+    const bar=document.getElementById('gm-bar-'+i); if(!bar || !ch.an) return;
+    ch.an.getFloatTimeDomainData(buf); let pk=0; for(const x of buf) pk=Math.max(pk,Math.abs(x));
+    const d=20*Math.log10(pk*db(ch.gainDb)+1e-9), now=performance.now(); ch.hist.push([now, d]); ch.hist=ch.hist.filter(h=>now-h[0]<3000);
+    const hold=Math.max(...ch.hist.map(h=>h[1]));
     bar.style.width=Math.max(0,Math.min(100,(d+60)/66*100))+'%'; bar.className = d>0?'clip' : d>-6?'hot' : d>-18?'good' : 'low';
-    const t=document.getElementById('gm-txt'); if(t) t.textContent = hold<-80 ? 'No signal yet' : `Peaks: ${hold>0?'+':''}${hold.toFixed(0)} dBFS${hold>0?' · CLIPPING':''}`;
-  };
-  clearInterval(st.timer); st.timer=setInterval(()=>{ if(!document.getElementById('gm-bar') || !st.an){ clearInterval(st.timer); return; } tick(); }, 50);
+    const t=document.getElementById('gm-txt-'+i); if(t) t.textContent = hold<-80 ? 'No signal yet' : `Peaks: ${hold>0?'+':''}${hold.toFixed(0)} dBFS${hold>0?' · CLIPPING':''}`;
+  });
+  clearInterval(st.timer); st.timer=setInterval(()=>{ if(!document.getElementById('gm-bar-0')){ clearInterval(st.timer); return; } tick(); }, 50);
+}
+// "Set the gain": real channels from any loaded song. Level 3 is a mini soundcheck: three channels, one at a time.
+// Channel names in a sentence: instruments lowercase, singers' names kept as they are.
+const chWord = n => /^(kick|snare|bass|acoustic|keys|hi-hat|overheads|rack|floor|toms?|guitar|electric|piano|organ|tracks|pad|horns|click|b3|perc|loop|vox|md|crowd|synth|aux|eg|ag)/i.test(n) ? n.toLowerCase() : n;
+const GAIN_WHY = 'Peaks around -18 to -6 dBFS leave headroom for when they play or sing louder in the service, and keep the hiss well below the music. Then the fader does the mixing.';
+function gainSetQ(l){
+  const songs=readySongs().filter(x=>x.mix.every(k=>A.buf[`${x.id}:${k}`])), gs=pick(songs.length?songs:[D()]), off=pickWin(gs,'full');
+  const pool=shuffle(gs.mix.filter(k=>!gs.traps.includes(k) && soloSrc(gs,k,off).rms>-45)), n=l===3?3:1;
+  const chs=pool.slice(0,n).map(k=>{
+    const b=A.buf[`${gs.id}:${k}`], sr=b.sampleRate, d=b.getChannelData(0), s0=Math.floor(off*sr), e=Math.min(d.length, s0+Math.floor(gs.len*sr)); let pk=0; for(let i=s0;i<e;i++) pk=Math.max(pk,Math.abs(d[i]));
+    const rawPk=20*Math.log10(pk+1e-9), aim = l===1 ? pick([-42,4]) : pick([-36,-30,-1,3]);
+    return { k, name:gs.name[k], rawPk, gainDb:Math.max(-50,Math.min(50,Math.round((aim-rawPk)*2)/2)), hist:[], an:null, node:null, solo:null };
+  });
+  const state={ chs, cur:0, played:false }, zone = l===1 ? [-21,-4] : [GAIN_ZONE[0]-1.5, GAIN_ZONE[1]+0.5];
+  const names=chs.map(c=>chWord(c.name));
+  return { tool:'gainset', state, song:gs.id, level:l, zone,
+    prompt: n>1 ? `Soundcheck: set the gain on the ${names.slice(0,-1).join(', ')} and ${names[n-1]}.` : `Set the gain on the ${names[0]} channel.`,
+    hint: (n>1 ? 'Press Play, then use Listen to hear each player alone, like at soundcheck. ' : 'Press Play. ')+'Turn the gain until the loudest moments peak in the green zone (about -18 to -6 dBFS), so there\'s headroom left.',
+    clips:[{label:'Play', spec:{ src:[], len:600, synth:(c,bus,t0)=>chs.forEach((ch,i)=>{
+      const nd=c.createBufferSource(); nd.buffer=A.buf[`${gs.id}:${ch.k}`]; nd.loop=true; nd.loopStart=off; nd.loopEnd=off+gs.len;
+      const an=c.createAnalyser(); an.fftSize=2048; nd.connect(an); ch.an=an;
+      const g=c.createGain(); g.gain.value=db(ch.gainDb); ch.node=g; const clip=c.createWaveShaper(); clip.curve=new Float32Array([-1,1]);
+      const sg=c.createGain(); sg.gain.value = i===state.cur ? 1 : 0; ch.solo=sg; const out=c.createGain(); out.gain.value=db(-12);
+      nd.connect(g).connect(clip).connect(sg).connect(out).connect(bus); nd.start(t0, off); state.played=true; }) }}],
+    options:['Lock'], answer:0, explain:'' };
+}
+function vGainTool(q, answered){
+  const st=q.state, multi=st.chs.length>1, dis=answered?'disabled':'';
+  return `<div class="slide">${st.chs.map((ch,i)=>`<div style="${i?'margin-top:16px;border-top:1px solid var(--line);padding-top:12px':''}">
+      <div class="row" style="justify-content:space-between;align-items:center"><b>${esc(ch.name)}</b>${multi?`<button class="btn ghost" data-act="gainCur" data-i="${i}" aria-pressed="${st.cur===i}" style="padding:6px 12px" ${dis}>${st.cur===i?'Listening':'Listen'}</button>`:''}</div>
+      <div class="gmeter" style="margin-top:6px" aria-hidden="true"><div class="gzone" style="left:${(GAIN_ZONE[0]+60)/66*100}%;width:${(GAIN_ZONE[1]-GAIN_ZONE[0])/66*100}%"></div><i id="gm-bar-${i}"></i></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);font-weight:700;margin-top:4px"><span>-60</span><span>-18</span><span>-6</span><span>0 dBFS</span></div>
+      <p id="gm-txt-${i}" class="disp" style="font-size:17px;margin:6px 0 4px;color:var(--ink);text-align:center">Press Play</p>
+      <label for="gainK${i}" style="font-weight:800">Gain: <span id="gainlbl-${i}">${ch.gainDb>0?'+':''}${ch.gainDb} dB</span></label>
+      <input id="gainK${i}" type="range" min="-50" max="50" step="0.5" value="${ch.gainDb}" data-act="gainKnob" data-i="${i}" ${dis} style="margin:6px 0"></div>`).join('')}
+    <button class="btn block" data-act="gainLock" style="margin-top:12px" ${dis}>Lock in my gain</button></div>`;
+}
+function gainGrade(q){
+  const st=q.state, res=st.chs.map(ch=>({ ch, pk:ch.rawPk+ch.gainDb })), bad=res.filter(r=>r.pk<q.zone[0] || r.pk>q.zone[1]), ok=!bad.length;
+  const say = r => `${r.ch.name}: peaks at ${r.pk>0?'+':''}${r.pk.toFixed(0)} dBFS` + (r.pk>q.zone[1] ? (r.pk>0?', clipping. Turn it down: no fader, EQ or plugin can undo distortion at the preamp.':', too hot. Turn it down to leave headroom.') : r.pk<q.zone[0] ? ', too low. You\'d push the fader up and the hiss with it. Bring the gain up.' : ', healthy.');
+  let why = ok ? `Nice: ${res.map(r=>`${chWord(r.ch.name)} peaks at ${r.pk.toFixed(0)} dBFS`).join(', ')}. ` : (res.length>1 ? res.map(say).join(' ')+' ' : say(res[0])+' ');
+  why += GAIN_WHY; if(S.console==='m32') why += ' On the M32, watch the input meter next to the Gain knob.';
+  return { ok, why };
+}
+
+/* ----- "Fit it in the mix": ride one channel's fader until it sits in the band ----- */
+function fitRole(song, k){
+  const n=(song.name[k]||k).toLowerCase();
+  if(k===song.vocal || song.leads.includes(k)) return ['lead vocal','The lead vocal carries the words. It sits on top: every word clear, but still part of the band, not floating above it.'];
+  if(isVocal(song,k)) return ['background vocal','Background vocals support the lead. They blend just under it, so you hear the harmony without competing words.'];
+  if(/kick/.test(k+n)) return ['kick','The kick is the heartbeat. You should feel it under everything without it covering the bass.'];
+  if(/snare/.test(k+n)) return ['snare','The snare is the backbeat that holds the time. Clear on 2 and 4, but not cracking over the vocal.'];
+  if(/tom|rack|floor/.test(k+n)) return ['toms','Toms are for fills. They should be full when they hit, without booming over the band.'];
+  if(/oh|over|hat|cym/.test(k+n)) return ['cymbals','The overheads add shimmer and the whole kit\'s picture. Too loud and the mix turns harsh and splashy.'];
+  if(/bass/.test(k+n)) return ['bass','The bass is the foundation, with the kick. Too low and the mix is thin; too loud and it gets boomy and covers everything.'];
+  if(/acc|acoustic/.test(k+n)) return ['acoustic','The acoustic adds strum and rhythm. It fills in around the vocal, not on top of it.'];
+  if(/gtr|elec|guitar/.test(k+n)) return ['electric','The electric adds color and energy. It fills the space around the vocal without stepping on the words.'];
+  if(/key|piano|b3|organ|pad|synth/.test(k+n)) return ['keys','Keys and pads glue the band together. Usually they\'re felt more than heard: you\'d miss them if they were gone.'];
+  return ['track','Tracks and loops add texture. They sit under the live band.'];
+}
+function fitQ(l){
+  const songs=readySongs().filter(x=>x.mix.every(k=>A.buf[`${x.id}:${k}`])), song=pick(songs.length?songs:[D()]), off=pickWin(song,'full');
+  const live=liveChannels(song,off).filter(k=>!song.traps.includes(k));
+  const easy=live.filter(k=>['lead vocal','bass','kick','snare','acoustic'].includes(fitRole(song,k)[0]));
+  const subtle=live.filter(k=>['lead vocal','background vocal','keys','acoustic','electric'].includes(fitRole(song,k)[0]));
+  const k=pick(l===1 && easy.length ? easy : l===3 && subtle.length ? subtle : live), [role, why]=fitRole(song,k);
+  const target=Math.round(-12+Math.random()*10), far = l===1 ? 10+Math.random()*4 : l===2 ? 6+Math.random()*3 : 4+Math.random()*2.5;
+  const v0=Math.max(FADER_MIN+2, Math.min(10, Math.round((target+(coin()?far:-far))*2)/2));
+  const state={ v:v0, target, mute:false, node:null }, tol = l===1 ? 3.5 : l===2 ? 2.5 : 2;
+  const band = (cv, store) => ({ src:[], len: store ? 600 : song.len, synth:(c,bus,t0)=>{
+    for(const ch of song.mix){ const b=A.buf[`${song.id}:${ch}`]; if(!b || song.traps.includes(ch)) continue;
+      const nd=c.createBufferSource(); nd.buffer=b; if(store){ nd.loop=true; nd.loopStart=off; nd.loopEnd=off+song.len; }
+      const g=c.createGain(); g.gain.value=db(chDb(song,ch)); nd.connect(g).connect(bus);
+      if(ch===k){ g.gain.value = cv==null ? 0 : db(chDb(song,ch,cv-target)); if(store){ store.node=g; if(store.mute) g.gain.value=0; } }
+      if(store) nd.start(t0, off); else nd.start(t0, off, song.len); } } });
+  const name=song.name[k];
+  return { tool:'volfit', song:song.id, level:l, k, name, role, why, tol, state, band,
+    prompt:`The ${chWord(name)} is out of place. Move its fader until it fits in the mix.`,
+    hint:`Press Play (it loops). ${why} Try the mute: turn it off, notice what's missing, then bring it back up until it fills that hole, and no more.`,
+    clips:[{label:'Play', spec:band(null, state)}], options:['Lock'], answer:0, explain:'' };
+}
+function vFitTool(q, answered){
+  const st=q.state, dis=answered?'disabled':'', f=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
+  return `<div class="slide" style="text-align:center">
+    <b style="font-size:18px">${esc(q.name)}</b>
+    <label for="fitF" class="sr">Fader</label>
+    <input id="fitF" type="range" min="${FADER_MIN}" max="10" step="0.5" value="${st.v}" data-act="fitFader" ${dis} style="margin:14px 0 4px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);font-weight:700"><span>-40</span><span>-20</span><span>-10</span><span>0</span><span>+10</span></div>
+    <p class="disp" style="font-size:19px;margin:8px 0" id="fitlbl">${f(st.v)}</p>
+    <div class="row"><button class="btn ghost" data-act="fitMute" aria-pressed="${st.mute}" style="flex:1" ${dis}>${st.mute?'Muted':'Mute it'}</button></div>
+    <button class="btn block" data-act="fitLock" style="margin-top:12px" ${dis}>Lock in my level</button></div>`;
+}
+function fitGrade(q){
+  const st=q.state, err=st.v-st.target, ok=Math.abs(err)<=q.tol, d=Math.abs(err).toFixed(1).replace('.0',''), n=chWord(q.name);
+  let why = ok ? (Math.abs(err)<0.5 ? 'Right where it sits in the balanced mix. ' : `It fits: within ${d} dB of where it sits in the balanced mix. `) : err>0 ? `About ${d} dB too loud: the ${n} sticks out and covers the parts around it. ` : `About ${d} dB too quiet: the ${n} gets lost, and the mix feels like something's missing. `;
+  why += q.why + (q.role==='lead vocal' ? ' Mix the band around the words.' : ' Small fader moves (1–3 dB) are usually all it takes once it\'s close.');
+  q.after=[{label:'at your level', spec:q.band(st.v)}, {label:'where it fits', spec:q.band(st.target)}, {label:`without the ${n}`, spec:q.band(null)}];
+  return { ok, why };
 }
 const GAIN_ZONE = [-18, -6];
 
@@ -2618,7 +2733,8 @@ const hz = f => f>=1000 ? `${f/1000} kHz` : `${f} Hz`;
 const dbTalk = d => d>=6 ? `${d} dB is a big, obvious jump.` : d>=3 ? `${d} dB is noticeable, a typical "bring it up a little" move.` : `${d} dB is the size of move you'll make all service long. Hearing that is a real skill.`;
 
 const GEN = {
-  vol(l, s){
+  vol(l, s, o={}){
+    if(o.kind==='fit' || (!o.kind && Math.random()<0.4)) return fitQ(l);   // hands-on: fit one channel into the mix
     const d = l===1?6 : l===2?pick([3,4]) : pick([1,1.5,2]);
     const src = coin() ? BAND(s,{},pickWin(s,'full')) : VOX(s,pickWin(s,'verse'));
     if(l===3 && Math.random()<0.2){
@@ -2632,7 +2748,7 @@ const GEN = {
   eq(l, s, o={}){
     const r=Math.random(), kind=o.kind;   // kind: 'music' | 'voice' | 'mic' | 'ring' | 'ringout' | 'feedback' (exercises ask for one)
     if(kind==='feedback' || (!kind && l>=2 && Math.random()<0.12)) return Object.assign(textQ(pick(FEEDBACK_TEXT)), {dispUnit:'eq'});
-    if(!kind && EQG.cal && Math.random()<0.25) return fixQuestion(l);   // about one in four: fix it yourself
+    if(!kind && EQG.cal && Math.random()<0.25) return Math.random()<0.5 ? fixQuestion(l) : eqmixQ(l);   // about one in four: hands-on
     if(kind==='voice' || (!kind && l===1 && r<0.5)){
       const v=pick(VOICES), src=VOICE(v), p=pick(VOICE_PROBS);
       return Object.assign(choiceQ({ prompt:'This pastor\'s voice has a problem. What is it?', clips:[{label:'Natural',spec:{src}},{label:'Problem',spec:{src,chain:fxEQ(p.f,p.g,1.4)}}],
@@ -2770,8 +2886,9 @@ const GEN = {
     return q;
   },
   eqfix(l, s){ return EQG.cal ? fixQuestion(l) : GEN.eq(l, s, {}); },
-  eqstart(l, s){
+  eqstart(l, s, o={}){
     const tag={song:EQG.song, dispUnit:'eq'};
+    if(EQG.cal && (o.kind==='mix' || (!o.kind && Math.random() < (l===1?0.3:0.5)))) return eqmixQ(l);   // set it yourself, in the band
     if(l===1 || !EQG.cal || Math.random()<0.25) return Object.assign(textQ(pick(EQS_TEXT)), tag);
     if(l===3 && EQG.cal.acoustic && Math.random()<0.4){
       const it=EQ_START.find(x=>x.id==='acoustic'), sw=eqgSpec({...it, eq:ACOUSTIC_AS_BASS},true); sw.gain=EQG.cal.acousticAsBass;
@@ -2780,7 +2897,7 @@ const GEN = {
     }
     const it=pick(EQ_START.filter(x=>EQG.cal[x.id]));
     return Object.assign(abQ({ prompt:`Which ${it.name.toLowerCase()} clip has the starting-point EQ?`, yes:eqgSpec(it,true), no:eqgSpec(it,false), yesName:'Starting point', noName:'Flat',
-      explain:L=>`${L} had it: ${it.moves.map(m=>`${m[0].toLowerCase()} ${m[1]}`).join(', ')}.` }), tag);
+      explain:L=>`${L} had it. Here's why each move helps: ${eqWhy(it)}` }), tag);
   },
   ours(l, s){
     if(!A.buf['rcc:mb1'] || !songById('rcc').cal.ours) return Object.assign(GEN.mw(l, s), {dispUnit:'mw'});   // our song isn't loaded (mixed practice)
@@ -2945,19 +3062,7 @@ const GEN = {
   gain(l, s, o={}){
     const kind=o.kind, r=Math.random();
     const textBank = () => textQ(pick(GAIN_TEXT));
-    if(kind==='set' || (!kind && l===2 && r<0.7)){
-      // Set the gain: a raw mic channel starts way too low or too hot.
-      const live=readySongs().filter(x=>x.xtra), gs=live.length?pick(live):s, off=pickWin(gs,'full');
-      const ch = gs.xtra ? pick([[gs.vocal,gs.name[gs.vocal]],['x_kick_in','Kick In'],['acc','Acoustic'],['keys','Keys']]) : pick([[gs.vocal,gs.name[gs.vocal]],['drums','Drums'],['piano','Piano']]);
-      const b=A.buf[`${gs.id}:${ch[0]}`], sr=b.sampleRate, d=b.getChannelData(0), s0=Math.floor(off*sr), n=Math.floor(gs.len*sr); let pk=0; for(let i=s0;i<s0+n&&i<d.length;i++) pk=Math.max(pk,Math.abs(d[i]));
-      const rawPk=20*Math.log10(pk+1e-9), start=Math.round(((coin()?-40:5)-rawPk)*2)/2, state={gainDb:start, hist:[], an:null, node:null};
-      return { tool:'gainset', state, song:gs.id, prompt:`Set the gain on the ${ch[1].toLowerCase()} channel.`, hint:'Press Play, then turn the gain until the peaks sit in the green zone (about -18 to -6 dBFS).',
-        clips:[{label:'Play',spec:{src:[{b:`${gs.id}:${ch[0]}`, db:0, off, dur:gs.len, loop:true}], chain:(c,inp)=>{
-          const an=c.createAnalyser(); an.fftSize=2048; inp.connect(an); state.an=an;
-          const g=c.createGain(); g.gain.value=db(state.gainDb); state.node=g; const clip=c.createWaveShaper(); clip.curve=new Float32Array([-1,1]);
-          const out=c.createGain(); out.gain.value=db(-12); inp.connect(g).connect(clip).connect(out); return out; }}}],
-        options:['Lock'], answer:0, explain:'' };
-    }
+    if(kind==='set' || (!kind && r<(l===1?0.4:0.6))) return gainSetQ(l);   // hands-on: set the gain yourself
     if(kind==='text' || (!kind && (l===3 ? r<0.6 : l===1 ? r<0.35 : true))) return textBank();
     const off=pickWin(s,'full'), k=pick(liveChannels(s,off)), src=soloSrc(s,k,off);
     if(l===1) return abQ({ prompt:'One of these channels had its gain set too low, then the fader pushed way up. Which one?',
@@ -3083,7 +3188,7 @@ const clampF = v => Math.max(FADER_MIN, Math.min(FADER_MAX, v));
 const MX = { srcs:[], gains:{}, ans:{}, hp:{}, eq:{}, raf:0, playing:false };
 const fmtDb = v => v<=FADER_MIN ? 'Off' : `${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`;
 const mixSong = () => songById(UI.mix.song);
-const mixSongs = dest => dest==='broadcast' ? SONGS.filter(s=>s.traps.includes('crowd')) : SONGS;
+const mixSongs = dest => dest==='broadcast' ? LISTED().filter(s=>s.traps.includes('crowd')) : LISTED();
 const missionCh = (song, level, dest=curDest()) => {
   const crowd = dest==='broadcast' && song.traps.includes('crowd') ? ['crowd'] : [];
   const traps = song.traps.filter(k=>!crowd.includes(k));
@@ -3347,7 +3452,7 @@ function saveReference(){
    UNITS and their Learn slides (demos use the first song)
    ============================================================ */
 const D = () => SONGS[0];
-const songList = SONGS.map(s=>`"${s.title}"`).join(', ').replace(/, ([^,]*)$/, ', and $1');
+const songList = LISTED().map(s=>`"${s.title}"`).join(', ').replace(/, ([^,]*)$/, ', and $1');
 const UNITS = [
   { id:'found', title:'Foundations', mascot:'sona', who:'Sona the bat', color:'#3F3399', blurb:'How sound gets from the stage to people\'s ears.', learn:[
     {t:'Welcome to Sound School', p:['I\'m Sona. Bats find their way with their ears, and that\'s what you\'ll learn here: to listen and know what you\'re hearing.',`The drills use real multitrack recordings of ${songList}. At the end, you'll mix them yourself.`]},
@@ -3430,7 +3535,7 @@ const UNITS = [
       demos:[{label:'Dry',spec:()=>({src:VOX(D())})},{label:'Delay',spec:()=>({src:VOX(D()),chain:fxDelay({time:D().beat,fb:0.35,wet:-5}),tail:2})}]},
     {t:'Slapback vs. long', p:['A slapback (80–120 ms) is one quick repeat that thickens a voice. A long delay (a quarter or half note) is a clear echo.'],
       demos:[{label:'Slapback',spec:()=>({src:VOX(D()),chain:fxDelay({time:0.11,fb:0,wet:-3})})},{label:'Long',spec:()=>({src:VOX(D()),chain:fxDelay({time:D().beat,fb:0.38,wet:-5}),tail:2})}]},
-    {t:'Lock it to the tempo', p:['Delays sound best timed to the song. A quarter note in ms = 60,000 ÷ BPM.', SONGS.map(s=>`"${s.title}" is ${s.bpm} BPM, so a quarter note is ${s.ms} ms.`).join(' ')+' Most consoles have a tap-tempo button for this.']},
+    {t:'Lock it to the tempo', p:['Delays sound best timed to the song. A quarter note in ms = 60,000 ÷ BPM.', LISTED().map(s=>`"${s.title}" is ${s.bpm} BPM, so a quarter note is ${s.ms} ms.`).join(' ')+' Most consoles have a tap-tempo button for this.']},
     {t:'Keep the pastor dry', p:['Delay on a spoken voice makes words hard to follow. Effects are for music.']}
   ]},
   { id:'verb', title:'Reverb', mascot:'verb', who:'Verb the whale', color:'#6A45C2', blurb:'Hear room size, and know when to hold back.', learn:[
@@ -3514,7 +3619,7 @@ const UNITS = [
     {t:'What to change at the board', p:['1. Faders first: bass and kick down 1–2 dB, acoustic and keys up a little.','2. Pan the keys and overheads wider, and send the vocal reverb to a stereo return.','3. If it\'s still bright, cut 1–2 dB around 4 kHz on the main bus.',onM32('select a channel and use the Pan knob in the channel strip. Put the vocal reverb on a stereo FX return. For the main bus EQ, press Select on Main LR, then open the EQ page.')]}
   ]},
   { id:'final', title:'The Sunday Mix', mascot:'sona', who:'Sona and the whole team', color:'#1E2235', blurb:`Put it all together: mix ${songList} on a real board.`, levels:['Learn','Verse','Chorus','Song'], learn:[
-    {t:'Your board', p:[`You'll mix ${SONGS.length} real multitracks. "${SONGS[0].title}" comes as finished studio stems. ${SONGS.slice(1).map(s=>`"${s.title}"`).join(' and ')} ${SONGS.length>2?'are raw live recordings':'is a raw live recording'}: every drum mic, every singer, and more, like a real Sunday.`,'Move a fader to change how loud that channel is in the house. The meters show what each channel is doing.']},
+    {t:'Your board', p:[`You'll mix ${LISTED().length} real multitracks. "${SONGS[0].title}" comes as finished studio stems. ${LISTED().slice(1).map(s=>`"${s.title}"`).join(' and ')} ${LISTED().length>2?'are raw live recordings':'is a raw live recording'}: every drum mic, every singer, and more, like a real Sunday.`,'Move a fader to change how loud that channel is in the house. The meters show what each channel is doing.']},
     {t:'Build it from the drums', p:['Start with the drums: kick first, then snare, hi-hat and overheads, until the kit sounds like one instrument.','Lock the bass to the kick. Bring in the guitars, keys and tracks around them. Last, set the vocals on top.','Then ask yourself: can I understand every word? Does anything stick out?']},
     {t:'What stays out of the house', p:['Some channels are never for the house speakers:','Click and count-in: the band\'s metronome and cues, for their in-ears only. SMPTE: timecode for lights and video, a loud screech if it reaches the speakers. Crowd mics: for the livestream and recording.','If you see them on your board, keep them muted in the house mix.']},
     {t:'Two styles', p:['Gospel style keeps the band and choir energy strong. Modern worship style (the Bethel approach) keeps the vocals clearly on top and tucks the background vocals under.','In Modern worship, your high-pass filters count too: filter everything except the kick and bass.']},
@@ -3576,8 +3681,8 @@ const EXERCISES = [
     plan:[['keys',3,{kind:'tunetext'}],['keys',3],['keys',3],['keys',3,{kind:'tunetext'}],['keys',3]] },
   { id:'polarity', title:'Flip it!', mascot:'fenn', color:'#B45309', blurb:'Real kick, snare and bass mics: hear the polarity problems and fix them.', units:['phase'],
     plan:[['phase',1],['phase',1],['phase',1],['phase',2,{kind:'comb'}],['phase',3],['phase',3]] },
-  { id:'gainset', title:'Set the gain', mascot:'pip', color:'#0E7490', blurb:'Turn the gain until each channel\'s peaks land in the green zone.', units:['gain'],
-    plan:[['gain',2,{kind:'set'}],['gain',2,{kind:'set'}],['gain',2,{kind:'set'}],['gain',2,{kind:'set'}]] },
+  { id:'gainset', title:'Set the gain', mascot:'pip', color:'#0E7490', blurb:'Hands-on: turn the gain on real channels until the peaks land in the green zone, up to a three-channel soundcheck.', units:['gain'],
+    plan:[['gain',1,{kind:'set'}],['gain',1,{kind:'set'}],['gain',2,{kind:'set'}],['gain',2,{kind:'set'}],['gain',3,{kind:'set'}],['gain',3,{kind:'set'}]] },
   { id:'earhealth', title:'Ear health check', mascot:'sona', color:'#0F766E', blurb:'dB, dBA vs dBC, safe listening times and stream loudness.', units:['ears'],
     plan:[['ears',1],['ears',1],['ears',2],['ears',2],['ears',3],['ears',3]] },
   { id:'earfreq', title:'Frequency ear trainer', mascot:'fenn', color:'#A8540A', blurb:'Learn the octave bands one step at a time, with a compare button for every answer.', units:['eq'],
@@ -3594,10 +3699,14 @@ const EXERCISES = [
     plan:[['comp',1,{kind:'fix'}],['comp',1,{kind:'fix'}],['comp',2,{kind:'fix'}],['comp',2,{kind:'fix'}],['comp',3,{kind:'fix'}],['comp',3,{kind:'fix'}]] },
   { id:'eqfix', title:'Fix the EQ', mascot:'fenn', color:'#A8540A', blurb:'Hands-on: each instrument has a hidden tone problem. Find it and fix it with a real channel EQ.', units:['eq'], guide:true,
     plan:[['eqfix',1],['eqfix',1],['eqfix',2],['eqfix',2],['eqfix',3],['eqfix',3]] },
+  { id:'eqmix', title:'Set it in the mix', mascot:'fenn', color:'#A8540A', blurb:'The band plays with its starting-point EQ, except one instrument. Set its EQ yourself and hear what it does for the mix.', units:['eq'], guide:true,
+    plan:[['eqstart',1,{kind:'mix'}],['eqstart',1,{kind:'mix'}],['eqstart',2,{kind:'mix'}],['eqstart',2,{kind:'mix'}],['eqstart',3,{kind:'mix'}],['eqstart',3,{kind:'mix'}]] },
   { id:'eqstart', title:'EQ starting points', mascot:'fenn', color:'#A8540A', blurb:'Where to start EQ on each instrument, from MxU\'s Church Audio EQ Guide. Hear each one flat and with the starting point.', units:['eq'], guide:true,
     plan:[['eqstart',1],['eqstart',1],['eqstart',2],['eqstart',2],['eqstart',2],['eqstart',3],['eqstart',3],['eqstart',3]] },
   { id:'ourmix', title:'Our mix vs. Bethel', mascot:'sona', color:'#155E75', blurb:'Our Feb 15 mix next to Bethel\'s balance: hear the difference in tone and width.', units:['ours'],
     plan:[['ours',1],['ours',1],['ours',2],['ours',2],['ours',2],['ours',3],['ours',3]] },
+  { id:'volfit', title:'Fit it in the mix', mascot:'pip', color:'#0B7A73', blurb:'Hands-on: one channel is too loud or too quiet. Ride its fader until it fits in the band.', units:['vol'],
+    plan:[['vol',1,{kind:'fit'}],['vol',1,{kind:'fit'}],['vol',2,{kind:'fit'}],['vol',2,{kind:'fit'}],['vol',3,{kind:'fit'}],['vol',3,{kind:'fit'}]] },
   { id:'volume',  title:'Volume ladder',       mascot:'pip',   color:'#0B7A73', blurb:'Climb from 6 dB changes down to 1 dB.', units:['vol'],
     plan:[['vol',1],['vol',1],['vol',2],['vol',2],['vol',3],['vol',3]] },
   { id:'freq',    title:'Name that frequency', mascot:'fenn',  color:'#A8540A', blurb:'Boom, mud, boxy, honk, harsh or sizzle?', units:['eq'],
@@ -3734,19 +3843,15 @@ function vLesson(){
     ${clips?`<div class="clips">${clips}</div>`:''}
     ${q.refs && (!q.refsAfter || answered) ? `<div class="slide" style="margin-bottom:18px;padding:16px"><div class="kicker" style="color:var(--ink2);margin:0 0 10px">Compare with each band</div>
       <div class="row">${q.refs.map((r,i)=>clipBtn('r'+i, r.label, '', true)).join('')}</div></div>` : ''}
-    ${q.tool==='gainset' ? `<div class="slide" style="text-align:center">
-        <div class="gmeter" aria-hidden="true"><div class="gzone" style="left:${(GAIN_ZONE[0]+60)/66*100}%;width:${(GAIN_ZONE[1]-GAIN_ZONE[0])/66*100}%"></div><i id="gm-bar"></i></div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);font-weight:700;margin-top:4px"><span>-60</span><span>-18</span><span>-6</span><span>0 dBFS</span></div>
-        <p id="gm-txt" class="disp" style="font-size:19px;margin:10px 0 6px;color:var(--ink)">Press Play</p>
-        <label for="gainK" style="font-weight:800">Gain: <span id="gainlbl">${q.state.gainDb>0?'+':''}${q.state.gainDb} dB</span></label>
-        <input id="gainK" type="range" min="-50" max="50" step="0.5" value="${q.state.gainDb}" data-act="gainKnob" ${answered?'disabled':''} style="margin:10px 0">
-        <button class="btn block" data-act="gainLock" ${answered?'disabled':''}>Lock in my gain</button></div>`
+    ${q.tool==='gainset' ? vGainTool(q, answered)
+    : q.tool==='volfit' ? vFitTool(q, answered)
     : q.tool==='walkup' ? `<div class="slide" style="text-align:center">
         <p id="walkStatus" class="disp" style="font-size:20px;color:var(--ink);min-height:52px;margin:4px 0 14px">${answered?'Done.':q.state.running?'…':'Ready when you are.'}</p>
         ${q.state.running||answered ? `<div class="row"><button class="btn" data-act="walkMic" style="flex:1" ${q.state.mic!=null||answered?'disabled':''}>Pastor mic up</button>
           ${q.needBand?`<button class="btn ghost" data-act="walkBand" style="flex:1" ${q.state.band!=null||answered?'disabled':''}>Bring the band down</button>`:''}</div>`
           : `<button class="btn block" data-act="walkStart">Start</button>`}</div>`
     : q.tool==='eqfix' ? vFixTool(q, answered)
+    : q.tool==='eqmix' ? vMixTool(q, answered)
     : q.tool==='steps' ? vStepsTool(q, answered)
     : q.tool==='gatefix' ? vGateTool(q, answered)
     : q.tool==='compfix' ? vCompTool(q, answered)
@@ -4200,7 +4305,8 @@ function finishLesson(){
 function clipSpec(k){
   if(k==='test') return {src:PINK(SONGS[0])};
   if(UI.screen==='learn') return unitById(UI.unit).learn[UI.slide].demos[+k.slice(1)].spec();
-  if(UI.screen==='eqguide'){ if(k==='gbf'||k==='gbe') return eqBandSpec(k==='gbe'); const m=k.match(/^g(\d+)([fe])$/); return eqgSpec(EQ_START[+m[1]], m[2]==='e'); }
+  if(UI.screen==='eqguide'){ if(k==='gbf'||k==='gbe') return eqBandSpec(k==='gbe'); const m=k.match(/^g(\d+)([femn])$/), it=EQ_START[+m[1]];
+    return m[2]==='m' ? eqBandOne(it,'flat') : m[2]==='n' ? eqBandOne(it,'on') : eqgSpec(it, m[2]==='e'); }
   const q=lessonQ(UI.lesson);
   return (k[0]==='a'?q.after:k[0]==='r'?q.refs:q.clips)[+k.slice(1)].spec;
 }
@@ -4304,13 +4410,17 @@ document.addEventListener('click', async e=>{
       openLevel(u.id, 1);
       break; }
     case 'gainLock': {
-      const L=UI.lesson, q=lessonQ(L), st=q.state; if(L.picked!=null) return;
-      if(!st.hist.length){ alert('Press Play first so you can see the meter.'); return; }
-      const hold=Math.max(...st.hist.map(h=>h[1])), ok = hold>=GAIN_ZONE[0]-2 && hold<=GAIN_ZONE[1]+1;
-      L.picked=ok?0:1; q.right=ok; if(ok) L.correct++;
-      q.explain = ok ? `Nice: peaks around ${hold.toFixed(0)} dBFS, healthy with room to spare.` : hold>GAIN_ZONE[1]+1 ? `Too hot: peaks reached ${hold.toFixed(0)} dBFS${hold>0?', clipping':''}. Turn the gain down until the loudest moments sit around -18 to -6 dBFS.` : `Too low: peaks only reached ${hold.toFixed(0)} dBFS. You'd be pushing the fader up and the noise with it. Bring the gain up.`;
-      if(S.console==='m32') q.explain += ' On the M32, watch the input meter next to the Gain knob.';
+      const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
+      if(!q.state.played){ alert('Press Play first so you can see the meter.'); return; }
+      const {ok, why}=gainGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
       stopAll(); markPlaying(null); render(); break; }
+    case 'gainCur': { const q=lessonQ(UI.lesson), st=q.state; st.cur=+el.dataset.i;
+      st.chs.forEach((ch,i)=>{ if(ch.solo) ch.solo.gain.setTargetAtTime(i===st.cur?1:0, A.ctx.currentTime, 0.02);
+        const bt=document.querySelector(`[data-act="gainCur"][data-i="${i}"]`); if(bt){ bt.setAttribute('aria-pressed', i===st.cur); bt.textContent = i===st.cur?'Listening':'Listen'; } }); break; }
+    case 'fitMute': { const q=lessonQ(UI.lesson), st=q.state; st.mute=!st.mute; if(st.node) st.node.gain.setTargetAtTime(st.mute?0:db(chDb(songById(q.song),q.k,st.v-st.target)), A.ctx.currentTime, 0.02);
+      el.setAttribute('aria-pressed', st.mute); el.textContent = st.mute?'Muted':'Mute it'; break; }
+    case 'fitLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
+      const {ok, why}=fitGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; stopAll(); markPlaying(null); render(); break; }
     case 'walkStart': { const q=lessonQ(UI.lesson); if(!(await withAudio())) return; runWalkup(q); render(); break; }
     case 'walkMic': { const q=lessonQ(UI.lesson), st=q.state; if(!st.running||st.mic!=null) return;
       st.mic=A.ctx.currentTime-st.t0; st.mic_g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.05); el.disabled=true; break; }
@@ -4330,11 +4440,13 @@ document.addEventListener('click', async e=>{
       const m=UI.mix, steps=buildSteps(mixSong(), m.level), r=buildCheck(); m.buildRes=r;
       if(r.ok){ m.buildStep++; m.buildRes = m.buildStep<steps.length ? {notes:[{k:steps[m.buildStep-1].ch[0], good:true, msg:`Step ${m.buildStep} done. Now: ${steps[m.buildStep].title}.`}]} : r; }
       render(); break; }
+    case 'mixSolo': { const q=lessonQ(UI.lesson); q.state.solo=!q.state.solo; if(q.state.others) q.state.others.gain.setTargetAtTime(q.state.solo?0:1, A.ctx.currentTime, 0.02);
+      el.setAttribute('aria-pressed', q.state.solo); el.textContent = q.state.solo ? `Soloed: ${q.it.name}` : `Solo the ${q.it.name.toLowerCase()}`; break; }
     case 'fixBypass': { const q=lessonQ(UI.lesson); q.state.bypass=!q.state.bypass; fixApply(q); el.setAttribute('aria-pressed',q.state.bypass); el.textContent=q.state.bypass?'EQ is off':'EQ off'; break; }
     case 'fixReset': { const q=lessonQ(UI.lesson); Object.assign(q.state.eq,{hp:0,lo:0,mg:0,mf:1000,hi:0}); q.state.bypass=false; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
     case 'fixLock': {
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
-      const {ok, why}=fixGrade(q); L.picked = ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
+      const {ok, why}=q.tool==='eqmix' ? eqmixGrade(q) : fixGrade(q); L.picked = ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
       stopAll(); markPlaying(null); render(); break; }
     case 'ringLock': {
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
@@ -4427,8 +4539,12 @@ document.addEventListener('input', e=>{
   const t=e.target;
   if(t.dataset.act==='vol'){ S.vol=+t.value; save(); if(A.master) A.master.gain.value=S.vol; }
   if(t.dataset.act==='gainKnob'){
-    const q=lessonQ(UI.lesson); q.state.gainDb=+t.value; if(q.state.node) q.state.node.gain.setTargetAtTime(db(q.state.gainDb), A.ctx.currentTime, 0.02);
-    const lb=document.getElementById('gainlbl'); if(lb) lb.textContent=`${q.state.gainDb>0?'+':''}${q.state.gainDb} dB`;
+    const q=lessonQ(UI.lesson), i=+t.dataset.i||0, ch=q.state.chs[i]; ch.gainDb=+t.value; if(ch.node) ch.node.gain.setTargetAtTime(db(ch.gainDb), A.ctx.currentTime, 0.02);
+    const lb=document.getElementById('gainlbl-'+i); if(lb) lb.textContent=`${ch.gainDb>0?'+':''}${ch.gainDb} dB`;
+  }
+  if(t.dataset.act==='fitFader'){
+    const q=lessonQ(UI.lesson), st=q.state; st.v=+t.value; if(st.node && !st.mute) st.node.gain.setTargetAtTime(db(chDb(songById(q.song),q.k,st.v-st.target)), A.ctx.currentTime, 0.02);
+    const lb=document.getElementById('fitlbl'); if(lb) lb.textContent=`${st.v>0?'+':''}${st.v} dB`;
   }
   if(t.dataset.act==='console'){ S.console=t.value; save(); }
   if(t.dataset.act==='fixParam'){
