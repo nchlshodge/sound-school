@@ -439,7 +439,9 @@ const frag = s => document.createRange().createContextualFragment(s);
 /* ---------- saved progress (this device only) ---------- */
 const STORE_KEY = 'rcc-sound-school-v1';
 function loadState(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } }
-const S = Object.assign({ xp:0, streak:0, lastDay:null, done:{}, unlockAll:false, setup:false, readAloud:false, vol:0.7, mixStyle:'modern', console:'m32' }, loadState());
+const S = Object.assign({ xp:0, streak:0, lastDay:null, done:{}, unlockAll:false, setup:false, readAloud:true, vol:0.7, mixStyle:'modern', console:'m32' }, loadState());
+// Read aloud became the default (Oct 17, 2026): turn it on once for people who had it off; after that, their choice sticks.
+if(!S.readAloudV){ S.readAloud=true; S.readAloudV=1; }
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} pushProgress(); }
 
 /* ---------- accounts (Firebase project: RCC Training) ----------
