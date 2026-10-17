@@ -630,7 +630,7 @@ const SONGS = [
     // measured over the full-band song (bars 28–118). Kick and snare are the replacement tracks; the rack tom is mostly spill.
     ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11, mc:0 },
     // The MC starts talking at bar 153. The voice is our pastor's sermon mic (the MC's own mic isn't used).
-    speaker:{ bar:153, voice:'pastor', name:'MC (host)' },
+    speaker:{ bar:153, voice:'mc', name:'MC (host)' },
     anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
     win:{ verse:[12,15], gap:[14,16], full:[30,40,50,64,80,96,110] },
     // Placeholder names to rename; Part H is the pad under the MC starting to talk (bar 153).
@@ -2278,7 +2278,7 @@ const MICS = {
 // Unity gain for small signals; a runaway ring flattens out around -24 dBFS instead of growing.
 const RING_CEIL = 0.08, SOFT_CLIP = (()=>{ const n=4096, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=RING_CEIL*Math.tanh(x/RING_CEIL); } return c; })();
 // fb just above 1 = a sustained ring capped by the soft clip, like real feedback. The notch stops it when it's close enough.
-const fxRing = ({f, fb=1.05, state, q=5}) => (c,inp)=>{
+const fxRing = ({f, fb=(f<1200?1.2:1.05), state, q=5}) => (c,inp)=>{   // low rings need a little more loop gain to build on a real voice
   const sum=c.createGain(); inp.connect(sum);
   // The loop time is a whole number of cycles of f, so the ring builds right at f, like real feedback.
   const d=c.createDelay(0.1); d.delayTime.value=Math.max(0.006, Math.round(f*0.01)/f);
@@ -2762,14 +2762,14 @@ const GEN = {
     }
     if(kind==='ring' || (!kind && l===3 && r<0.35)){
       const v=pick(VOICES), ring=pick(RINGS), mic=pick(['lapel','headset']), f=ring.f*Math.pow(2,(Math.random()-0.5)/3);
-      return Object.assign(choiceQ({ prompt:`The ${WHO(v)}'s mic is starting to ring. Where is it?`, clips:[{label:'Play',spec:{src:VOICE(v),chain:chainOf(MICS[mic].chain(),fxRing({f})),tail:1.5}}],
+      return Object.assign(choiceQ({ prompt:`The ${WHO(v)}'s mic is starting to ring. Where is it?`, clips:[{label:'Play',spec:{src:VOICE(v),chain:fxRing({f}),tail:1.5}}],
         choices:RINGS, correct:ring, explain:`It was ringing near ${hz(Math.round(f/10)*10)}. In a service, pull that fader down a little first, then find the ring with a narrow EQ cut. ${mic==='lapel'?'Lapels ring easily because they sit far from the mouth, so they need more gain.':'Headsets can ring when the speaker walks in front of the main speakers.'}` }), {voice:true});
     }
     if(kind==='ringout' || (!kind && l===3 && r<0.65)){
       // The ring-out game: sweep a narrow cut until the ring stops.
       const v=pick(VOICES), f=pick([400,630,1000,1600,2500,3150,4000])*Math.pow(2,(Math.random()-0.5)/4), state={f:1000};
       return { tool:'ringout', voice:true, ring:f, state, prompt:'This ring happens on every mic in the room, so ring it out on the main L/R EQ. Play it, then slide the narrow cut until the ringing stops.',
-        clips:[{label:'Play',spec:{src:VOICE_LOOP(v),chain:chainOf(MICS.lapel.chain(),fxRing({f,fb:1.4,state}))}}], options:['Lock it in'], answer:0, explain:'' };
+        clips:[{label:'Play',spec:{src:VOICE_LOOP(v),chain:fxRing({f,fb:1.4,state})}}], options:['Lock it in'], answer:0, explain:'' };
     }
     const bands = l===1 ? EQ3 : EQB;
     const gain = l===1?12 : l===2?10 : 7, q = l===1?1.2 : 1.7;
@@ -3499,7 +3499,7 @@ const UNITS = [
     {t:'Three mics, three problems', p:['Handheld: held too close it gets boomy (proximity effect), with "p" pops and handling noise.','Headset: right at the mouth it gets harsh "S" sounds and breaths. Lapel: on the chest it sounds boxy and dull, picks up clothing rustle, and drops when the speaker turns their head.'],
       demos:[{label:'Handheld',spec:()=>({src:VOICE('pastor',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('mc',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('pastor',10),chain:MICS.lapel.chain()})}]},
     {t:'Feedback and ringing', p:['Feedback is a loop: the mic hears the speakers and one frequency builds into a ring. Lapels ring most, because they sit farther from the mouth and need more gain.','Break the loop first: pull that fader down a little. Then fix the cause. Keep mics and people behind the main speakers, and away from floor wedges.','Don\'t cut the ring on that person\'s channel: it changes their voice. If the same frequency rings on every mic, cut a few dB of it on the main L/R EQ (or have the system tuned).'+HOT_CREDIT],
-      demos:[{label:'Ringing',spec:()=>({src:VOICE('mc',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500})),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('mc',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500,state:{f:2500}})),tail:1.5})}]}
+      demos:[{label:'Ringing',spec:()=>({src:VOICE('pastor',4),chain:fxRing({f:2500}),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('pastor',4),chain:fxRing({f:2500,state:{f:2500}}),tail:1.5})}]}
   ]},
   { id:'phase', title:'Phase & Polarity', mascot:'fenn', who:'Fenn the fennec fox', color:'#B45309', blurb:'Hear two mics fight, flip the polarity, and fix timing.', learn:[
     {t:'Two mics, one sound', p:['When two mics hear the same source (kick in and out, snare top and bottom, bass DI and amp), their signals add together. If they disagree, they cancel, and you lose low end and punch.']},

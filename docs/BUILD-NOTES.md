@@ -24,7 +24,7 @@ Bar numbers for the live songs count from the first click (`lhc` first click at 
 - Left out: ACC 2 and Loops Sub in `lhc` (empty), drum triggers, FOH mics. In `isg` the snare and count tracks are silent in the excerpt, so they're left off that song's board.
 - `x_*` files are the separate mics used by the Phase & Polarity drills.
 
-**RCC Sunday (`rcc`)** was pulled from the shared Drive folder with HTTP byte-range requests (only the 43:00–48:45 span of each WAV, not the full 25–30 GB). There are no real kick or snare-top mics on that board, so the drum channels use the KickReplace and SnareReplace tracks; the snare bottom mic is its own channel. The `mc` channel plays the TTS stand-in (`stems/speech/male.m4a`) from bar 153 until the MC and lav speakers OK using their real recordings. Its reference mix is an estimate: no Bethel fit yet.
+**RCC Sunday (`rcc`)** was pulled from the shared Drive folder with HTTP byte-range requests (only the 43:00–48:45 span of each WAV, not the full 25–30 GB). There are no real kick or snare-top mics on that board, so the drum channels use the KickReplace and SnareReplace tracks; the snare bottom mic is its own channel. The `mc` channel plays the real announcements mic (`stems/voices/mc.m4a`, MC 2 from the same service) from bar 153. Its reference mix is an estimate: no Bethel fit yet.
 
 **God So Good (`gsg`)** stems are printed at the record's balance (bar 1 starts at 0:00; the click lines up with that grid within 0.2 ms). Lead vocal, bass, synth bass and the three electrics are mono at 48 kbps; the rest stereo at 72 kbps (37 MB). The click, cue and count tracks aren't on the board. The cue track was used to find the song's sections (`sections` in `index.html`): cues that say the same word were grouped by comparing their sound, then named by matching against spoken section names and the arrangement. The names are a best guess; the boundaries are exact. The mixer can loop any section.
 
@@ -66,7 +66,7 @@ The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 4
 
 ## Speech
 
-`stems/voices/pastor.m4a` is 50 seconds of our pastor's sermon mic (Lav 1, 1:13:22 into the Feb 15 service), loudness-normalized. It's private like the song stems. `stems/voices/mc.m4a` is 50 seconds of the announcements mic (MC 2, 51:36 into the same service), matched to the pastor clip's loudness (-21.7 LUFS). The synthetic voice (`stems/speech/female.m4a`) is no longer used.
+`stems/voices/pastor.m4a` is 50 seconds of our pastor's sermon mic (Lav 1, 1:13:22 into the Feb 15 service), loudness-normalized. It's private like the song stems. `stems/voices/mc.m4a` is 50 seconds of the announcements mic (MC 2, 51:36 into the same service), matched to the pastor clip's loudness (-21.7 LUFS). The synthetic voices were deleted; every speaking drill uses these two real voices. The ringing examples add only the feedback effect to the real voice.
 
 ## Hosting and sign-in
 
