@@ -15,9 +15,18 @@ service cloud.firestore {
         && request.resource.data.progressJson.size() < 200000;
       allow delete: if leader();
     }
-    // Approvals for people without a church account. Only leaders can approve.
+    // Approvals for people without a church account. Leaders approve; someone a leader pre-approved by email
+    // (invites/{email}) may create their own approval the first time they sign in.
     match /approvals/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || leader());
+      allow write: if leader();
+      allow create: if signedIn() && request.auth.uid == uid && request.auth.token.email_verified == true
+        && request.resource.data.approved == true
+        && get(/databases/$(database)/documents/invites/$(request.auth.token.email)).data.approved == true;
+    }
+    // The approved list leaders keep on the Team page, by email address (lowercase).
+    match /invites/{email} {
+      allow read: if leader() || (signedIn() && request.auth.token.email == email);
       allow write: if leader();
     }
   }

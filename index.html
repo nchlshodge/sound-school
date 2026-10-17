@@ -472,7 +472,11 @@ function cloudInit(){
       const email=(u.email||'').toLowerCase();
       ME.leader = u.emailVerified && isLeaderEmail(email);
       ME.approved = ME.leader || (u.emailVerified && isChurch(email));
-      if(!ME.approved){ try{ const a=await fb.db.doc('approvals/'+u.uid).get(); ME.approved=!!(a.exists && a.data().approved); }catch(e){} }
+      if(!ME.approved){ try{ const a=await fb.db.doc('approvals/'+u.uid).get(); ME.approved=!!(a.exists && a.data().approved);
+        // Pre-approved by a leader on the Team page? Turn that into an approval the first time they sign in.
+        if(!a.exists && u.emailVerified){ const inv=await fb.db.doc('invites/'+email).get();
+          if(inv.exists && inv.data().approved){ await fb.db.doc('approvals/'+u.uid).set({approved:true, by:'invite', at:firebase.firestore.FieldValue.serverTimestamp()}); ME.approved=true; } }
+      }catch(e){} }
       await pullProgress(u);
     }
     ME.ready=true; UI=startUI(); render();
@@ -771,8 +775,7 @@ function initAudio(){
     // Speaking voices: our pastor's real sermon mic (Feb 15, Lav 1; private like the song stems) and a synthetic female voice.
     A.speechDb = {};
     await Promise.all(VOICES.map(async v=>{
-      const path=voicePath(v), res=await fetch(v==='pastor' ? await stemURL(path) : path);   // the synthetic voice is public; the pastor isn't if(!res.ok) throw new Error(`Missing ${path}`);
-      const data=await res.arrayBuffer(), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
+      const data=await fetchAudio(voicePath(v), v==='pastor'), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
       A.buf['speech:'+v]=b;
       // loudness of the speaking parts only (skip the pauses), so every voice plays at the vocal-drill level
       const d=b.getChannelData(0), blk=Math.floor(0.05*b.sampleRate), e=[];
@@ -781,24 +784,43 @@ function initAudio(){
       A.speechDb[v] = VOCAL_TARGET + 3 - 10*Math.log10(ms+1e-12);
     }));
     await loadSong(SONGS[0], true);
-    SONGS.slice(1).filter(s=>!s.lazy).forEach(s=>loadSong(s).catch(e=>console.warn(e)));   // the smaller songs load quietly in the background; big ones load when opened
+    // The other small songs load one at a time after a pause, so they don't slow down the first one. Big ones load when opened.
+    setTimeout(async()=>{ for(const s of SONGS.slice(1).filter(s=>!s.lazy)) await loadSong(s).catch(e=>console.warn(e)); }, 4000);
   })().catch(e=>{ A.ready=null; throw e; });
   return A.ready;
 }
+/* ----- Saving audio on the device -----
+   Each audio file is kept in the browser's offline cache after its first download, and each song's level
+   measurements in local storage, so later visits start in seconds. Bump AUDIO_VER whenever the stem files change. */
+const AUDIO_VER = 'a2';
+async function fetchAudio(path, priv=true){
+  let cache=null;
+  try{ if(self.caches){ cache=await caches.open('ss-audio-'+AUDIO_VER); const hit=await cache.match(path); if(hit) return await hit.arrayBuffer(); } }catch(e){ cache=null; }
+  const res=await fetch(priv ? await stemURL(path) : path); if(!res.ok) throw new Error(`Missing ${path}`);
+  if(cache){ try{ await cache.put(path, res.clone()); }catch(e){} }
+  return await res.arrayBuffer();
+}
+// Clear out audio saved by older versions of the app.
+try{ if(self.caches) caches.keys().then(ks=>ks.filter(k=>k.startsWith('ss-audio-') && k!=='ss-audio-'+AUDIO_VER).forEach(k=>caches.delete(k))); }catch(e){}
+const calKey = song => `ss-cal-${AUDIO_VER}-${song.id}`;
 function setLoadMsg(t){ const el=document.getElementById('loadmsg'); if(el) el.textContent=t; }
 function loadSong(song, show){
   if(A.loading[song.id]) return A.loading[song.id];
   return A.loading[song.id] = (async()=>{
     let n=0;
     await Promise.all([...song.ch, ...(song.xtra||[]).map(k=>({k}))].map(async c=>{
-      const res = await fetch(await stemURL(`stems/${song.id}/${c.k}.m4a`));
-      if(!res.ok) throw new Error(`Missing stems/${song.id}/${c.k}.m4a`);
-      const data = await res.arrayBuffer();
+      const data = await fetchAudio(`stems/${song.id}/${c.k}.m4a`);
       A.buf[`${song.id}:${c.k}`] = await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
       if(show) setLoadMsg(`Loading "${song.title}"… ${++n} of ${song.ch.length}`);
     }));
-    if(show) setLoadMsg('Tuning up…');
-    await calibrate(song);
+    // Level measurements: once per device, then remembered.
+    let saved=null; try{ saved=JSON.parse(localStorage.getItem(calKey(song))); }catch(e){}
+    if(saved && saved.cal && saved.comp){ Object.assign(song, {trim:saved.trim, vtrim:saved.vtrim, comp:saved.comp, cal:saved.cal}); if(saved.mbTrim!=null) song.mbTrim=saved.mbTrim; }
+    else {
+      if(show) setLoadMsg('Tuning up…');
+      await calibrate(song);
+      try{ localStorage.setItem(calKey(song), JSON.stringify({trim:song.trim, vtrim:song.vtrim, comp:song.comp, cal:song.cal, mbTrim:song.mbTrim})); }catch(e){}
+    }
     song.ready=true;
   })().catch(e=>{ A.loading[song.id]=null; throw e; });
 }
@@ -3987,19 +4009,32 @@ function vTeam(){
     ${waiting.length?`<div class="sec-title">Waiting for approval</div><div class="panel">${waiting.map(row).join('')}</div>`:''}
     <div class="sec-title">Team (${team.length})</div>
     <div class="panel">${team.length?team.map(row).join(''):'<div class="set"><div class="t"><span>Nobody has signed in yet. Send people the link to the app.</span></div></div>'}</div>
-    <p class="foot">Church accounts (${CHURCH_DOMAIN}) get in automatically. Everyone else shows up under "Waiting for approval" after they sign in.</p>`}
+    ${vInvites()}
+    <p class="foot">Church accounts (${CHURCH_DOMAIN}) get in automatically. Anyone else gets in if they're on the approved list above, or shows up under "Waiting for approval" after they sign in.</p>`}
   </main>`;
 }
 async function loadTeam(){
   UI.team=null; UI.teamErr=null; render();
   try{
-    const [us,ap]=await Promise.all([fb.db.collection('users').get(), fb.db.collection('approvals').get()]);
+    const [us,ap,inv]=await Promise.all([fb.db.collection('users').get(), fb.db.collection('approvals').get(), fb.db.collection('invites').get()]);
+    UI.invites=[]; inv.forEach(d=>{ if(d.data().approved) UI.invites.push(d.id); });
     const ok={}; ap.forEach(d=>{ ok[d.id]=!!d.data().approved; });
     UI.team=[]; us.forEach(d=>{ const x=d.data(), email=x.email||''; let done={}; try{ done=JSON.parse(x.progressJson||'{}').done||{}; }catch(e){}
       const church=isChurch(email), leader=isLeaderEmail(email);
       UI.team.push({ uid:d.id, name:x.name, email, xp:x.xp||0, levels:x.levels||0, units:unitsDone(done), seen:x.lastSeen&&x.lastSeen.toMillis(), church, leader, ok:church||leader||!!ok[d.id] }); });
   }catch(e){ UI.team=[]; UI.teamErr='Couldn\'t load the team. Check your connection and try again.'; }
   if(UI.screen==='team') render();
+}
+function vInvites(){
+  const joined=new Set((UI.team||[]).map(p=>p.email)), pending=(UI.invites||[]).filter(e=>!joined.has(e)).sort();
+  return `<div class="sec-title">Add volunteers</div>
+    <div class="panel" style="padding:14px">
+      <label for="inviteBox"><b>Email addresses</b> <span class="foot" style="display:inline">(one per line, or separated by commas)</span></label>
+      <textarea id="inviteBox" rows="3" placeholder="jane@example.com&#10;sam@gmail.com" style="display:block;width:100%;margin:8px 0;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit"></textarea>
+      <button class="btn block" data-act="invite">Add to the approved list</button>
+      <p class="foot" style="margin:8px 0 0">They get in as soon as they sign in with that email (Google or an email link). No need to approve them again.</p>
+      ${pending.length?`<div style="margin-top:12px"><b>Added, not signed in yet (${pending.length})</b>${pending.map(e=>`<div class="set" style="padding:6px 0"><div class="t"><span>${esc(e)}</span></div><button class="btn ghost" data-act="uninvite" data-email="${esc(e)}" style="min-height:36px;padding:0 12px;font-size:14px">Remove</button></div>`).join('')}</div>`:''}
+    </div>`;
 }
 function vSetup(){
   setUnitColor();
@@ -4206,12 +4241,21 @@ document.addEventListener('click', async e=>{
       if(ME.approved){ UI=startUI(); render(); } else alert('Not yet. Ask a sound team leader to approve you, then try again.'); break; }
     case 'team': go({screen:'team'}); loadTeam(); break;
     case 'teamApprove': case 'teamRevoke': {
-      const uid=el.dataset.uid, yes=act==='teamApprove';
+      const uid=el.dataset.uid, yes=act==='teamApprove', person=(UI.team||[]).find(p=>p.uid===uid);
       if(!yes && !confirm('Remove this person\'s access to Sound School?')) break;
       el.disabled=true;
-      fb.db.doc('approvals/'+uid).set({approved:yes, by:ME.user.email, at:firebase.firestore.FieldValue.serverTimestamp()})
-        .then(loadTeam).catch(()=>{ alert('That didn\'t save. Try again.'); el.disabled=false; });
+      const jobs=[fb.db.doc('approvals/'+uid).set({approved:yes, by:ME.user.email, at:firebase.firestore.FieldValue.serverTimestamp()})];
+      if(!yes && person && person.email) jobs.push(fb.db.doc('invites/'+person.email).delete());   // so they can't re-approve themselves
+      Promise.all(jobs).then(loadTeam).catch(()=>{ alert('That didn\'t save. Try again.'); el.disabled=false; });
       break; }
+    case 'invite': {
+      const raw=(document.getElementById('inviteBox')||{}).value||'', emails=[...new Set(raw.split(/[\s,;]+/).map(e=>e.trim().toLowerCase()).filter(e=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))];
+      if(!emails.length){ alert('Type at least one email address.'); break; }
+      el.disabled=true; const b=fb.db.batch();
+      emails.forEach(e=>b.set(fb.db.doc('invites/'+e), {approved:true, by:ME.user.email, at:firebase.firestore.FieldValue.serverTimestamp()}));
+      b.commit().then(()=>{ alert(`Added ${emails.length} ${emails.length===1?'person':'people'}. They can sign in now.`); loadTeam(); }).catch(()=>{ alert('That didn\'t save. Try again.'); el.disabled=false; });
+      break; }
+    case 'uninvite': if(confirm(`Remove ${el.dataset.email} from the approved list?`)) fb.db.doc('invites/'+el.dataset.email).delete().then(loadTeam); break;
     case 'settings': go({screen:'settings'}); break;
     case 'begin': S.setup=true; save(); go(sharedEx ? {screen:'exIntro', ex:sharedEx} : {screen:'place'}); break;
     case 'exStart': openExercise(el.dataset.ex); break;

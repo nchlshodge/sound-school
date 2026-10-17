@@ -76,5 +76,9 @@ The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 4
 - **Sign-in:** Google, or an emailed sign-in link for people without Google. `@rochesterchristian.church` accounts get in automatically. Anyone else appears on the leader's **Team progress** page (Settings) and waits for approval.
 - **Leaders** are listed in three places that must match: `LEADERS` in `index.html`, `firestore.rules` and `storage.rules`.
 - **Data:** `users/{uid}` holds each person's progress (merged with the device on sign-in); `approvals/{uid}` is written only by leaders.
+- **Approved list:** leaders can add volunteers by email on the Team page (`invites/{email}`, lowercase). The first time an invited person signs in, the app creates their own `approvals/{uid}` (the rules allow only that). Removing someone also removes their invite.
+- **Audio in Storage:** all stems and the pastor's voice are uploaded to `gs://rcc-training.firebasestorage.app` (US-EAST1) with a one-week cache header, and the bucket allows the app's sites (CORS). The storage rules read `approvals/` through the Firestore service-agent role. Re-upload with the scratch `upload.js` approach (it uses the Firebase CLI's login) and bump `AUDIO_VER` in `index.html` whenever stems change, so devices drop their saved copies.
+- **Saved on the device:** audio files go into the browser's offline cache and each song's level measurements into local storage, so later visits load in seconds.
+- **Budget:** a $5/month budget on the billing account emails at 50%, 90% and 100%.
 - **Song stems** are kept out of public hosting (`firebase.json`) and load from Firebase Storage, which `storage.rules` limits to approved people. Storage needs the Blaze plan.
 - **Local copies** (localhost or the Wi-Fi test server) skip sign-in and load stems from this folder. Add `?cloud` to the URL to test sign-in locally.
