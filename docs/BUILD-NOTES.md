@@ -85,3 +85,17 @@ The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 4
 - **Set the gain** (`gainSetQ`, tool `gainset`): real channels from any loaded song. Easy starts very low or clipping; Hard is a three-channel soundcheck with Listen buttons. Graded on the true peak over the loop (raw peak + gain) against -18 to -6 dBFS.
 - **Fit it in the mix** (`fitQ`, tool `volfit`): one channel's fader starts 4–14 dB off. The target fader position is random, so the number gives nothing away. Graded within 3.5 / 2.5 / 2 dB. Each channel's role (`fitRole`) is repeated in the hint and the feedback.
 - **Set it in the mix** (`eqmixQ`): the band at its starting points, with one instrument flat. The feedback repeats that instrument's starting-point reasons (`eqWhy`), and so do Fix the EQ and the starting-points quiz.
+
+## Read aloud and character voices (Oct 2026)
+Settings → Read aloud. Each character reads lesson pages, questions and feedback, a piece at a time (title, paragraph, question, hint). A piece with a recording plays `tts/<hash>.m4a`, where the hash is `ttsId(who, text)`; `tts/index.json` lists the recorded ones. Anything else, like feedback with numbers worked out on the spot, uses the device's built-in voice (`CAST` in index.html). Reading stops when a clip plays.
+
+The recordings come from **Kokoro** (open source, runs on the Mac, free). The voices the user picked are in `CAST` in `tools/tts/build.py`:
+- Sona af_heart, Pip bf_lily (+2.5 semitones), Fenn am_michael, Kit bf_emma, Hugo am_fenrir.
+- Bram bm_lewis, Echo am_santa, Verb am_onyx, Penny bf_isabella (−1 semitone).
+
+To update after lesson text changes:
+1. Install once: `/opt/homebrew/bin/python3.12 -m venv tools/tts/.venv && tools/tts/.venv/bin/pip install kokoro-onnx soundfile`. Put `kokoro-v1.0.onnx` and `voices-v1.0.bin` (from the kokoro-onnx GitHub release `model-files-v1.0`) in `tools/tts/models/`.
+2. Run `python3 tools/tts/save_server.py tools/tts/lines.json`, then paste `tools/tts/crawl.js` into the browser console on the local app.
+3. Run `tools/tts/.venv/bin/python tools/tts/build.py`. It only records new lines. Then deploy hosting.
+
+Old files for text that no longer exists are harmless. Delete `tts/` and rebuild to clean up.

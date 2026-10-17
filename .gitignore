@@ -1,3 +1,8 @@
 .DS_Store
 # raw source stems (too big for git; the app uses stems/gsg)
 stems/GodsoGoodLifeChurch/
+
+# Kokoro voice tool: Python env and model files (large, re-downloadable)
+tools/tts/.venv/
+tools/tts/models/
+tools/tts/samples/

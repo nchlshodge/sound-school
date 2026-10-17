@@ -600,7 +600,7 @@ const SONGS = [
       2:{ bars:[36,52], start:{kick:8,hat:7,bass:9,gtr1:-12,keys:10,b3:'off',tracks:10,chloe:-9,corbin:5,taylor:-8}, traps:{crowd:-4,smpte:-18} },
       3:{ bars:[16,56] } }
   },
-  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:1, clipBars:2, kind:'Life.Church live stems', lazy:true,
+  { id:'gsg', title:'God So Good', bpm:77.5, firstBar:1, clipBars:2, kind:'Life.Church live stems', lazy:true, big:true,   // the whole song: about 1.5 GB decoded
     ch:[ {k:'drums',name:'Drums'},{k:'loop',name:'Loop'},{k:'bass',name:'Bass'},{k:'synth',name:'Synth bass'},{k:'acc',name:'Acoustic'},
          {k:'eg',name:'Electric 1'},{k:'eg2',name:'Electric 2'},{k:'eg3',name:'Electric 3'},{k:'keys',name:'Keys 1'},{k:'keys2',name:'Keys 2'},
          {k:'pad',name:'Pad'},{k:'piano',name:'Piano'},{k:'lead',name:'Lead vocal'},{k:'bgv',name:'BGV 1'},{k:'bgv2',name:'BGV 2'} ],
@@ -658,7 +658,9 @@ for(const s of SONGS){
   s.ref0={...s.ref}; s.ready=false; s.trim=0; s.vtrim=0;
 }
 const songById = id => SONGS.find(s=>s.id===id);
-const LISTED = () => SONGS.filter(s=>!s.hidden);   // the songs people pick and drill with
+// Low-memory devices (Fire tablets in Silk, older phones and Chromebooks): one song at a time, no preloading, no whole-song stems.
+const LOW_MEM = (navigator.deviceMemory ?? 8) <= 4 || /[?&]lowmem\b/.test(location.search);   // ?lowmem to test it
+const LISTED = () => SONGS.filter(s=>!s.hidden && !(LOW_MEM && s.big));   // the songs people pick and drill with
 const at = (song, bar) => (bar-song.firstBar)*song.bar;           // song bar -> seconds into the stem files
 const pickWin = (song, kind) => at(song, pick(song.win[kind]));
 function applySavedRefs(){ for(const s of SONGS) s.ref = {...s.ref0, ...((S.refs||{})[s.id]||{})}; }
@@ -722,7 +724,7 @@ function initAudio(){
   if(A.ready) return A.ready;
   if(!A.ctx){
     const AC = window.AudioContext || window.webkitAudioContext;
-    A.ctx = new AC();
+    A.ctx = LOW_MEM ? new AC({sampleRate:32000}) : new AC();   // a third less memory for every decoded track
     A.master = A.ctx.createGain(); A.master.gain.value = S.vol;
     // Safety net so nothing in a drill can get painfully loud.
     const safe = A.ctx.createDynamicsCompressor();
@@ -750,7 +752,7 @@ function initAudio(){
     }));
     await loadSong(SONGS[0], true);
     // The other small songs load one at a time after a pause, so they don't slow down the first one. Big ones load when opened.
-    setTimeout(async()=>{ for(const s of SONGS.slice(1).filter(s=>!s.lazy)) await loadSong(s).catch(e=>console.warn(e)); }, 4000);
+    if(!LOW_MEM) setTimeout(async()=>{ for(const s of SONGS.slice(1).filter(s=>!s.lazy)) await loadSong(s).catch(e=>console.warn(e)); }, 4000);
   })().catch(e=>{ A.ready=null; throw e; });
   return A.ready;
 }
@@ -769,8 +771,20 @@ async function fetchAudio(path, priv=true){
 try{ if(self.caches) caches.keys().then(ks=>ks.filter(k=>k.startsWith('ss-audio-') && k!=='ss-audio-'+AUDIO_VER).forEach(k=>caches.delete(k))); }catch(e){}
 const calKey = song => `ss-cal-${AUDIO_VER}-${song.id}`;
 function setLoadMsg(t){ const el=document.getElementById('loadmsg'); if(el) el.textContent=t; }
+// Decoded tracks take a lot of memory, so only a few songs stay loaded; the one used longest ago is let go.
+const MAX_SONGS = LOW_MEM ? 1 : 3;
+function freeSongs(keep){
+  const loaded=SONGS.filter(s=>s!==keep && A.loading[s.id]).sort((a,b)=>(a.used||0)-(b.used||0));
+  while(loaded.length >= MAX_SONGS){ const s=loaded.shift();
+    for(const k of Object.keys(A.buf)) if(k.startsWith(s.id+':')) delete A.buf[k];
+    s.ready=false; A.loading[s.id]=null;
+    if(typeof EQG!=='undefined' && EQG.song===s.id) EQG.cal=null;   // the EQ guide is measured again next time
+    if(typeof FIXG!=='undefined') FIXG=FIXG.filter(w=>w.song!==s.id); }
+}
 function loadSong(song, show){
+  song.used=Date.now();
   if(A.loading[song.id]) return A.loading[song.id];
+  freeSongs(song);
   return A.loading[song.id] = (async()=>{
     let n=0;
     await Promise.all([...song.ch, ...(song.xtra||[]).map(k=>({k}))].map(async c=>{
@@ -1809,7 +1823,7 @@ function gateFixQuestion(l){
   const kind = l===1 ? 'chop' : l===2 ? pick(['open','choke']) : 'scratch';
   let w, D, best, P, tries=0;
   // Pick a clip where a good gate setting exists and the starting setup really has the problem.
-  for(const cand of freshFirst(FIXG, w=>`${w.song}:${w.k}`)){
+  for(const cand of freshFirst(FIXG.filter(w=>A.buf[`${w.song}:${w.k}`]), w=>`${w.song}:${w.k}`)){
     if(++tries>12) break;
     const d=gateData(cand); if(d.hits.length<2 || d.minHit-d.spill<8 || d.minHit-d.spill>40) continue;
     const b=gateBest(d); if(!b || b.R.closed<0.6) continue;
@@ -3777,37 +3791,59 @@ const sayable = t => (' '+t+' ')
   .replace(/\bEQ\b/g,'E Q').replace(/\bEQs\b/g,'E Qs').replace(/\bHPF\b/g,'high-pass').replace(/\bL\/R\b/g,'L R').replace(/\bM32\b/g,'M 32')
   .replace(/\.\s*\./g,'.').replace(/→/g,', then ').replace(/~/g,'about ').replace(/×/g,' times ').replace(/·/g,', ').replace(/\s+/g,' ').trim();
 let ttsKey='';
-function speak(id, text){
-  if(!TTS || !text) return; speechSynthesis.cancel();
-  const v=castVoice(id), c=CAST[id]||CAST.sona;
-  // Short pieces: some browsers stop reading long utterances partway through.
-  const parts=sayable(text).match(/[^.!?]+[.!?]*["')]*\s*/g) || [text];
-  for(const part of parts){ if(!part.trim()) continue;
-    const u=new SpeechSynthesisUtterance(part.trim()); if(v){ u.voice=v; u.lang=v.lang; } u.pitch=c.pitch; u.rate=c.rate; u.volume=Math.min(1, 0.4+S.vol);
-    speechSynthesis.speak(u); }
+// Recorded character voices (Kokoro, made by tools/tts/): tts/<hash>.m4a for every fixed piece of text the app says.
+// Anything not recorded (feedback with numbers in it) falls back to the device voice.
+const ttsHash = str => { let h1=0xdeadbeef, h2=0x41c6ce57; for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); };
+const ttsId = (who, text) => ttsHash(who+'|'+sayable(text));
+let TTS_SET=null, ttsRun=0, ttsNode=null;
+const ttsReady = () => TTS_SET ? Promise.resolve(TTS_SET) : fetch('tts/index.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(a=>TTS_SET=new Set(a));
+function speakDevice(id, text){
+  return new Promise(done=>{
+    if(!TTS){ done(); return; } const v=castVoice(id), c=CAST[id]||CAST.sona;
+    const parts=(sayable(text).match(/[^.!?]+[.!?]*["')]*\s*/g) || [text]).filter(x=>x.trim()); if(!parts.length){ done(); return; }
+    parts.forEach((part,i)=>{ const u=new SpeechSynthesisUtterance(part.trim()); if(v){ u.voice=v; u.lang=v.lang; } u.pitch=c.pitch; u.rate=c.rate; u.volume=Math.min(1,0.4+S.vol);
+      if(i===parts.length-1){ u.onend=done; u.onerror=done; } speechSynthesis.speak(u); });
+  });
 }
-const hush = () => { if(TTS) speechSynthesis.cancel(); };
+async function speakRecorded(id){
+  const data=await fetchAudio(`tts/${id}.m4a`, false), b=await A.ctx.decodeAudioData(data);
+  return new Promise(done=>{ const n=A.ctx.createBufferSource(); n.buffer=b; const g=A.ctx.createGain(); g.gain.value=1.4; n.connect(g).connect(A.master); n.onended=done; ttsNode=n; n.start(); });
+}
+// Read pieces of text one after another; a newer call (or hush) stops an older one.
+async function speakAll(segs){
+  hush(); const run=++ttsRun; await ttsReady();
+  for(const {who,text} of segs){
+    if(run!==ttsRun || !text) continue;
+    const id=ttsId(who,text);
+    if(TTS_SET.has(id) && A.ctx){ try{ if(A.ctx.state!=='running') await A.ctx.resume(); await speakRecorded(id); continue; }catch(e){} }
+    if(run===ttsRun) await speakDevice(who, text);
+  }
+}
+const speak = (id, text) => speakAll([{who:id, text}]);
+const hush = () => { ttsRun++; if(TTS) speechSynthesis.cancel(); if(ttsNode){ try{ ttsNode.stop(); }catch(e){} ttsNode=null; } };
 const textOf = el => el ? el.innerText.replace(/\s+/g,' ').trim() : '';
-// What this screen would read, and who reads it.
+// What this screen reads, in pieces (so shared lines like hints only need one recording), and who reads it.
 function readable(){
-  const say=app.querySelector('.say'), who=say?.querySelector('[data-m]')?.dataset.m || 'sona';
+  const say=app.querySelector('.say'), who=say?.querySelector('[data-m]')?.dataset.m || 'sona', seg=els=>[...els].map(e=>({who, text:textOf(e)})).filter(x=>x.text);
   if(UI.screen==='lesson'){
     const sh=app.querySelector('.sheet');
-    if(sh) return { who, text: textOf(sh.querySelector('h3'))+'. '+textOf(sh.querySelector('p')) };
-    return { who, text: textOf(say?.querySelector('.bubble')) };
+    if(sh) return seg(sh.querySelectorAll('h3, h3 ~ p:not(.tip)'));
+    return seg(say?.querySelectorAll('.bubble .bt, .bubble > p')||[]);
   }
-  if(UI.screen==='learn'){ const sl=app.querySelector('article.slide'); return { who, text: [...(sl?.querySelectorAll('h2,p')||[])].map(textOf).join('. ') }; }
-  return { who, text: textOf(say?.querySelector('.bubble')) };
+  if(UI.screen==='learn') return seg(app.querySelectorAll('article.slide > h2, article.slide > p'));
+  return seg(say?.querySelectorAll('.bubble .bt, .bubble > p')||[]);
 }
 // After each render: read new text automatically (re-renders of the same text stay quiet).
 function autoRead(){
-  if(!TTS || !S.readAloud || !['lesson','learn'].includes(UI.screen)) return;
-  const r=readable(), key=UI.screen+'|'+r.text; if(!r.text || key===ttsKey) return;
-  ttsKey=key; speak(r.who, r.text);
+  if(!S.readAloud || !['lesson','learn'].includes(UI.screen)) return;
+  const r=readable(), key=UI.screen+'|'+r.map(x=>x.text).join('|'); if(!r.length || key===ttsKey) return;
+  ttsKey=key; speakAll(r);
 }
 // The replay button that sits in each character's speech bubble.
 function addReadButtons(){
-  if(!TTS || !S.readAloud) return;
+  if(!S.readAloud) return;
   for(const b of app.querySelectorAll('.say .bubble')){ if(b.querySelector('.readbtn')) continue;
     b.append(frag(`<button class="iconbtn readbtn" data-act="readAloud" aria-label="Read this to me">${I.speak}</button>`)); }
 }
@@ -4277,8 +4313,8 @@ function vSettings(){
       <div class="set"><div class="t"><label for="vol"><b>Practice volume</b></label><span>How loud the drills play in this app.</span>
         <input id="vol" type="range" min="0.1" max="1" step="0.05" value="${S.vol}" data-act="vol" style="margin-top:8px"></div></div>
       <div class="set"><div class="t"><b>Test sound</b><span>Check your headphones.</span></div>${clipBtn('test','Play','',true)}</div>
-      ${TTS?`<div class="set"><div class="t"><b>Read aloud</b><span>Each character reads the lessons, questions and feedback to you in their own voice. It stops when you play a clip.</span></div>
-        <button class="switch" role="switch" aria-checked="${S.readAloud}" data-act="readToggle" aria-label="Read aloud"></button></div>`:''}
+      ${`<div class="set"><div class="t"><b>Read aloud</b><span>Each character reads the lessons, questions and feedback to you in their own voice. It stops when you play a clip.</span></div>
+        <button class="switch" role="switch" aria-checked="${S.readAloud}" data-act="readToggle" aria-label="Read aloud"></button></div>`}
     </div>
     <div class="sec-title">Training</div>
     <div class="panel">
@@ -4344,7 +4380,7 @@ async function openExercise(id){
   if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
     await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
       UI.mix.quick=true; UI.mix.build=false; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
-  else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
+  else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
   else if(x.guide){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startExercise(id); render(); }
   else await withAudio(()=>startExercise(id), x.plan.some(p=>p[0]==='ours')?'rcc':undefined);
   window.scrollTo(0,0);
@@ -4414,7 +4450,7 @@ async function openLevel(id, l){
     if(!(await withAudio())) return;
     const songs=mixSongs(dest), song=songs[S.mixTurn%songs.length];
     await withAudio(()=>startMixer(l, song.id, dest), song.id);
-  } else if(id==='gate' || id==='comp'){ if(!(await withAudio(null,'lhc'))) return; await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startLesson(id,l); render(); }
+  } else if(id==='gate' || id==='comp'){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startLesson(id,l); render(); }
   else if(id==='eq'){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startLesson(id,l); render(); }
   else await withAudio(()=>startLesson(id,l), id==='ours'?'rcc':undefined);
   window.scrollTo(0,0);
@@ -4547,7 +4583,7 @@ document.addEventListener('click', async e=>{
     case 'quit': if(confirm('Quit this lesson? Your answers so far won\'t be saved.')) go({screen:'home'}); break;
     case 'unlock': S.unlockAll=!S.unlockAll; save(); render(); break;
     case 'readToggle': S.readAloud=!S.readAloud; save(); if(!S.readAloud) hush(); else speak('sona','Hi! I\'ll read the lessons to you. Each of us has our own voice.'); render(); break;
-    case 'readAloud': { const r=readable(); if(TTS && speechSynthesis.speaking){ hush(); break; } speak(r.who, r.text); break; }
+    case 'readAloud': { if((TTS && speechSynthesis.speaking) || ttsNode){ hush(); break; } if(!(await withAudio())) break; speakAll(readable()); break; }
     case 'hello': { const m=el.dataset.m, u=UNITS.find(x=>x.mascot===m); speak(m, `Hi, I'm ${u.who.split(',')[0]}. ${u.id==='found'?'I\'m your guide.':`I teach ${u.title}.`}`); break; }
     case 'reset': if(confirm('Reset all your Sound School progress on this device?')){ Object.assign(S,{xp:0,streak:0,lastDay:null,done:{},placement:null}); save(); render(); } break;
     case 'resetRefs': if(confirm('Go back to the built-in reference mixes?')){ S.refs={}; save(); applySavedRefs(); render(); } break;
