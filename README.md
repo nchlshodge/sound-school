@@ -30,7 +30,7 @@ Then open http://localhost:8765/.
 
 ```
 stems/
-  speech/   two computer-voice sermon readings
+  voices/   real speaking voices: pastor (sermon mic) and mc (announcements)
   wwy/      "We Worship You" studio stems
   lhc/      "Let's Have Church" live multitrack
   isg/      "I'm So Glad I Met Jesus" live multitrack

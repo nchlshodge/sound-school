@@ -66,7 +66,7 @@ The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 4
 
 ## Speech
 
-`stems/voices/pastor.m4a` is 50 seconds of our pastor's sermon mic (Lav 1, 1:13:22 into the Feb 15 service), loudness-normalized. It's private like the song stems. `stems/speech/female.m4a` is a synthetic voice (macOS Samantha) kept for variety.
+`stems/voices/pastor.m4a` is 50 seconds of our pastor's sermon mic (Lav 1, 1:13:22 into the Feb 15 service), loudness-normalized. It's private like the song stems. `stems/voices/mc.m4a` is 50 seconds of the announcements mic (MC 2, 51:36 into the same service), matched to the pastor clip's loudness (-21.7 LUFS). The synthetic voice (`stems/speech/female.m4a`) is no longer used.
 
 ## Hosting and sign-in
 

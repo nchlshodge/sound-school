@@ -734,10 +734,10 @@ function initAudio(){
     A.buf.noise = arrToBuffer(Float32Array.from({length:sr}, ()=>Math.random()*2-1));
     // Ground-loop hum with a buzzy edge, for the line check.
     A.buf.hum = normalize(arrToBuffer(Float32Array.from({length:n}, (_,i)=>{ const t=i/sr, w=2*Math.PI*60*t; return 0.5*Math.sin(w)+0.3*Math.sin(2*w)+0.25*Math.sin(3*w)+0.12*Math.sign(Math.sin(w))*Math.abs(Math.sin(5*w)); })), 1);
-    // Speaking voices: our pastor's real sermon mic (Feb 15, Lav 1; private like the song stems) and a synthetic female voice.
+    // Speaking voices, both real and from the Feb 15 service (private like the song stems): the pastor's sermon mic (Lav 1) and the announcements mic (MC 2).
     A.speechDb = {};
     await Promise.all(VOICES.map(async v=>{
-      const data=await fetchAudio(voicePath(v), v==='pastor'), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
+      const data=await fetchAudio(voicePath(v), true), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
       A.buf['speech:'+v]=b;
       // loudness of the speaking parts only (skip the pauses), so every voice plays at the vocal-drill level
       const d=b.getChannelData(0), blk=Math.floor(0.05*b.sampleRate), e=[];
@@ -2233,8 +2233,9 @@ const chainOf = (...fx) => (c,inp)=>fx.reduce((n,f)=>f(c,n), inp);
 const LUKE_DELAY = s => fxStereoDelay({l:s.beat/2, r:s.beat*0.75, fb:0.3, wet:-6, mod:true});   // eighth left, dotted eighth right
 const LUKE_SLAP = () => fxStereoDelay({l:0.128, r:0.166, fb:0, wet:-4});
 /* ----- the spoken word: voices, mics and feedback ----- */
-const VOICES = ['pastor','female'], SPEECH_LEN = 6;
-const voicePath = v => v==='pastor' ? 'stems/voices/pastor.m4a' : `stems/speech/${v}.m4a`;
+const VOICES = ['pastor','mc'], SPEECH_LEN = 6;
+const voicePath = v => `stems/voices/${v}.m4a`;
+const WHO = v => v==='pastor' ? 'pastor' : 'announcer';   // who's talking, for the question text
 // A 6-second slice of the sermon passage.
 function VOICE(v=pick(VOICES), off){
   const b=A.buf['speech:'+v]; off = off ?? Math.random()*Math.max(0, b.duration-SPEECH_LEN-0.5);
@@ -2751,17 +2752,17 @@ const GEN = {
     if(!kind && EQG.cal && Math.random()<0.25) return Math.random()<0.5 ? fixQuestion(l) : eqmixQ(l);   // about one in four: hands-on
     if(kind==='voice' || (!kind && l===1 && r<0.5)){
       const v=pick(VOICES), src=VOICE(v), p=pick(VOICE_PROBS);
-      return Object.assign(choiceQ({ prompt:'This pastor\'s voice has a problem. What is it?', clips:[{label:'Natural',spec:{src}},{label:'Problem',spec:{src,chain:fxEQ(p.f,p.g,1.4)}}],
+      return Object.assign(choiceQ({ prompt:`This ${WHO(v)}'s voice has a problem. What is it?`, clips:[{label:'Natural',spec:{src}},{label:'Problem',spec:{src,chain:fxEQ(p.f,p.g,1.4)}}],
         choices:VOICE_PROBS.map(x=>({label:x.label,sub:x.sub})), correctLabel:p.label, explain:`It was ${p.label.toLowerCase()}: +${p.g} dB around ${hz(p.f)}. ${p.tip}` }), {voice:true});
     }
     if(kind==='mic' || (!kind && l===2 && r<0.5)){
       const v=pick(VOICES), k=pick(Object.keys(MICS)), m=MICS[k];
-      return Object.assign(choiceQ({ prompt:'Which mic is this pastor wearing, and what\'s going wrong?', clips:[{label:'Play',spec:{src:VOICE(v),chain:m.chain()}}],
+      return Object.assign(choiceQ({ prompt:`Which mic is this ${WHO(v)} using, and what's going wrong?`, clips:[{label:'Play',spec:{src:VOICE(v),chain:m.chain()}}],
         choices:Object.values(MICS).map(x=>({label:x.name,sub:x.problem})), correctLabel:m.name, explain:`${m.name}, ${m.problem}. The fix: ${m.fix}` }), {voice:true});
     }
     if(kind==='ring' || (!kind && l===3 && r<0.35)){
       const v=pick(VOICES), ring=pick(RINGS), mic=pick(['lapel','headset']), f=ring.f*Math.pow(2,(Math.random()-0.5)/3);
-      return Object.assign(choiceQ({ prompt:'The pastor\'s mic is starting to ring. Where is it?', clips:[{label:'Play',spec:{src:VOICE(v),chain:chainOf(MICS[mic].chain(),fxRing({f})),tail:1.5}}],
+      return Object.assign(choiceQ({ prompt:`The ${WHO(v)}'s mic is starting to ring. Where is it?`, clips:[{label:'Play',spec:{src:VOICE(v),chain:chainOf(MICS[mic].chain(),fxRing({f})),tail:1.5}}],
         choices:RINGS, correct:ring, explain:`It was ringing near ${hz(Math.round(f/10)*10)}. In a service, pull that fader down a little first, then find the ring with a narrow EQ cut. ${mic==='lapel'?'Lapels ring easily because they sit far from the mouth, so they need more gain.':'Headsets can ring when the speaker walks in front of the main speakers.'}` }), {voice:true});
     }
     if(kind==='ringout' || (!kind && l===3 && r<0.65)){
@@ -3097,7 +3098,7 @@ const GEN = {
         hint: l===3 ? 'No hints this time. After you answer, you can compare every band.' : 'Use the compare buttons below to hear each band before you choose.' });
   },
   walk(l){
-    return { tool:'walkup', dispUnit:'found', needBand:l>=2, voiceName:pick(VOICES), state:{}, options:['done'], answer:0, explain:'', clips:[],
+    return { tool:'walkup', dispUnit:'found', needBand:l>=2, voiceName:'pastor', state:{}, options:['done'], answer:0, explain:'', clips:[],
       prompt: l===1 ? 'The song is ending and the pastor is about to speak. Bring the pastor\'s mic up before the first word.' : 'This time the band keeps playing. Bring the pastor\'s mic up before the first word, and the band down under him as he starts.',
       hint: l===3 ? 'Less warning this time. Watch closely!' : 'Like the last 30 seconds of a song: find the pastor\'s fader and get your hand on it. Press Start, then watch the stage.' };
   },
@@ -3493,12 +3494,12 @@ const UNITS = [
     {t:'Cut before you boost', p:['Fixing a problem usually means cutting the bad part, not boosting everything else.','Use a high-pass filter on every mic that doesn\'t need lows (vocals, pastor, acoustic guitar), usually around 80–120 Hz.']},
     {t:'Starting points', p:['Every instrument has a usual place to start: where to high-pass, what to cut, and what (if anything) to boost.','<button class="btn ghost" data-act="eqGuide" data-back="learn">Open EQ starting points</button>']},
     {t:'Sweep to find it', p:['Can\'t tell where a problem is? Boost a narrow band, sweep slowly until the problem jumps out, then turn that boost into a cut.']},
-    {t:'EQ for the spoken word', p:['A speaking voice needs to be clear, not big. High-pass every speaking mic around 80–120 Hz, cut mud around 200–300 Hz if it sounds thick, and add only a touch around 2–4 kHz for clarity.','These voices are computer-generated stand-ins for a pastor; the EQ moves are the same.'],
+    {t:'EQ for the spoken word', p:['A speaking voice needs to be clear, not big. High-pass every speaking mic around 80–120 Hz, cut mud around 200–300 Hz if it sounds thick, and add only a touch around 2–4 kHz for clarity.','These are real voices from one of our Sundays: the pastor\'s sermon mic and the announcements mic.'],
       demos:[{label:'Natural',spec:()=>({src:VOICE('pastor',4)})},{label:'Muddy',spec:()=>({src:VOICE('pastor',4),chain:fxEQ(300,9,1.4)})},{label:'Clear',spec:()=>({src:VOICE('pastor',4),chain:chainOf(fxEQ(300,-3,1.4),fxEQ(3000,3,1))})}]},
     {t:'Three mics, three problems', p:['Handheld: held too close it gets boomy (proximity effect), with "p" pops and handling noise.','Headset: right at the mouth it gets harsh "S" sounds and breaths. Lapel: on the chest it sounds boxy and dull, picks up clothing rustle, and drops when the speaker turns their head.'],
-      demos:[{label:'Handheld',spec:()=>({src:VOICE('pastor',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('female',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('pastor',10),chain:MICS.lapel.chain()})}]},
+      demos:[{label:'Handheld',spec:()=>({src:VOICE('pastor',4),chain:MICS.handheld.chain()})},{label:'Headset',spec:()=>({src:VOICE('mc',4),chain:MICS.headset.chain()})},{label:'Lapel',spec:()=>({src:VOICE('pastor',10),chain:MICS.lapel.chain()})}]},
     {t:'Feedback and ringing', p:['Feedback is a loop: the mic hears the speakers and one frequency builds into a ring. Lapels ring most, because they sit farther from the mouth and need more gain.','Break the loop first: pull that fader down a little. Then fix the cause. Keep mics and people behind the main speakers, and away from floor wedges.','Don\'t cut the ring on that person\'s channel: it changes their voice. If the same frequency rings on every mic, cut a few dB of it on the main L/R EQ (or have the system tuned).'+HOT_CREDIT],
-      demos:[{label:'Ringing',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500})),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('female',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500,state:{f:2500}})),tail:1.5})}]}
+      demos:[{label:'Ringing',spec:()=>({src:VOICE('mc',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500})),tail:1.5})},{label:'Rung out',spec:()=>({src:VOICE('mc',4),chain:chainOf(MICS.lapel.chain(),fxRing({f:2500,state:{f:2500}})),tail:1.5})}]}
   ]},
   { id:'phase', title:'Phase & Polarity', mascot:'fenn', who:'Fenn the fennec fox', color:'#B45309', blurb:'Hear two mics fight, flip the polarity, and fix timing.', learn:[
     {t:'Two mics, one sound', p:['When two mics hear the same source (kick in and out, snare top and bottom, bass DI and amp), their signals add together. If they disagree, they cancel, and you lose low end and punch.']},
