@@ -255,6 +255,8 @@ button:disabled{cursor:default}
 .prog{flex:1;height:16px;background:var(--chip);border-radius:999px;overflow:hidden}
 .prog i{display:block;height:100%;background:var(--u);border-radius:999px;transition:width .35s}
 .say{display:flex;gap:12px;align-items:flex-end;margin:10px 0 18px}
+.readbtn{position:absolute;right:4px;bottom:4px;width:36px;height:36px;color:var(--u,var(--ink2))}.readbtn svg{width:22px;height:22px}
+.say .bubble:has(.readbtn){padding-right:44px}
 .say .m{width:84px;height:84px;flex:none}
 .say .bubble .bt{font-size:20px}
 .kicker{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-top:6px}
@@ -410,6 +412,7 @@ const MASCOTS = Object.fromEntries(['sona','pip','fenn','kit','hugo','bram','ech
 /* ---------- icons ---------- */
 const I = {
   play:'<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
+  speak:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
   stop:'<svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -429,14 +432,14 @@ const POSES = ['sona','pip','fenn','kit','hugo','bram','echo','verb','penny'];
 const MOODS = ['happy','celebrating','thinking','encouraging','surprised','sleeping'];
 const hasPose = (id, mood) => !!mood && POSES.includes(id) && MOODS.includes(mood);
 const mascotArt = (id, mood) => hasPose(id,mood) ? `<img class="pose" src="img/m-${id}-${mood}.webp" width="256" height="256" alt="" decoding="async">` : (MASCOTS[id]||'');
-const mascot = (id, cls='', mood) => `<div class="m ${cls}" aria-hidden="true">${mascotArt(id, mood)}</div>`;
+const mascot = (id, cls='', mood) => `<div class="m ${cls}" data-m="${id}" aria-hidden="true">${mascotArt(id, mood)}</div>`;
 // All markup below is authored in this file. The only user-entered text (names and emails on the team page) goes through esc().
 const frag = s => document.createRange().createContextualFragment(s);
 
 /* ---------- saved progress (this device only) ---------- */
 const STORE_KEY = 'rcc-sound-school-v1';
 function loadState(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; } }
-const S = Object.assign({ xp:0, streak:0, lastDay:null, done:{}, unlockAll:false, setup:false, vol:0.7, mixStyle:'modern', console:'m32' }, loadState());
+const S = Object.assign({ xp:0, streak:0, lastDay:null, done:{}, unlockAll:false, setup:false, readAloud:false, vol:0.7, mixStyle:'modern', console:'m32' }, loadState());
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} pushProgress(); }
 
 /* ---------- accounts (Firebase project: RCC Training) ----------
@@ -858,7 +861,7 @@ function stopAll(){
   A.nodes=[];
 }
 function play(spec){
-  const c=A.ctx; if(c.state!=='running') c.resume();
+  const c=A.ctx; if(c.state!=='running') c.resume(); hush();
   stopAll(); stopMixer();
   A.nodes.push(graph(c, spec, A.master, c.currentTime+0.04));
   return specLen(spec) + (spec.tail||0.3);
@@ -3745,9 +3748,74 @@ let playTimer = null, playingKey = null;
 
 function setUnitColor(c){ document.documentElement.style.setProperty('--u', c || '#3F3399'); }
 
+/* ----- Read aloud: each character reads the lessons, questions and feedback in their own voice (the browser's built-in speech) ----- */
+const TTS = typeof speechSynthesis!=='undefined' && typeof SpeechSynthesisUtterance!=='undefined';
+// Preferred system voices (first one found wins), then pitch and pace so each character still sounds different on any device.
+const CAST = {
+  sona: { pitch:1.05, rate:1.0,  like:['Samantha','Google US English','Microsoft Aria','Microsoft Jenny','Allison','Ava','Female'] },
+  pip:  { pitch:1.55, rate:1.08, like:['Karen','Google UK English Female','Microsoft Libby','Tessa','Ava','Female'] },
+  fenn: { pitch:1.05, rate:1.04, like:['Daniel','Google UK English Male','Microsoft Ryan','Microsoft Guy','Tom','Male'] },
+  kit:  { pitch:1.3,  rate:1.12, like:['Moira','Microsoft Emily','Google UK English Female','Samantha','Female'] },
+  hugo: { pitch:0.8,  rate:0.9,  like:['Lee','Gordon','Microsoft David','Google US English','Aaron','Male'] },
+  bram: { pitch:0.9,  rate:0.96, like:['Rishi','Aaron','Microsoft Christopher','Google UK English Male','Male'] },
+  echo: { pitch:1.4,  rate:1.14, like:['Tessa','Fiona','Microsoft Sonia','Google US English','Female'] },
+  verb: { pitch:0.6,  rate:0.86, like:['Lee','Microsoft Mark','Google UK English Male','Daniel','Male'] },
+  penny:{ pitch:1.2,  rate:1.04, like:['Fiona','Victoria','Microsoft Natasha','Karen','Female'] }
+};
+const NOVELTY = /Fred|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Junior|Ralph|Kathy|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley/;
+function castVoice(id){
+  const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang) && !NOVELTY.test(v.name)), c=CAST[id]||CAST.sona;
+  for(const want of c.like){ const v=vs.find(v=>v.name.includes(want)); if(v) return v; }
+  return vs.find(v=>v.default) || vs[0] || null;
+}
+if(TTS){ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = ()=>speechSynthesis.getVoices(); }
+// Make the text sound right out loud.
+const sayable = t => (' '+t+' ')
+  .replace(/(\d\s*(?:k?Hz|dB|ms|%)?)\s*[–-]\s*(\d)/g,'$1 to $2').replace(/(^|[\s(])-(\d)/g,'$1minus $2').replace(/\+(\d)/g,'plus $1')
+  .replace(/\bdBFS\b/g,'D B F S').replace(/\bdBA\b/g,'D B A').replace(/\bdBC\b/g,'D B C').replace(/\bdB\b/g,'D B').replace(/\bLUFS\b/g,'loo-fs')
+  .replace(/\bkHz\b/g,'kilohertz').replace(/\bHz\b/g,'hertz').replace(/\bms\b/g,'milliseconds').replace(/\bBPM\b/g,'B P M')
+  .replace(/\bEQ\b/g,'E Q').replace(/\bEQs\b/g,'E Qs').replace(/\bHPF\b/g,'high-pass').replace(/\bL\/R\b/g,'L R').replace(/\bM32\b/g,'M 32')
+  .replace(/\.\s*\./g,'.').replace(/→/g,', then ').replace(/~/g,'about ').replace(/×/g,' times ').replace(/·/g,', ').replace(/\s+/g,' ').trim();
+let ttsKey='';
+function speak(id, text){
+  if(!TTS || !text) return; speechSynthesis.cancel();
+  const v=castVoice(id), c=CAST[id]||CAST.sona;
+  // Short pieces: some browsers stop reading long utterances partway through.
+  const parts=sayable(text).match(/[^.!?]+[.!?]*["')]*\s*/g) || [text];
+  for(const part of parts){ if(!part.trim()) continue;
+    const u=new SpeechSynthesisUtterance(part.trim()); if(v){ u.voice=v; u.lang=v.lang; } u.pitch=c.pitch; u.rate=c.rate; u.volume=Math.min(1, 0.4+S.vol);
+    speechSynthesis.speak(u); }
+}
+const hush = () => { if(TTS) speechSynthesis.cancel(); };
+const textOf = el => el ? el.innerText.replace(/\s+/g,' ').trim() : '';
+// What this screen would read, and who reads it.
+function readable(){
+  const say=app.querySelector('.say'), who=say?.querySelector('[data-m]')?.dataset.m || 'sona';
+  if(UI.screen==='lesson'){
+    const sh=app.querySelector('.sheet');
+    if(sh) return { who, text: textOf(sh.querySelector('h3'))+'. '+textOf(sh.querySelector('p')) };
+    return { who, text: textOf(say?.querySelector('.bubble')) };
+  }
+  if(UI.screen==='learn'){ const sl=app.querySelector('article.slide'); return { who, text: [...(sl?.querySelectorAll('h2,p')||[])].map(textOf).join('. ') }; }
+  return { who, text: textOf(say?.querySelector('.bubble')) };
+}
+// After each render: read new text automatically (re-renders of the same text stay quiet).
+function autoRead(){
+  if(!TTS || !S.readAloud || !['lesson','learn'].includes(UI.screen)) return;
+  const r=readable(), key=UI.screen+'|'+r.text; if(!r.text || key===ttsKey) return;
+  ttsKey=key; speak(r.who, r.text);
+}
+// The replay button that sits in each character's speech bubble.
+function addReadButtons(){
+  if(!TTS || !S.readAloud) return;
+  for(const b of app.querySelectorAll('.say .bubble')){ if(b.querySelector('.readbtn')) continue;
+    b.append(frag(`<button class="iconbtn readbtn" data-act="readAloud" aria-label="Read this to me">${I.speak}</button>`)); }
+}
+
 function render(){
   const s=UI.screen;
   app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : s==='console'?vConsole() : vSetup()));
+  addReadButtons(); autoRead();
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
 
@@ -4209,6 +4277,8 @@ function vSettings(){
       <div class="set"><div class="t"><label for="vol"><b>Practice volume</b></label><span>How loud the drills play in this app.</span>
         <input id="vol" type="range" min="0.1" max="1" step="0.05" value="${S.vol}" data-act="vol" style="margin-top:8px"></div></div>
       <div class="set"><div class="t"><b>Test sound</b><span>Check your headphones.</span></div>${clipBtn('test','Play','',true)}</div>
+      ${TTS?`<div class="set"><div class="t"><b>Read aloud</b><span>Each character reads the lessons, questions and feedback to you in their own voice. It stops when you play a clip.</span></div>
+        <button class="switch" role="switch" aria-checked="${S.readAloud}" data-act="readToggle" aria-label="Read aloud"></button></div>`:''}
     </div>
     <div class="sec-title">Training</div>
     <div class="panel">
@@ -4225,7 +4295,8 @@ function vSettings(){
     </div>
     <div class="sec-title">The team</div>
     <div class="panel" style="padding:16px">
-      <div class="team">${team.map(u=>`<div style="--u:${u.color}">
+      ${TTS?'<p class="foot" style="margin:0 0 10px">Tap a character to hear their voice.</p>':''}
+      <div class="team">${team.map(u=>`<div style="--u:${u.color}${TTS?';cursor:pointer':''}" ${TTS?`data-act="hello" data-m="${u.mascot}" role="button" tabindex="0" aria-label="Hear ${esc(u.who.split(' ')[0])}'s voice"`:''}>
         <div class="m tint" aria-hidden="true">${mascotArt(u.mascot,'happy')}</div>
         <b class="disp" style="display:block;margin-top:6px">${u.who.split(' ')[0]}</b>
         <span class="ut" style="font-size:13px;font-weight:800">${u.id==='found'?'Guide':u.title}</span></div>`).join('')}
@@ -4326,7 +4397,7 @@ function markPlaying(k, secs){
   clearTimeout(playTimer);
   if(k) playTimer=setTimeout(()=>{ if(secs>=60) stopAll(); playingKey=null; document.querySelectorAll('.clip.on').forEach(b=>b.classList.remove('on')); }, secs*1000);   // loops stop when the button does
 }
-function go(ui){ stopAll(); stopMixer(); if(ui.screen!=='console') conStop(); markPlaying(null); UI=ui; render(); window.scrollTo(0,0); }
+function go(ui){ hush(); ttsKey=''; stopAll(); stopMixer(); if(ui.screen!=='console') conStop(); markPlaying(null); UI=ui; render(); window.scrollTo(0,0); }
 async function openLevel(id, l){
   if(l===0) return go({screen:'learn', unit:id, slide:0});
   stopAll(); stopMixer(); markPlaying(null);
@@ -4475,6 +4546,9 @@ document.addEventListener('click', async e=>{
       go(UI); break; }
     case 'quit': if(confirm('Quit this lesson? Your answers so far won\'t be saved.')) go({screen:'home'}); break;
     case 'unlock': S.unlockAll=!S.unlockAll; save(); render(); break;
+    case 'readToggle': S.readAloud=!S.readAloud; save(); if(!S.readAloud) hush(); else speak('sona','Hi! I\'ll read the lessons to you. Each of us has our own voice.'); render(); break;
+    case 'readAloud': { const r=readable(); if(TTS && speechSynthesis.speaking){ hush(); break; } speak(r.who, r.text); break; }
+    case 'hello': { const m=el.dataset.m, u=UNITS.find(x=>x.mascot===m); speak(m, `Hi, I'm ${u.who.split(',')[0]}. ${u.id==='found'?'I\'m your guide.':`I teach ${u.title}.`}`); break; }
     case 'reset': if(confirm('Reset all your Sound School progress on this device?')){ Object.assign(S,{xp:0,streak:0,lastDay:null,done:{},placement:null}); save(); render(); } break;
     case 'resetRefs': if(confirm('Go back to the built-in reference mixes?')){ S.refs={}; save(); applySavedRefs(); render(); } break;
     /* mixer */
