@@ -24,6 +24,11 @@ service cloud.firestore {
         && request.resource.data.approved == true
         && get(/databases/$(database)/documents/invites/$(request.auth.token.email)).data.approved == true;
     }
+    // Trainer sign-off after someone shadows a real service. Leaders write it; each person can read their own.
+    match /signoffs/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || leader());
+      allow write: if leader();
+    }
     // The approved list leaders keep on the Team page, by email address (lowercase).
     match /invites/{email} {
       allow read: if leader() || (signedIn() && request.auth.token.email == email);

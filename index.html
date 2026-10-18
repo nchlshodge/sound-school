@@ -305,6 +305,7 @@ button:disabled{cursor:default}
 .ckrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:none;font:inherit;color:var(--ink);padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
 .ckrow:last-child{border-bottom:0}.ckrow.on span:last-child{color:var(--ink2);text-decoration:line-through}
 .ckbox{width:26px;height:26px;flex:none;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;color:#fff}.ckrow.on .ckbox{background:#1F7A3A;border-color:#1F7A3A}.ckbox svg{width:16px;height:16px}
+.badge{width:40px;height:40px;border-radius:50%;background:#1F7A3A;color:#fff;display:grid;place-items:center;font-weight:800}
 .ckcard{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:0;border-left:6px solid #2F7A2F;border-radius:18px;box-shadow:var(--shadow);padding:12px 14px;margin-top:16px;font:inherit;color:var(--ink);cursor:pointer;--u:#2F7A2F}
 .ckcard .m{width:56px;height:56px;flex:none}.ckcard b{font-size:17px}.ckcard span{font-size:13px;color:var(--ink2);font-weight:600}
 .stagerow{display:grid;grid-template-columns:1fr auto auto;gap:6px 8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -570,10 +571,14 @@ async function pullProgress(u){
       if(dayNum(c.lastDay)>dayNum(S.lastDay)){ S.lastDay=c.lastDay; S.streak=c.streak||0; } else if(c.lastDay===S.lastDay) S.streak=Math.max(S.streak||0, c.streak||0);
       if(c.setup) S.setup=true; if(c.placement && !S.placement) S.placement=c.placement;
       for(const k of ['console','mixStyle','vol']) if(c[k]!==undefined) S[k]=c[k];
+      if(c.stats){ S.stats=S.stats||{}; for(const [k,v] of Object.entries(c.stats)){ const m=S.stats[k]; if(!m || (v.r+v.w)>(m.r+m.w)) S.stats[k]=v; } }
+      if(c.sundayReady && (!S.sundayReady || dayNum(c.sundayReady)>dayNum(S.sundayReady))) S.sundayReady=c.sundayReady;
+      if(c.ex){ S.ex=S.ex||{}; for(const [k,v] of Object.entries(c.ex)) S.ex[k]=Math.max(S.ex[k]||0, v); }
       if(c.refs && Object.keys(c.refs).length && !(S.refs && Object.keys(S.refs).length)) S.refs=c.refs;
     }
     try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){}
     pushProgress(true);
+    try{ const so=await fb.db.doc('signoffs/'+u.uid).get(); ME.signoff = so.exists ? {at:so.data().at&&so.data().at.toMillis(), by:so.data().by} : null; }catch(e){ ME.signoff=null; }
   }catch(e){ console.warn('Could not load saved progress', e); }
 }
 function pushProgress(now){
@@ -1027,6 +1032,7 @@ const EQ_SECTIONS = [
   { id:'band',  title:'The whole band', items:[] }
 ];
 const SP_PASS = 3;
+const SR_PASS = 10;   // of 12, for the Sunday-ready check
 const spSecDone = id => ((S.ex||{})['sp-'+id]||0) >= SP_PASS;
 const spCount = () => EQ_SECTIONS.filter(x=>spSecDone(x.id)).length;
 // The guide's acoustic table by mistake (it repeats the bass row): used in a Hard question to show why we follow the picture.
@@ -4108,6 +4114,8 @@ const EXERCISES = [
     plan:[['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}]] },
   { id:'ring',    title:'Ring it out',         mascot:'fenn',  color:'#A8540A', blurb:'Hear where feedback is ringing, then notch it out.', units:['eq'],
     plan:[['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ringout'}]] },
+  { id:'sundayready', title:'Sunday-ready check', mascot:'sona', color:'#3F3399', blurb:'', units:['found'], hidden:true, prep:['guide','gate'],
+    plan:[['gain',2,{kind:'set'}],['eq',2,{}],['eqfix',2],['gate',2,{kind:'fix'}],['comp',2,{kind:'fix'}],['mix',2,{kind:'ride'}],['vol',2,{kind:'fit'}],['eq',2,{kind:'feedback'}],['found',2,{kind:'trouble'}],['stage',2,{kind:'set'}],['routine',2,{kind:'order'}],['walk',2]] },
   { id:'sundayorder', title:'Sunday in order', mascot:'kit', color:'#2F7A2F', blurb:'Power-on, line check, soundcheck, save the scene, shutdown: put the steps in the right order.', units:['routine'],
     plan:[['routine',1,{kind:'order'}],['routine',1,{kind:'order'}],['routine',2,{kind:'order'}],['routine',3,{kind:'order'}]] },
   { id:'stageset', title:'Set up the stage', mascot:'bram', color:'#8A5A2B', blurb:'Pick the right mic or DI for each source, set phantom power, and patch it all by the input list.', units:['stage'],
@@ -4315,6 +4323,9 @@ function vPracticeTab(){
       <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div><div class="qt"><b>${q.title}</b><span>${q.sub}</span></div></button>`; }).join('');
   const list = EXERCISES.filter(x=>!x.hidden).sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
   return `<button class="ckcard" data-act="checklist"><div class="m tint" aria-hidden="true">${mascotArt('kit','happy')}</div><div class="qt"><b>Sunday checklist</b><span>Use it on Sunday morning: power-on to shutdown, step by step.</span></div></button>
+    ${(()=>{ const n=weakSpots(), any=reviewPool().length; return `<div class="row" style="margin-top:12px"><button class="btn" data-act="review" ${any?'':'disabled'} style="flex:1;--u:#B4421F">${I.bolt} ${n?`Review my weak spots (${n})`:'Review'}</button></div>
+      ${any?'':`<p class="foot" style="margin:6px 4px 0">Review opens after you've answered a few questions. It brings back what you missed.</p>`}`; })()}
+    <button class="ckcard" data-act="exStart" data-ex="sundayready" style="border-left-color:#3F3399"><div class="m tint" aria-hidden="true">${mascotArt('sona',S.sundayReady?'celebrating':'happy')}</div><div class="qt"><b>Sunday-ready check${S.sundayReady?' ✓':''}</b><span>${S.sundayReady?`Passed ${S.sundayReady}. Take it again any time.`:`12 questions across every skill. Get ${SR_PASS} to earn your badge.`}</span></div></button>
     <div class="sec-title" style="margin-top:14px">Jump in</div>
     <div class="qgrid">${tiles}</div>
     <div class="row" style="margin-top:12px">
@@ -4330,6 +4341,8 @@ function vMeTab(){
   return `<div class="stats" style="margin-top:16px">
       <div class="stat"><b>${S.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div><div class="stat"><b>${coreDone}/${UNITS.length}</b><span>Units</span></div></div>
     <div class="panel" style="padding:4px 16px">
+      <div class="set"><div class="t"><b>Sunday-ready</b><span>${S.sundayReady?`Passed the check on ${S.sundayReady}.`:'Take the 12-question check when you\'ve worked through the path.'}${ME.signoff?` Signed off by your trainer${ME.signoff.at?' on '+new Date(ME.signoff.at).toLocaleDateString():''}.`:S.sundayReady?' Next: shadow a service so your trainer can sign you off.':''}</span></div>
+        ${S.sundayReady&&ME.signoff?`<span class="badge">✓</span>`:`<button class="btn ghost" data-act="exStart" data-ex="sundayready" style="min-height:44px;padding:0 14px">${S.sundayReady?'Again':'Take it'}</button>`}</div>
       <div class="set"><div class="t"><b>Exercises tried</b><span>${exDone} of ${EXERCISES.filter(x=>!x.hidden).length}</span></div>
         <button class="btn ghost" data-act="tab" data-t="practice" style="min-height:44px;padding:0 14px">Practice</button></div>
       <div class="set"><div class="t"><b>Placement check</b><span>${S.placement?`Last result: ${S.placement.level} (${S.placement.correct}/${S.placement.total})`:'Find out where to start and skip what you know.'}</span></div>
@@ -4382,7 +4395,7 @@ function vLearn(){
 // Questions are made one at a time, alternating between whichever songs have loaded.
 function lessonQ(L){
   if(!L.qs[L.i]){
-    const songs=readySongs(), song=songs[(L.seed+L.i)%songs.length], [id,l,o] = L.plan ? L.plan[L.i] : L.practice ? pick(L.pool) : [L.unit, L.level];
+    const songs=readySongs(), song=songs[(L.seed+L.i)%songs.length], prev=L.qs[L.i-1], fromPool=()=>{ for(let t=0;t<6;t++){ const x=pick(L.pool); if(!prev || x[0]+x[1]!==prev.unit+prev.level) return x; } return pick(L.pool); }, [id,l,o] = L.plan ? L.plan[L.i] : L.practice ? fromPool() : [L.unit, L.level];
     L.qs[L.i] = Object.assign({song:song.id}, GEN[id](l, song, o), {unit:id, level:l});
   }
   return L.qs[L.i];
@@ -4403,7 +4416,7 @@ function vLesson(){
   return `<div class="lbar"><button class="iconbtn" data-act="quit" aria-label="Quit lesson">${I.close}</button>
     <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${L.n}" aria-valuenow="${L.i+(answered?1:0)}"><i style="width:${prog*100}%"></i></div></div>
   <main class="wrap" style="padding-bottom:${answered?300:120}px">
-    <div class="kicker ut">${L.exercise?exById(L.exercise).title+' · ':L.placement?'Placement check · ':L.practice?'Mixed practice · ':''}${u.title} · ${levelName(u,q.level)}${q.text?'':q.tag?' · '+q.tag:q.noSong?' · Pink noise':q.voice?' · Spoken word':` · "${songById(q.song).title}"`}</div>
+    <div class="kicker ut">${L.exercise?exById(L.exercise).title+' · ':L.placement?'Placement check · ':L.review?'Review · ':L.practice?'Mixed practice · ':''}${u.title} · ${levelName(u,q.level)}${q.text?'':q.tag?' · '+q.tag:q.noSong?' · Pink noise':q.voice?' · Spoken word':` · "${songById(q.song).title}"`}</div>
     <div class="say">${mascot(u.mascot,'', !answered?'thinking':right?'celebrating':'encouraging')}<div class="bubble"><span class="bt">${q.prompt}</span>${q.text?'':`<p>${q.hint || (q.clips.length>1?'Play each one as many times as you like.':'Play it as many times as you like.')}</p>`}</div></div>
     ${clips?`<div class="clips">${clips}</div>`:''}
     ${q.refs && (!q.refsAfter || answered) ? `<div class="slide" style="margin-bottom:18px;padding:16px"><div class="kicker" style="color:var(--ink2);margin:0 0 10px">Compare with each band</div>
@@ -4646,6 +4659,7 @@ function vResult(){
       <h1 style="font-size:34px" class="ut">${r.correct===r.total?'Perfect!':'Nice work!'}</h1>
       <p style="color:var(--ink2);margin:6px 0 0">${x.title}: ${r.correct} of ${r.total} right.</p>
       ${r.exercise==='eqstart' ? `<p style="margin:8px 0 0"><b>${r.correct>=6 ? 'Starting points step complete. EQ · Easy is unlocked.' : 'Get 6 of 8 to finish the Starting points step and unlock EQ · Easy.'}</b></p>` : ''}
+      ${r.exercise==='sundayready' ? `<p style="margin:8px 0 0"><b>${r.correct>=SR_PASS ? 'You\'re Sunday-ready! Next step: shadow a real service, and your trainer can sign you off.' : `Get ${SR_PASS} of ${r.total} to pass. Your Review will focus on what you missed.`}</b></p>` : ''}
       ${r.exercise.startsWith('sp-') ? `<p style="margin:8px 0 0"><b>${r.correct>=SP_PASS ? (spDone() ? 'All four sections done. EQ · Easy is unlocked.' : `Section saved: ${spCount()} of ${EQ_SECTIONS.length} done.`) : `Get ${SP_PASS} of ${r.total} to save this section.`}</b></p>` : ''}
       <div class="stats"><div class="stat"><b>${r.correct}/${r.total}</b><span>Correct</span></div><div class="stat"><b>+${r.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div></div>
       ${r.exercise.startsWith('sp-') ? (()=>{ const nxt=EQ_SECTIONS.find(z=>!spSecDone(z.id));
@@ -4657,7 +4671,7 @@ function vResult(){
   const r=UI.result, u=unitById(r.unit);
   setUnitColor(u.color);
   const need=Math.ceil(r.total*0.75), retry = !r.pass && !r.practice;
-  const head = r.practice ? 'Practice complete!' : r.pass ? (r.correct===r.total?'Perfect!':'Level passed!') : 'So close!';
+  const head = r.review ? 'Review complete!' : r.practice ? 'Practice complete!' : r.pass ? (r.correct===r.total?'Perfect!':'Level passed!') : 'So close!';
   const sub = r.practice ? 'Every rep makes Sunday easier.' : r.pass ? `${u.title} · ${levelName(u,r.level)} is done.` : `You need ${need} of ${r.total} to pass. Give it another listen.`;
   return `<main class="wrap center big">
     ${mascot(u.mascot,'', r.pass||r.practice?'celebrating':'encouraging')}
@@ -4714,7 +4728,9 @@ function vTeam(){
   setUnitColor();
   const T=UI.team, ago=t=>{ if(!t) return 'never'; const d=Math.floor((Date.now()-t)/864e5); return d<1?'today':d===1?'yesterday':`${d} days ago`; };
   const row=p=>`<div class="set"><div class="t"><b>${esc(p.name||p.email)}</b><span>${esc(p.email)}${p.church?' · church account':''}</span>
-      ${p.ok?`<span>${p.xp} XP · ${p.levels} levels · ${p.units} of ${UNITS.length} units finished · active ${ago(p.seen)}</span>`:''}</div>
+      ${p.ok?`<span>${p.xp} XP · ${p.levels} levels · ${p.units} of ${UNITS.length} units finished · active ${ago(p.seen)}</span>
+      <span>${p.ready?`Sunday-ready check passed ${p.ready}`:'Sunday-ready check not passed yet'} · ${p.signed?`signed off ${new Date(p.signed).toLocaleDateString()}`:'not signed off'}</span>
+      <span style="margin-top:6px;display:block"><button class="btn ${p.signed?'ghost':''}" data-act="teamSignoff" data-uid="${esc(p.uid)}" style="min-height:36px;padding:0 12px;font-size:14px">${p.signed?'Undo sign-off':'Sign off: shadowed a service'}</button></span>`:''}</div>
       ${p.leader||p.church ? '' : p.ok ? `<button class="btn ghost" data-act="teamRevoke" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Remove</button>`
         : `<button class="btn" data-act="teamApprove" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Approve</button>`}</div>`;
   const waiting=T?T.filter(p=>!p.ok):[], team=T?T.filter(p=>p.ok).sort((a,b)=>(b.seen||0)-(a.seen||0)):[];
@@ -4731,12 +4747,13 @@ function vTeam(){
 async function loadTeam(){
   UI.team=null; UI.teamErr=null; render();
   try{
-    const [us,ap,inv]=await Promise.all([fb.db.collection('users').get(), fb.db.collection('approvals').get(), fb.db.collection('invites').get()]);
+    const [us,ap,inv,so]=await Promise.all([fb.db.collection('users').get(), fb.db.collection('approvals').get(), fb.db.collection('invites').get(), fb.db.collection('signoffs').get()]);
+    const signed={}; so.forEach(d=>{ signed[d.id]=d.data().at ? d.data().at.toMillis() : Date.now(); });
     UI.invites=[]; inv.forEach(d=>{ if(d.data().approved) UI.invites.push(d.id); });
     const ok={}; ap.forEach(d=>{ ok[d.id]=!!d.data().approved; });
-    UI.team=[]; us.forEach(d=>{ const x=d.data(), email=x.email||''; let done={}; try{ done=JSON.parse(x.progressJson||'{}').done||{}; }catch(e){}
+    UI.team=[]; us.forEach(d=>{ const x=d.data(), email=x.email||''; let done={}, ready=null; try{ const pj=JSON.parse(x.progressJson||'{}'); done=pj.done||{}; ready=pj.sundayReady||null; }catch(e){}
       const church=isChurch(email), leader=isLeaderEmail(email);
-      UI.team.push({ uid:d.id, name:x.name, email, xp:x.xp||0, levels:x.levels||0, units:unitsDone(done), seen:x.lastSeen&&x.lastSeen.toMillis(), church, leader, ok:church||leader||!!ok[d.id] }); });
+      UI.team.push({ uid:d.id, ready, signed:signed[d.id]||null, name:x.name, email, xp:x.xp||0, levels:x.levels||0, units:unitsDone(done), seen:x.lastSeen&&x.lastSeen.toMillis(), church, leader, ok:church||leader||!!ok[d.id] }); });
   }catch(e){ UI.team=[]; UI.teamErr='Couldn\'t load the team. Check your connection and try again.'; }
   if(UI.screen==='team') render();
 }
@@ -4850,6 +4867,8 @@ async function openExercise(id){
   if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
     await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
       UI.mix.quick=true; UI.mix.build=false; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
+  else if(x.prep){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); UI.loading=true; render();
+    if(x.prep.includes('guide')) await prepEqGuide(); if(x.prep.includes('gate')){ A.gateOk=await ensureGate(); prepGateFix(); } UI.loading=false; startExercise(id); render(); }
   else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
   else if(x.guide){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startExercise(id); render(); }
   else await withAudio(()=>startExercise(id), x.plan.some(p=>p[0]==='ours')?'rcc':undefined);
@@ -4876,10 +4895,32 @@ function finishPlacement(){
   const xp=L.correct*5; S.xp+=xp; bumpStreak(); save();
   UI = { screen:'result', result:{ placement:true, correct:L.correct, total:L.n, xp, level:lvl, tested, start } };
 }
+// What each person gets right and wrong, by unit and level, for the Review.
+function trackAnswer(q, L){
+  if(!q || !q.unit || !GEN[q.unit] || L.picked==null) return;
+  const k=q.unit+':'+(q.level||1), st=(S.stats=S.stats||{})[k]||(S.stats[k]={r:0,w:0,t:0}), ok = q.right ?? (L.picked===q.answer);
+  if(ok) st.r++; else st.w++; st.t=Date.now(); if(!ok) st.lastWrong=Date.now();
+}
+// Review: mostly what you've missed (recent misses count most), plus things you haven't practiced in a while.
+function reviewPool(){
+  const pool=[], now=Date.now(), day=864e5;
+  for(const [k,st] of Object.entries(S.stats||{})){ const [id,l]=k.split(':'), u=unitById(id); if(!u && !GEN[id]) continue;
+    const miss=st.w/(st.r+st.w), recentMiss=st.lastWrong ? Math.max(0, 1-(now-st.lastWrong)/(14*day)) : 0, stale=Math.min(1,(now-st.t)/(10*day));
+    const w=Math.round(1 + 8*miss + 6*recentMiss + 3*stale); for(let i=0;i<w;i++) pool.push([id,+l]); }
+  UNITS.forEach(u=>{ if(GEN[u.id]) [1,2,3].forEach(l=>{ if(passed(u,l) && !(S.stats||{})[u.id+':'+l]) pool.push([u.id,l],[u.id,l]); }); });
+  return pool;
+}
+const weakSpots = () => Object.entries(S.stats||{}).filter(([,st])=>st.w>0 && st.w/(st.r+st.w)>=0.25).length;
+function startReview(){
+  const pool=reviewPool();
+  FOUND = FOUND_ALL.map(b=>b.slice());
+  UI = { screen:'lesson', lesson:{ practice:true, review:true, pool, n:8, i:0, qs:[], picked:null, correct:0, seed:Math.floor(Math.random()*SONGS.length) } };
+}
 function finishLesson(){
   if(UI.lesson.placement) return finishPlacement();
   if(UI.lesson.exercise){
     const L=UI.lesson, xp=L.correct*8; S.ex=S.ex||{}; S.ex[L.exercise]=Math.max(S.ex[L.exercise]||0, L.correct);
+    if(L.exercise==='sundayready' && L.correct>=SR_PASS) S.sundayReady=dayKey(0);
     S.xp+=xp; bumpStreak(); save();
     UI = { screen:'result', result:{ exercise:L.exercise, correct:L.correct, total:L.n, xp } }; return;
   }
@@ -4887,7 +4928,7 @@ function finishLesson(){
   const xp=L.correct*10 + (L.correct===total?20:0);
   if(!L.practice && pass){ const k=`${L.unit}-${L.level}`; S.done[k]=Math.max(S.done[k]||0, L.correct); }
   S.xp+=xp; bumpStreak(); save();
-  UI = { screen:'result', result:{ unit:L.practice?L.qs[0].unit:L.unit, level:L.level, correct:L.correct, total, xp, pass, practice:!!L.practice } };
+  UI = { screen:'result', result:{ unit:L.practice?L.qs[0].unit:L.unit, level:L.level, correct:L.correct, total, xp, pass, practice:!!L.practice, review:!!L.review } };
 }
 function clipSpec(k){
   if(k==='test') return {src:PINK(SONGS[0])};
@@ -4959,6 +5000,9 @@ document.addEventListener('click', async e=>{
     case 'checkApproval': { const u=ME.user; if(!u) break; try{ const a=await fb.db.doc('approvals/'+u.uid).get(); ME.approved=!!(a.exists&&a.data().approved); }catch(e){}
       if(ME.approved){ UI=startUI(); render(); } else alert('Not yet. Ask a sound team leader to approve you, then try again.'); break; }
     case 'team': go({screen:'team'}); loadTeam(); break;
+    case 'teamSignoff': { const uid=el.dataset.uid, p=(UI.team||[]).find(x=>x.uid===uid); if(!p) break;
+      try{ if(p.signed) await fb.db.doc('signoffs/'+uid).delete(); else await fb.db.doc('signoffs/'+uid).set({ at:firebase.firestore.FieldValue.serverTimestamp(), by:(ME.user.email||'').toLowerCase() });
+        p.signed = p.signed ? null : Date.now(); render(); }catch(e){ alert('Couldn\'t save the sign-off. Check your connection and try again.'); } break; }
     case 'teamApprove': case 'teamRevoke': {
       const uid=el.dataset.uid, yes=act==='teamApprove', person=(UI.team||[]).find(p=>p.uid===uid);
       if(!yes && !confirm('Remove this person\'s access to Sound School?')) break;
@@ -4993,6 +5037,7 @@ document.addEventListener('click', async e=>{
     case 'tab': HOME_TAB=el.dataset.t; if(UI.screen!=='home') go({screen:'home'}); else { UI.tab=HOME_TAB; render(); } window.scrollTo(0,0); break;
     case 'chap': { const c=el.dataset.c, cur=(()=>{ const n=findNext(); return n ? CHAPTERS.find(x=>x.units.includes(n.u.id))?.id : null; })(), isOpen = UI.chap ? UI.chap===c : cur===c;
       UI.chap = isOpen ? '_none' : c; render(); break; }
+    case 'review': stopAll(); if(!reviewPool().length) break; await withAudio(startReview); window.scrollTo(0,0); break;
     case 'practice': stopAll(); await withAudio(startPractice); window.scrollTo(0,0); break;
     case 'slide': go(Object.assign({}, UI, {slide:Math.max(0,UI.slide+(+el.dataset.d))})); break;
     case 'learnDone': {
@@ -5059,7 +5104,7 @@ document.addEventListener('click', async e=>{
       L.picked=+el.dataset.i; const q=lessonQ(L); q.right = L.picked===q.answer; if(q.right) L.correct++;
       render(); break; }
     case 'next': {
-      const L=UI.lesson; L.i++; L.picked=null;
+      const L=UI.lesson; trackAnswer(lessonQ(L), L); L.i++; L.picked=null;
       if(L.i>=L.n) finishLesson();
       go(UI); break; }
     case 'quit': if(confirm('Quit this lesson? Your answers so far won\'t be saved.')) go({screen:'home'}); break;
