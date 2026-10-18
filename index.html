@@ -299,6 +299,12 @@ button:disabled{cursor:default}
 .qtile{background:var(--card);border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font:inherit;color:inherit;cursor:pointer;border-top:5px solid var(--u)}
 .qtile .m{width:64px;height:64px}.qt{display:flex;flex-direction:column;gap:3px}.qtile b{font-size:15px}.qtile span{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.3}
 @media (max-width:420px){ .qgrid{grid-template-columns:1fr} .qtile{flex-direction:row;text-align:left;gap:12px} .qtile .m{width:52px;height:52px;flex:none} .qtile b{display:block} }
+.ridetl{position:relative;height:40px;background:var(--chip);border-radius:10px;overflow:hidden}
+.ridetl i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.ridetl .rev{position:absolute;top:4px;bottom:4px;background:color-mix(in srgb,var(--u,#3F3399) 75%,transparent);border-radius:7px;display:flex;align-items:center;padding:0 6px;overflow:hidden}
+.ridetl .rev span{font-size:11px;font-weight:800;color:#fff;white-space:nowrap}
+.ridetl b{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:#FFD23F;left:0;box-shadow:0 0 6px #FFD23F}
+.ridecue{font-size:20px;margin:10px 0;min-height:28px;text-align:center;color:var(--ink)}.ridecue.hot{color:#E0A100}
 .readbtn{position:absolute;right:4px;bottom:4px;width:36px;height:36px;color:var(--u,var(--ink2))}.readbtn svg{width:22px;height:22px}
 .say .bubble:has(.readbtn){padding-right:44px}
 .say .m{width:84px;height:84px;flex:none}
@@ -2434,6 +2440,101 @@ function lineSpec(song, k, off, prob){
 const liveChannels = (song, off) => song.mix.filter(k=>soloSrc(song,k,off).rms > -50);
 
 /* ----- Pastor walks up: a timing game ----- */
+/* ----- Ride the mix: something changes mid-song; move the fader at the right moment, then put it back ----- */
+const RIDE_KINDS = {
+  solo:    { label:'Guitar solo',              need:+6, ev:0,  cue:'takes a solo', tip:'Bring the solo up a few dB as it starts, and back down when the singer comes back in.' },
+  keysolo: { label:'Keys feature',             need:+5, ev:0,  cue:'plays a feature', tip:'A feature or fill should step forward, then tuck back under the vocal.' },
+  backoff: { label:'Leader steps back',        need:+7, ev:-7, cue:'steps back from the mic', tip:'When a singer backs off the mic, the words disappear. Push the fader up to keep them clear, then back to where it was.' },
+  belt:    { label:'Big chorus: singer belts',  need:-5, ev:+5, cue:'belts the big chorus', tip:'When a singer gets loud, pull the fader down a little so the vocal sits on top without shouting at the room.' }
+};
+const RIDE_INST = ['gtr1','gtr2','eg','acc','keys','piano','b3'];
+function rmsDb(b, t0, t1){ const d=b.getChannelData(0), sr=b.sampleRate, a=Math.max(0,Math.floor(t0*sr)), e=Math.min(d.length,Math.floor(t1*sr)); let x=0,n=0; for(let i=a;i<e;i+=8){ x+=d[i]*d[i]; n++; } return 10*Math.log10(x/Math.max(1,n)+1e-12); }
+function rideQ(l){
+  const songs=readySongs().filter(x=>x.mix.every(k=>A.buf[`${x.id}:${k}`])), song=pick(songs.length?songs:[D()]), total=Math.min(...song.mix.map(k=>A.buf[`${song.id}:${k}`].duration));
+  const bar=song.bar, nb=Math.max(10, Math.min(16, Math.floor(28/bar))), dur=nb*bar, off=Math.max(0, Math.min(pickWin(song,'full'), total-dur-0.5));
+  const live=k=>A.buf[`${song.id}:${k}`] && rmsDb(A.buf[`${song.id}:${k}`], off, off+dur) > -50;
+  const inst=RIDE_INST.filter(k=>song.mix.includes(k) && live(k)), vox=song.vocal;
+  // When each channel is actually playing, bar by bar, so events land where you can hear them.
+  const playing=k=>Array.from({length:nb},(_,i)=>rmsDb(A.buf[`${song.id}:${k}`], off+i*bar, off+(i+1)*bar) > -45);
+  const warn = l===1 ? 2 : l===2 ? 1 : 0, first = Math.max(3, warn+2);
+  const place=(k,len,from)=>{ const on=playing(k); for(let b=from;b+len<=nb-1;b++) if(on.slice(b,b+len).every(Boolean)) return b; return null; };
+  const evs=[]; const add=(kind,k,len,from)=>{ const b=place(k,len,from); if(b!=null) evs.push({kind, k, b, len}); return b; };
+  const instKind = k => /key|piano|b3/.test(k) ? 'keysolo' : 'solo';
+  if(l===1){ const k=inst.length && coin() ? pick(inst) : vox; add(k===vox ? pick(['backoff','belt']) : instKind(k), k, 3, first); }
+  else { const k=pick(inst.length?inst:[vox]); const b=add(k===vox?'backoff':instKind(k), k, l===3?2:3, first);
+    add(k===vox?'belt':pick(['backoff','belt']), vox, l===3?2:3, (b??first)+(l===3?3:4)); }
+  if(!evs.length) evs.push({kind:'backoff', k:vox, b:first, len:3});
+  const chans=[...new Set(evs.map(e=>e.k))], tol = l===1 ? 3 : l===2 ? 2.5 : 2;
+  const state={ fader:Object.fromEntries(chans.map(k=>[k,0])), nodes:{}, log:[], running:false, t0:0 };
+  const who=k=>chWord(song.name[k]);
+  return { tool:'ride', song:song.id, level:l, off, dur, bar, nb, evs, chans, warn, tol, state, dispUnit:'mix',
+    prompt: evs.length>1 ? 'Ride the mix: two things change in this song. Move each fader at the right moment, then put it back.' : `Ride the mix: the ${who(evs[0].k)} ${RIDE_KINDS[evs[0].kind].cue}. Move its fader at the right moment, then put it back.`,
+    hint: (l===3 ? 'Watch the run sheet: no countdown this time. ' : `You'll get a ${warn===2?'2-bar':'1-bar'} warning. `)+'Press Start. The song plays once. Good live mixing is small moves made just before they\'re needed, not after.',
+    clips:[], options:['done'], answer:0, explain:'' };
+}
+// The band, with the event channels' level changes built in, and (for "hear it ridden right") the fader moves too.
+function rideGraph(q, c, dest, t0, auto){
+  const song=songById(q.song), st=q.state, nodes={}, srcs=[];
+  for(const k of song.mix){ const b=A.buf[`${song.id}:${k}`]; if(!b || song.traps.includes(k)) continue;
+    const n=c.createBufferSource(); n.buffer=b; const g=c.createGain(); g.gain.value=db(chDb(song,k)); n.connect(g);
+    let out=g;
+    if(q.chans.includes(k)){ const ev=c.createGain(), fd=c.createGain(); ev.gain.value=1; fd.gain.value=1;
+      for(const e of q.evs.filter(e=>e.k===k)){ const a=t0+e.b*q.bar, z=t0+(e.b+e.len)*q.bar, K=RIDE_KINDS[e.kind];
+        ev.gain.setValueAtTime(1,a); ev.gain.linearRampToValueAtTime(db(K.ev),a+0.25); ev.gain.setValueAtTime(db(K.ev),z); ev.gain.linearRampToValueAtTime(1,z+0.25);
+        if(auto){ const lead=0.3; fd.gain.setValueAtTime(1,a-lead-0.3); fd.gain.linearRampToValueAtTime(db(K.need),a-lead+0.2); fd.gain.setValueAtTime(db(K.need),z-0.2); fd.gain.linearRampToValueAtTime(1,z+0.3); } }
+      out=g.connect(ev).connect(fd); nodes[k]=fd; }
+    out.connect(dest); n.start(t0, q.off, q.dur); srcs.push(n); }
+  return {nodes, srcs};
+}
+const rideNeed = (q, k, t) => { const e=q.evs.find(e=>e.k===k && t>=e.b*q.bar && t<(e.b+e.len)*q.bar); return e ? RIDE_KINDS[e.kind].need : 0; };
+function runRide(q){
+  const c=A.ctx, st=q.state; stopAll(); if(c.state!=='running') c.resume();
+  const bus=c.createGain(); bus.connect(A.master); const t0=c.currentTime+0.2;
+  const g=rideGraph(q, c, bus, t0, false); st.nodes=g.nodes; for(const k of q.chans){ st.fader[k]=0; }
+  A.nodes.push({src:g.srcs, out:bus}); Object.assign(st, {t0, running:true, log:[]});
+  const tick=()=>{ if(!st.running) return; const t=c.currentTime-st.t0;
+    if(t>=0) st.log.push([t, {...st.fader}]);
+    const ph=document.getElementById('ride-ph'); if(ph) ph.style.left=Math.max(0,Math.min(100,t/q.dur*100))+'%';
+    const cue=document.getElementById('ride-cue'); if(cue){ const b=t/q.bar, nowE=q.evs.find(e=>b>=e.b && b<e.b+e.len), nextE=q.evs.find(e=>b<e.b);
+      cue.textContent = nowE ? `${RIDE_KINDS[nowE.kind].label} now` : nextE && q.warn && nextE.b-b<=q.warn ? `${RIDE_KINDS[nextE.kind].label} in ${Math.ceil(nextE.b-b)} bar${Math.ceil(nextE.b-b)>1?'s':''}…` : t<0 ? 'Get ready…' : `Bar ${Math.floor(b)+1} of ${q.nb}`;
+      cue.classList.toggle('hot', !!nowE || (!!nextE && q.warn && nextE.b-b<=q.warn)); }
+    if(t>=q.dur+0.3){ finishRide(q); return; }
+    st.raf=requestAnimationFrame(tick); };
+  st.raf=requestAnimationFrame(tick);
+}
+function finishRide(q){
+  const st=q.state, L=UI.lesson; if(!st.running) return; st.running=false; cancelAnimationFrame(st.raf);
+  if(UI.screen!=='lesson' || lessonQ(L)!==q) return;
+  const lines=[]; let ok=true;
+  for(const e of q.evs){
+    const K=RIDE_KINDS[e.kind], a=e.b*q.bar, z=(e.b+e.len)*q.bar, name=chWord(songById(q.song).name[e.k]);
+    const inWin=st.log.filter(([t])=>t>=a+0.4 && t<z), cover=inWin.filter(([,f])=>Math.abs(f[e.k]-K.need)<=q.tol).length/Math.max(1,inWin.length);
+    const reach=st.log.find(([t,f])=>t>=a-q.bar && Math.abs(f[e.k]-K.need)<=q.tol), late=reach ? reach[0]-a : null;
+    const back=st.log.find(([t,f])=>t>=z && Math.abs(f[e.k])<=q.tol), backLate=back ? back[0]-z : null;
+    const good = cover>=0.6 && late!=null && late<=(q.level===3?0.6:0.9) && backLate!=null && backLate<=1.5;
+    if(!good) ok=false;
+    lines.push(`${K.label} (${name}, ${K.need>0?'+':''}${K.need} dB): ` + (late==null ? 'the fader never got there.' : `${late<-0.05?`${(-late).toFixed(1)} s early, nice anticipation`:late<0.35?'right on time':`${late.toFixed(1)} s late`}, held ${Math.round(cover*100)}% of it, ` + (backLate==null?'and it never came back down.':backLate<=1.5?'and back in time.':`and back ${backLate.toFixed(1)} s late.`)) + ` ${K.tip}`);
+  }
+  L.picked = ok?0:1; q.right=ok; if(ok) L.correct++;
+  q.explain = (ok ? 'Smooth riding. ' : 'Not quite. ') + lines.join(' ');
+  q.after=[{label:'ridden right', spec:{src:[], len:q.dur+0.5, synth:(c,bus,t0)=>rideGraph(q,c,bus,t0,true)}}, {label:'with no riding', spec:{src:[], len:q.dur+0.5, synth:(c,bus,t0)=>{ rideGraph(q,c,bus,t0,false); }}}];
+  stopAll(); markPlaying(null); render();
+}
+function vRideTool(q, answered){
+  const st=q.state, song=songById(q.song), dis=answered||st.running?'':'';
+  const blocks=q.evs.map(e=>`<div class="rev" style="left:${e.b*q.bar/q.dur*100}%;width:${e.len*q.bar/q.dur*100}%"><span>${RIDE_KINDS[e.kind].label}</span></div>`).join('');
+  const bars=Array.from({length:q.nb-1},(_,i)=>`<i style="left:${(i+1)/q.nb*100}%"></i>`).join('');
+  return `<div class="slide ${answered?'locked':''}" style="padding:12px">
+    <div class="kicker" style="color:var(--ink2);margin:0 0 6px">Run sheet · "${song.title}"</div>
+    <div class="ridetl" aria-hidden="true">${bars}${blocks}<b id="ride-ph"></b></div>
+    <p id="ride-cue" class="disp ridecue" role="status">${answered?'Done.':st.running?'…':'Ready when you are.'}</p>
+    <div class="m32surface"><div class="cbank" style="justify-content:center">${q.chans.map(k=>`<div class="mstrip" style="--sc:${chColor(song,k)}">
+      <div class="scrib"><span>CH ${String(song.mix.indexOf(k)+1).padStart(2,'0')}</span><b>${song.name[k]}</b></div>
+      <div class="mfad">${faderScale(-20,12)}<input type="range" min="-20" max="12" step="0.5" value="${st.fader[k]}" data-act="rideFader" data-k="${k}" aria-label="${song.name[k]} fader" ${answered?'disabled':''}></div>
+      <b class="mdb" id="ride-v-${k}">${fmtDb(st.fader[k])}</b></div>`).join('')}</div></div>
+    ${answered?'':`<button class="btn block" data-act="rideStart" style="margin-top:12px" ${st.running?'disabled':''}>${st.running?'Playing…':I.play+' Start'}</button>`}
+  </div>`;
+}
 function runWalkup(q){
   const c=A.ctx, song=songById(q.song), st=q.state; stopAll(); if(c.state!=='running') c.resume();
   const t0=c.currentTime+0.15, lead = q.level===3 ? 1+Math.random()*0.8 : 2+Math.random()*1.5, C=2.5+Math.random()*2, T=C+lead;
@@ -3003,6 +3104,7 @@ const GEN = {
       explain:L=>`${L} had the vocals pushed up. The bass-heavy mix may sound great in the room, but on a phone the bass vanishes and the vocals get lost.` });
   },
   mix(l, s, o={}){
+    if(o.kind==='ride' || (!o.kind && Math.random()<0.2)) return rideQ(l);   // hands-on: ride the faders through a change
     if(o.kind==='lowcut' || (!o.kind && l>=2 && Math.random()<0.2)) return Math.random()<0.6 || o.kind==='lowcut' ? lowcutQ(s) : textQ(pick(VOLUME_TEXT));
     // Easy: 4 groups. Medium: 6 groups. Hard: single channels, and sometimes something is too quiet.
     const G=s.groups[l], names=Object.keys(G), name=pick(names), quiet = l===3 && Math.random()<0.35;
@@ -3858,6 +3960,8 @@ const EXERCISES = [
     plan:[['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}]] },
   { id:'ring',    title:'Ring it out',         mascot:'fenn',  color:'#A8540A', blurb:'Hear where feedback is ringing, then notch it out.', units:['eq'],
     plan:[['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ringout'}]] },
+  { id:'ride', title:'Ride the mix', mascot:'sona', color:'#3F3399', blurb:'Hands-on: a solo, a singer backing off the mic, a belted chorus. Move the fader at the right moment, then put it back.', units:['mix'],
+    plan:[['mix',1,{kind:'ride'}],['mix',1,{kind:'ride'}],['mix',2,{kind:'ride'}],['mix',2,{kind:'ride'}],['mix',3,{kind:'ride'}],['mix',3,{kind:'ride'}]] },
   { id:'balance', title:'What\'s too loud?',   mascot:'sona',  color:'#3F3399', blurb:'Spot the channel that\'s out of balance in a full band.', units:['mix'],
     plan:[['mix',1],['mix',2],['mix',2],['mix',3],['mix',3]] },
   { id:'fx',      title:'Effects spotter',     mascot:'echo',  color:'#2457C5', blurb:'Compression, delay and reverb: hear what\'s on the vocal.', units:['comp','dly','verb'],
@@ -4134,6 +4238,7 @@ function vLesson(){
       <div class="row">${q.refs.map((r,i)=>clipBtn('r'+i, r.label, '', true)).join('')}</div></div>` : ''}
     ${q.tool==='gainset' ? vGainTool(q, answered)
     : q.tool==='volfit' ? vFitTool(q, answered)
+    : q.tool==='ride' ? vRideTool(q, answered)
     : q.tool==='walkup' ? `<div class="slide" style="text-align:center">
         <p id="walkStatus" class="disp" style="font-size:20px;color:var(--ink);min-height:52px;margin:4px 0 14px">${answered?'Done.':q.state.running?'…':'Ready when you are.'}</p>
         ${q.state.running||answered ? `<div class="row"><button class="btn" data-act="walkMic" style="flex:1" ${q.state.mic!=null||answered?'disabled':''}>Pastor mic up</button>
@@ -4733,6 +4838,7 @@ document.addEventListener('click', async e=>{
       el.setAttribute('aria-pressed', st.mute); el.textContent = st.mute?'Muted':'Mute it'; break; }
     case 'fitLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const {ok, why}=fitGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; stopAll(); markPlaying(null); render(); break; }
+    case 'rideStart': { const q=lessonQ(UI.lesson); if(q.state.running || UI.lesson.picked!=null) break; if(!(await withAudio())) break; runRide(q); render(); break; }
     case 'walkStart': { const q=lessonQ(UI.lesson); if(!(await withAudio())) return; runWalkup(q); render(); break; }
     case 'walkMic': { const q=lessonQ(UI.lesson), st=q.state; if(!st.running||st.mic!=null) return;
       st.mic=A.ctx.currentTime-st.t0; st.mic_g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.05); el.disabled=true; break; }
@@ -4858,6 +4964,11 @@ document.addEventListener('input', e=>{
   const t=e.target;
   if(t.dataset.act==='vol'){ S.vol=+t.value; save(); if(A.master) A.master.gain.value=S.vol; }
 
+  if(t.dataset.act==='rideFader'){
+    const q=lessonQ(UI.lesson), st=q.state, k=t.dataset.k; st.fader[k]=+t.value;
+    const nd=st.nodes[k]; if(nd && st.running) nd.gain.setTargetAtTime(db(st.fader[k]), A.ctx.currentTime, 0.015);
+    const lb=document.getElementById('ride-v-'+k); if(lb) lb.textContent=fmtDb(st.fader[k]);
+  }
   if(t.dataset.act==='fitFader'){
     const q=lessonQ(UI.lesson), st=q.state; st.v=+t.value; if(st.node && !st.mute) st.node.gain.setTargetAtTime(db(chDb(songById(q.song),q.k,st.v-st.target)), A.ctx.currentTime, 0.02);
     const lb=document.getElementById('fitlbl'); if(lb) lb.textContent=`${st.v>0?'+':''}${st.v} dB`;
