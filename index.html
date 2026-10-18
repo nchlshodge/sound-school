@@ -1614,7 +1614,7 @@ function knobShow(kn, v){
   kn.querySelector('.kdial i').style.transform=`rotate(${-135+Math.max(0,Math.min(1,pos))*270}deg)`;
 }
 // Which EQ a knob or drag belongs to: the lesson's, a Sunday Mix channel ("_mix:<k>") or the console.
-const eqSetAny = (k, p, v) => k.startsWith('_gain:') ? gainKnobSet(+k.slice(6), v) : k==='_lesson' ? lessonKnob(k, p, v) : k.startsWith('_mix:') ? mixEqSet(k.slice(5), p, v) : conSetEq(k, p, v);
+const eqSetAny = (k, p, v) => k.startsWith('_sc:') ? scGainSet(k.slice(4), v) : k.startsWith('_gain:') ? gainKnobSet(+k.slice(6), v) : k==='_lesson' ? lessonKnob(k, p, v) : k.startsWith('_mix:') ? mixEqSet(k.slice(5), p, v) : conSetEq(k, p, v);
 const eqChanOf = k => k==='_lesson' ? lessonQ(UI.lesson).state.ch : k.startsWith('_mix:') ? UI.mix.eq[k.slice(5)] : UI.con.ch[k];
 function knobStep(kn, dpos){
   const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', v=+kn.dataset.val;
@@ -2688,6 +2688,12 @@ function vGainTool(q, answered){
     </div>`).join('')}</div></div>
     <p class="m32hint" style="margin-top:8px">Turn the GAIN knob (drag up or down). The green zone on the meter is -18 to -6 dBFS.</p>
     <button class="btn block" data-act="gainLock" style="margin-top:10px" ${dis}>Lock in my gain</button></div>`;
+}
+// Turning a channel's GAIN knob in the Sunday soundcheck.
+function scGainSet(k, v){
+  const sc=UI.sc; if(!sc || sc.result) return; sc.gain[k]=v; const nd=sc.nodes&&sc.nodes[k];
+  if(nd){ nd.g.gain.setTargetAtTime(db(v),A.ctx.currentTime,0.02); nd.post.gain.setTargetAtTime(db(nd.listen-v),A.ctx.currentTime,0.02); }
+  const kn=document.querySelector(`.knob[data-k="_sc:${k}"]`); if(kn) knobShow(kn, v);
 }
 // Turning a channel's GAIN knob in the gain game.
 function gainKnobSet(i, v){
@@ -4235,8 +4241,8 @@ function scMeterLoop(){
     for(const k of sc.chs){ const nd=sc.nodes[k]; if(!nd) continue; nd.an.getFloatTimeDomainData(buf); let pk=0; for(const x of buf) pk=Math.max(pk,Math.abs(x));
       const d=20*Math.log10(pk*db(sc.gain[k])+1e-9), h=(sc.hist[k]=(sc.hist[k]||[]).filter(x=>performance.now()-x[0]<sc.loopMs)); h.push([performance.now(),d]);
       const hold=Math.max(...h.map(x=>x[1])), bar=document.getElementById('scm-'+k), t=document.getElementById('sct-'+k);
-      if(bar){ bar.style.width=Math.max(0,Math.min(100,(d+60)/66*100))+'%'; bar.className = d>0?'clip':d>-6?'hot':d>-18?'good':'low'; }
-      if(t) t.textContent = hold<-80 ? '—' : `${hold>0?'+':''}${hold.toFixed(0)} dBFS`; } };
+      if(bar){ bar.style.height=Math.max(0,Math.min(100,(d+60)/66*100))+'%'; bar.dataset.z = d>0?'clip':d>-6?'hot':d>-18?'good':'low'; }
+      if(t){ t.textContent = hold<-80 ? '—' : hold>0 ? 'CLIP' : `${hold.toFixed(0)} pk`; t.classList.toggle('pkclip', hold>0); } } };
   sc.timer=setInterval(tick, 50);   // keeps measuring even if the screen isn't redrawing
 }
 function finishSoundcheck(){
@@ -4253,11 +4259,15 @@ function vSoundcheck(){
   return `<div class="lbar"><button class="iconbtn" data-act="scQuit" aria-label="Leave soundcheck">${I.close}</button><h1 style="font-size:22px;flex:1">Soundcheck</h1></div>
   <main class="wrap" style="padding-bottom:40px">
     <div class="say">${mascot(u.mascot)}<div class="bubble"><span class="bt">${u.title} · Soundcheck</span><p>The band is playing a chorus on a loop, and the MC is testing their mic. Set every channel's gain so its peaks land in the green zone (about -18 to -6 dBFS). The meters hold the loudest peak from the whole loop, so let it play through once after your last change.</p></div></div>
-    <div class="board">${sc.chs.map(k=>`<div class="scrow">
-      <div class="scn"><b>${song.name[k]}</b><span id="sct-${k}">—</span></div>
-      <div class="gmeter sm" aria-hidden="true"><div class="gzone" style="left:${zl}%;width:${zw}%"></div><i id="scm-${k}"></i></div>
-      <label class="scg"><span class="sr">Gain for ${song.name[k]}</span><input type="range" min="-30" max="60" step="0.5" value="${sc.gain[k]}" data-act="scGain" data-k="${k}" ${r?'disabled':''}><b id="scg-${k}">${sc.gain[k]>0?'+':''}${sc.gain[k]} dB</b></label>
-    </div>`).join('')}</div>
+    <div class="m32surface"><div class="cbank">${sc.chs.map(k=>{ const z=v=>(v+60)/66*100, num=k==='mc' ? 'MC' : 'CH '+String(song.mix.indexOf(k)+1).padStart(2,'0');
+      return `<div class="mstrip gstrip" style="--sc:${k==='mc'?'#E8EAED':chColor(song,k)}">
+        <div class="scrib"><span>${num}</span><b>${song.name[k]}</b></div>
+        ${knob('_sc:'+k,'trim','GAIN',sc.gain[k],-30,60,`${sc.gain[k]>0?'+':''}${sc.gain[k]}`,false,!!r)}
+        <div class="vmeter" aria-hidden="true"><div class="vzone" style="bottom:${z(GAIN_ZONE[0])}%;height:${z(GAIN_ZONE[1])-z(GAIN_ZONE[0])}%"></div><i id="scm-${k}"></i>
+          ${[0,-6,-18,-40].map(v=>`<span style="bottom:${z(v)}%">${v}</span>`).join('')}</div>
+        <b class="mdb gpk" id="sct-${k}">—</b>
+      </div>`; }).join('')}</div></div>
+    <p class="m32hint" style="margin-top:8px">Swipe for more channels. Turn each GAIN knob (drag up or down) until the peaks sit in the green zone.</p>
     ${r ? `<section class="slide" style="margin-top:16px"><div style="display:flex;align-items:center;gap:16px"><div class="score ut" style="--u:${r.score>=70?'#1F7A3A':'#B4421F'}">${r.score}</div>
       <div><b class="disp" style="font-size:22px">${r.score>=70?'Soundcheck done!':'A few channels need work'}</b><p style="margin:2px 0 0">${r.score>=70?'Healthy levels everywhere it counts. On to the song.':'Fix the channels below and check again.'}</p></div></div>
       <ul class="notes">${r.notes.map(n=>`<li class="${n.bad?'bad':'good'}">${song.name[n.k]}<span>${n.msg}</span></li>`).join('')}</ul></section>` : ''}
@@ -4791,11 +4801,7 @@ document.addEventListener('input', e=>{
     const lb=document.getElementById('ringlbl'); if(lb) lb.textContent=hz(Math.round(f/10)*10);
   }
   if(t.dataset.act==='hpf'){ const k=t.dataset.k, v=+t.value, e=UI.mix.eq[k]; UI.mix.hpf[k]=v; if(e){ e.hpOn=v>0; if(v) e.hpF=v; e.hp=v; } updateGains(); if(UI.mix.eqOpen===k) render(); }
-  if(t.dataset.act==='scGain'){
-    const k=t.dataset.k, sc=UI.sc, v=+t.value; sc.gain[k]=v; const nd=sc.nodes&&sc.nodes[k];
-    if(nd){ nd.g.gain.setTargetAtTime(db(v),A.ctx.currentTime,0.02); nd.post.gain.setTargetAtTime(db(nd.listen-v),A.ctx.currentTime,0.02); }
-    const lb=document.getElementById('scg-'+k); if(lb) lb.textContent=`${v>0?'+':''}${v} dB`;
-  }
+
 
   if(t.dataset.act==='fader'){
     const k=t.dataset.k, m=UI.mix; m.g[k]=+t.value; updateGains();
