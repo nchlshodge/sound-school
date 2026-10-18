@@ -1,6 +1,7 @@
 // Lists every line the app can read aloud and posts it to tools/tts/save_server.py (port 8766), which writes tools/tts/lines.json.
 // Run in the browser console on the local app (http://127.0.0.1:8765/Sound%20School/index.html) after the page loads.
 (async()=>{
+window.SS_MAX_SONGS=99;   // keep every song loaded while listing lines
 await initAudio(); S.setup=true; const ra=S.readAloud; S.readAloud=false;
 for(const s of [...LISTED().map(x=>x.id),'rcc']) await withAudio(null,s);
 await prepEqGuide(); A.gateOk=await ensureGate(); prepGateFix();
@@ -21,7 +22,7 @@ for(const [,[id,l,o]] of combos){ const N=['gate','comp','gain','eqfix'].include
 for(const m of POSES) ['Nice ears!','You heard it!','That\'s it!','Sharp ears!','Not quite'].forEach(h=>add(m,h));
 for(const u of UNITS.filter((u,i,a)=>a.findIndex(x=>x.mascot===u.mascot)===i)) add(u.mascot, `Hi, I'm ${u.who.split(',')[0]}. ${u.id==='found'?'I\'m your guide.':`I teach ${u.title}.`}`);
 add('sona','Hi! I\'ll read the lessons to you. Each of us has our own voice.');
-S.readAloud=ra; go({screen:'home'});
+S.readAloud=ra; window.SS_MAX_SONGS=0; go({screen:'home'});
 await fetch('http://127.0.0.1:8766/save',{method:'POST',body:JSON.stringify(lines)});
 console.log('Saved', Object.keys(lines).length, 'lines');
 })();

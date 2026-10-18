@@ -99,3 +99,7 @@ To update after lesson text changes:
 3. Run `tools/tts/.venv/bin/python tools/tts/build.py`. It only records new lines. Then deploy hosting.
 
 Old files for text that no longer exists are harmless. Delete `tts/` and rebuild to clean up.
+
+## M32 EQ in the games, and Starting points in sections (Oct 2026)
+- **Fix the EQ** and **Set it in the mix** use the console's M32 channel EQ (`vM32Eq('_lesson', q.state.ch)`): Low Cut, then LOW shelf, LO MID, HI MID and HIGH shelf, each with Gain, Freq and Q, plus the draggable curve and the EQ on/off and RESET buttons. The lesson channel has the same shape as a console channel (`lessonCh()`). Grading reads any mid band through `midCut`, `midBoost` and `hiCut`. The Sunday Mix mixer still has its simpler three-band EQ.
+- **Starting points** is split into four sections (`EQ_SECTIONS`): Drums, Bass and guitars, Keys/loops/vocals, The whole band. Each has a 4-question quick check, a hidden exercise `sp-<id>`, and needs 3 to pass. Progress saves per section, and the path shows "Starting points n/4". The old 8-question pass (`S.ex.eqstart >= 6`) still counts as done.

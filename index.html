@@ -259,6 +259,7 @@ button:disabled{cursor:default}
 .prog{flex:1;height:16px;background:var(--chip);border-radius:999px;overflow:hidden}
 .prog i{display:block;height:100%;background:var(--u);border-radius:999px;transition:width .35s}
 .say{display:flex;gap:12px;align-items:flex-end;margin:10px 0 18px}
+.slide.locked .m32eq{pointer-events:none;opacity:.85}
 .readbtn{position:absolute;right:4px;bottom:4px;width:36px;height:36px;color:var(--u,var(--ink2))}.readbtn svg{width:22px;height:22px}
 .say .bubble:has(.readbtn){padding-right:44px}
 .say .m{width:84px;height:84px;flex:none}
@@ -781,7 +782,7 @@ function setLoadMsg(t){ const el=document.getElementById('loadmsg'); if(el) el.t
 const MAX_SONGS = LOW_MEM ? 1 : 3;
 function freeSongs(keep){
   const loaded=SONGS.filter(s=>s!==keep && A.loading[s.id]).sort((a,b)=>(a.used||0)-(b.used||0));
-  while(loaded.length >= MAX_SONGS){ const s=loaded.shift();
+  while(loaded.length >= (window.SS_MAX_SONGS || MAX_SONGS)){ const s=loaded.shift();   // the voice-line crawl lifts the limit
     for(const k of Object.keys(A.buf)) if(k.startsWith(s.id+':')) delete A.buf[k];
     s.ready=false; A.loading[s.id]=null;
     if(typeof EQG!=='undefined' && EQG.song===s.id) EQG.cal=null;   // the EQ guide is measured again next time
@@ -958,6 +959,16 @@ const EQ_START = [
     eq:[{type:'highpass',f:200,q:0.7},{type:'peaking',f:3040,g:-3.7,q:1.4},{type:'lowpass',f:7000,q:0.7}] }
 ];
 const EQG = { song:'lhc', cal:null };
+// The Starting points step, in four short sections; each one saves when its quick check passes (3 of 4).
+const EQ_SECTIONS = [
+  { id:'drums', title:'Drums', items:['kick','snare','toms','cymbals'] },
+  { id:'low',   title:'Bass and guitars', items:['bass','acoustic','electric'] },
+  { id:'top',   title:'Keys, loops and vocals', items:['keys','perc','vocals','bgv'] },
+  { id:'band',  title:'The whole band', items:[] }
+];
+const SP_PASS = 3;
+const spSecDone = id => ((S.ex||{})['sp-'+id]||0) >= SP_PASS;
+const spCount = () => EQ_SECTIONS.filter(x=>spSecDone(x.id)).length;
 // The guide's acoustic table by mistake (it repeats the bass row): used in a Hard question to show why we follow the picture.
 const ACOUSTIC_AS_BASS = [{type:'highpass',f:40,q:0.7},{type:'peaking',f:60,g:7,q:1.2},{type:'peaking',f:650,g:6,q:1.2},{type:'lowpass',f:5000,q:0.7}];
 const eqgCh = it => it.vocal ? songById(EQG.song).vocal : it.ch;
@@ -984,19 +995,25 @@ function eqBandSpec(on){
 // The starting point's own reasons, repeated wherever someone sets or fixes that instrument.
 const eqWhy = it => it.moves.map(([k,f,w])=>`${k} ${f}: ${w}.`).join(' ');
 const inR = (v,a,b) => v>=a && v<=b;
-const midCut = (e,a,b,d=-3) => e.mg<=d && inR(e.mf,a,b);
+// e is a lesson channel in M32 form: { hpOn, hpF, hp (0 when the Low Cut is off), eqOn, eq:{ lf,lff, lmg,lmf,lmq, hmg,hmf,hmq, hf,hff } }.
+const eqMids = e => e.eqOn ? [[e.eq.lmg,e.eq.lmf],[e.eq.hmg,e.eq.hmf]] : [];
+const midCut = (e,a,b,d=-3) => eqMids(e).some(([g,f])=>g<=d && inR(f,a,b));
+const midBoost = (e,a,b,d=2) => eqMids(e).some(([g,f])=>g>=d && inR(f,a,b));
+const hiCut = (e,d=-2) => e.eqOn && e.eq.hf<=d;
+const lessonCh = () => ({ hpOn:false, hpF:80, hp:0, eqOn:true, eq:{ lf:0, lff:100, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0, hff:10000 } });
+const copyCh = e => ({...e, eq:{...e.eq}});
 const EQ_MIX = {
-  kick:{ checks:[ {t:e=>e.hp<=40, tip:'Leave the high-pass off (or at 40 Hz at most): the kick owns the low end.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness: a few dB somewhere around 400–700 Hz.'} ] },
-  snare:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'High-pass the snare around 80–120 Hz: it has no useful sub.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
-  toms:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'High-pass the toms around 90–120 Hz, just under their note.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
-  cymbals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the overheads around 200 Hz.'} ] },
-  bass:{ checks:[ {t:e=>e.hp<=60, tip:'Keep the bass\'s low end: high-pass no higher than about 40–60 Hz.'}, {t:e=>midCut(e,120,260,-2) || (e.mg>=2 && inR(e.mf,450,1000)), tip:'Shape it: a small cut around 160 Hz (less low-mid buildup) or a boost around 600–700 Hz (growl you can hear).'} ] },
-  acoustic:{ checks:[ {t:e=>inR(e.hp,100,250), tip:'High-pass the acoustic around 140 Hz (higher in a full band).'}, {t:e=>midCut(e,200,450), tip:'Cut the low-mid mud around 300 Hz.'} ] },
-  electric:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the electric around 200 Hz.'}, {t:e=>midCut(e,300,550) || midCut(e,2000,4500), tip:'Make room: cut around 400 Hz (buildup) or 2–4 kHz (space for the vocal).'} ] },
-  vocals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the vocal around 200–250 Hz (a bit lower for a deep voice).'}, {t:e=>midCut(e,250,450), tip:'Cut the mud around 300–350 Hz.'} ] },
-  keys:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the keys around 200 Hz.'}, {t:e=>midCut(e,2000,4500,-2) || e.hi<=-2, tip:'Make room for the vocal: a small dip around 3 kHz.'} ] },
-  perc:{ checks:[ {t:e=>inR(e.hp,40,80), tip:'High-pass the loop low, around 45–60 Hz: keep its weight.'} ] },
-  bgv:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'High-pass the background vocals around 200 Hz.'}, {t:e=>midCut(e,2500,4500,-2) || e.hi<=-2, tip:'Tuck them behind the lead: cut a little around 3 kHz or turn the highs down.'} ] }
+  kick:{ checks:[ {t:e=>e.hp<=40, tip:'Leave the Low Cut off (or at 40 Hz at most): the kick owns the low end.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness: a few dB somewhere around 400–700 Hz.'} ] },
+  snare:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'Low Cut (high-pass) the snare around 80–120 Hz: it has no useful sub.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
+  toms:{ checks:[ {t:e=>inR(e.hp,60,160), tip:'Low Cut (high-pass) the toms around 90–120 Hz, just under their note.'}, {t:e=>midCut(e,300,900), tip:'Cut the boxiness around 500 Hz.'} ] },
+  cymbals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'Low Cut (high-pass) the overheads around 200 Hz.'} ] },
+  bass:{ checks:[ {t:e=>e.hp<=60, tip:'Keep the bass\'s low end: Low Cut no higher than about 40–60 Hz.'}, {t:e=>midCut(e,120,260,-2) || midBoost(e,450,1000), tip:'Shape it: a small cut around 160 Hz (less low-mid buildup) or a boost around 600–700 Hz (growl you can hear).'} ] },
+  acoustic:{ checks:[ {t:e=>inR(e.hp,100,250), tip:'Low Cut (high-pass) the acoustic around 140 Hz (higher in a full band).'}, {t:e=>midCut(e,200,450), tip:'Cut the low-mid mud around 300 Hz.'} ] },
+  electric:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'Low Cut (high-pass) the electric around 200 Hz.'}, {t:e=>midCut(e,300,550) || midCut(e,2000,4500), tip:'Make room: cut around 400 Hz (buildup) or 2–4 kHz (space for the vocal).'} ] },
+  vocals:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'Low Cut (high-pass) the vocal around 200–250 Hz (a bit lower for a deep voice).'}, {t:e=>midCut(e,250,450), tip:'Cut the mud around 300–350 Hz.'} ] },
+  keys:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'Low Cut (high-pass) the keys around 200 Hz.'}, {t:e=>midCut(e,2000,4500,-2) || hiCut(e), tip:'Make room for the vocal: a small dip around 3 kHz.'} ] },
+  perc:{ checks:[ {t:e=>inR(e.hp,40,80), tip:'Low Cut (high-pass) the loop low, around 45–60 Hz: keep its weight.'} ] },
+  bgv:{ checks:[ {t:e=>inR(e.hp,140,300), tip:'Low Cut (high-pass) the background vocals around 200 Hz.'}, {t:e=>midCut(e,2500,4500,-2) || hiCut(e), tip:'Tuck them behind the lead: cut a little around 3 kHz or turn the highs down.'} ] }
 };
 // The band at its starting points, with one instrument either flat, at its starting point (level-matched), or through `chain`.
 function eqBandOne(it, mode, chain, store){
@@ -1012,17 +1029,17 @@ function eqBandOne(it, mode, chain, store){
       if(store) n.start(t0, off); else n.start(t0, off, dur); }
   } };
 }
-function eqmixQ(l){
+function eqmixQ(l, only){
   const ids = l===1 ? ['snare','toms','cymbals','acoustic','electric','vocals','keys','bgv','perc'] : ['kick','snare','toms','bass','acoustic','electric','vocals','keys','bgv'];
-  const pid=fresh(ids.filter(id=>EQG.cal[id]), id=>`${EQG.song}:${id}`), it=EQ_START.find(x=>x.id===pid), name=it.name.toLowerCase(), state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
+  const pool=ids.filter(id=>EQG.cal[id] && (!only||only.includes(id))), pid=fresh(pool.length?pool:(only||ids).filter(id=>EQG.cal[id]&&EQ_MIX[id]), id=>`${EQG.song}:${id}`), it=EQ_START.find(x=>x.id===pid), name=it.name.toLowerCase(), state={ ch:lessonCh() };
   const prompt = l===1 ? `Set the high-pass on the ${name} so it sits in the band.` : l===2 ? `Set the EQ on the ${name} in the mix: its high-pass and its most important cut.` : `Set the ${name} in the mix from scratch: the high-pass, the key cut, and no big boosts.`;
   return { tool:'eqmix', dispUnit:'eq', song:EQG.song, it, level:l, state, prompt,
     hint:`The rest of the band already has its starting-point EQ. Press Play (it loops). Use Solo to hear the ${name} alone, then put it back in the band. The starting point, and why: ${eqWhy(it)}`,
-    clips:[{label:'Play', spec:eqBandOne(it,'user',fixChain([], state.eq, state), state)}], options:['Lock it in'], answer:0, explain:'' };
+    clips:[{label:'Play', spec:eqBandOne(it,'user',fixChain([], state.ch, state), state)}], options:['Lock it in'], answer:0, explain:'' };
 }
 function eqmixGrade(q){
-  const e={...q.state.eq}, M=EQ_MIX[q.it.id], checks = q.level===1 ? M.checks.slice(0,1) : M.checks, fails=checks.filter(c=>!c.t(e)).map(c=>c.tip);
-  if(q.level===3 && (e.lo>6 || e.mg>6 || e.hi>6)) fails.push('Go easy on boosts: starting points are mostly cuts. Keep any boost under about 6 dB.');
+  const e=copyCh(q.state.ch), M=EQ_MIX[q.it.id], checks = q.level===1 ? M.checks.slice(0,1) : M.checks, fails=checks.filter(c=>!c.t(e)).map(c=>c.tip);
+  if(q.level===3 && e.eqOn && Math.max(e.eq.lf,e.eq.lmg,e.eq.hmg,e.eq.hf)>6) fails.push('Go easy on boosts: starting points are mostly cuts. Keep any boost under about 6 dB.');
   const ok=!fails.length;
   q.after=[{label:'with your EQ', spec:eqBandOne(q.it,'user',fixChain([], e))}, {label:'with the starting point', spec:eqBandOne(q.it,'on')}, {label:`with the ${q.it.name.toLowerCase()} flat`, spec:eqBandOne(q.it,'flat')}];
   return { ok, why: (ok ? 'That\'s it. ' : 'Not quite. '+fails.join(' ')+' ') + `Remember why: ${eqWhy(q.it)}` };
@@ -1057,9 +1074,9 @@ function eqCurve(eq){
   const gx=[100,1000,10000].map(f=>{ const X=Math.log10(f/20)/3*W; return `<line x1="${X}" x2="${X}" y1="0" y2="${H}" class="eqg-grid"/><text x="${X+3}" y="${H-4}" class="eqg-lbl">${f>=1000?f/1000+'k':f}</text>`; }).join('');
   return `<svg class="eqg-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="EQ curve"><line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" class="eqg-zero"/>${gx}<path d="${path}" class="eqg-line"/></svg>`;
 }
-function vEqGuide(){
-  setUnitColor('#A8540A');
-  const cards=EQ_START.map((it,i)=>`<section class="slide eqg-card" style="margin-top:14px">
+function eqgCard(it){
+  const i=EQ_START.indexOf(it);
+  return `<section class="slide eqg-card" style="margin-top:14px">
       <h2 class="ut" style="font-size:22px">${it.name}</h2>
       ${eqCurve(it.eq)}
       <ul class="eqg-moves">${it.moves.map(([k,f,why])=>`<li><b>${k} ${f}</b>: ${why}</li>`).join('')}</ul>
@@ -1069,19 +1086,34 @@ function vEqGuide(){
       <div class="demos" style="margin-top:4px">${clipBtn('g'+i+'f','Flat','',true)}${clipBtn('g'+i+'e','Starting point','',true)}</div>
       ${EQG_BAND && Object.values(EQG_BAND).includes(it.id) ? `<div class="kicker" style="color:var(--ink2);margin:10px 0 2px">In the band</div>
       <div class="demos" style="margin-top:4px">${clipBtn('g'+i+'m','Flat','',true)}${clipBtn('g'+i+'n','Starting point','',true)}</div>` : ''}
-    </section>`).join('');
-  return `<div class="lbar"><button class="iconbtn" data-act="${UI.back||'home'}" aria-label="Back">${I.back}</button><h1 style="font-size:24px">EQ starting points</h1></div>
-  <main class="wrap" style="padding-bottom:40px">
-    <div class="say">${mascot('fenn','','happy')}<div class="bubble"><span class="bt">Where to start, instrument by instrument</span>
-      <p>These are starting points, not rules. Every room, system and band is different, so use your ears. Each one plays our live band soloed, level-matched, so you hear the EQ and not the volume.</p></div></div>
-    ${cards}
-    <section class="slide eqg-card" style="margin-top:14px">
+    </section>`;
+}
+const eqgBandCard = () => `<section class="slide eqg-card" style="margin-top:14px">
       <h2 class="ut" style="font-size:22px">The whole band</h2>
       <p style="margin:6px 0 0">Now every channel at once: first flat, then with each instrument's starting point. Listen for the low end getting clearer (only the kick and bass down there), the vocals sitting forward, and the mud thinning out. It's level-matched, so it's the EQ you hear, not the volume.</p>
       <div class="demos">${clipBtn('gbf','Whole band flat','',true)}${clipBtn('gbe','Whole band, starting points','',true)}</div>
-    </section>
-    ${UI.sp ? `<section class="slide" style="margin-top:14px;text-align:center"><p style="margin:0 0 10px"><b>Listened to them all?</b> Take the quick quiz to finish this step and unlock EQ · Easy.</p>
-      <button class="btn block" data-act="exStart" data-ex="eqstart">Take the starting points quiz</button></section>` : ''}
+    </section>`;
+function vEqGuide(){
+  setUnitColor('#A8540A');
+  const sec = UI.sp && UI.sec ? EQ_SECTIONS.find(x=>x.id===UI.sec) : null, menu = UI.sp && !sec;
+  const back = sec ? `data-act="spSec" data-s=""` : `data-act="${UI.back||'home'}"`;
+  const intro = sec ? `${sec.title}: listen to each one flat, then with its starting point.` : menu ? 'Four short sections. Each one saves when you pass its quick check.' : 'Where to start, instrument by instrument';
+  let body;
+  if(menu){
+    body = `<div class="slide" style="margin-top:14px;padding:6px 14px">${EQ_SECTIONS.map((x,i)=>{ const done=spSecDone(x.id);
+      return `<div class="set"><div class="t"><b>${done?'✓ ':''}${i+1}. ${x.title}</b><span>${x.items.length ? x.items.map(id=>EQ_START.find(e=>e.id===id).name).join(', ') : 'Every starting point at once'}${done?' · done':''}</span></div>
+        <button class="btn ${done?'ghost':''}" data-act="spSec" data-s="${x.id}" style="min-height:44px;padding:0 16px">${done?'Review':'Start'}</button></div>`; }).join('')}</div>
+      ${spDone() ? `<p style="text-align:center;margin:14px 0 0"><b>Starting points complete.</b> EQ · Easy is unlocked.</p>` : ''}`;
+  } else if(sec){
+    body = (sec.items.length ? sec.items.map(id=>eqgCard(EQ_START.find(e=>e.id===id))).join('') : eqgBandCard())
+      + `<section class="slide" style="margin-top:14px;text-align:center"><p style="margin:0 0 10px"><b>Listened to them all?</b> Take the quick check (4 questions). Get ${SP_PASS} right to save this section.</p>
+      <button class="btn block" data-act="exStart" data-ex="sp-${sec.id}">Quick check: ${sec.title}</button></section>`;
+  } else body = EQ_START.map(eqgCard).join('') + eqgBandCard();
+  return `<div class="lbar"><button class="iconbtn" ${back} aria-label="Back">${I.back}</button><h1 style="font-size:24px">${sec?sec.title:'EQ starting points'}</h1></div>
+  <main class="wrap" style="padding-bottom:40px">
+    <div class="say">${mascot('fenn','','happy')}<div class="bubble"><span class="bt">${intro}</span>
+      <p>These are starting points, not rules. Every room, system and band is different, so use your ears. Each one plays our live band, level-matched, so you hear the EQ and not the volume.</p></div></div>
+    ${body}
     <p class="foot" style="margin-top:18px">Settings from <b>The Church Audio EQ Guide</b> by MxU. For more EQ help, visit <a href="https://www.getmxu.com" target="_blank" rel="noopener">getmxu.com</a>. Notes from Luke Hendrickson's approach to modern worship mixing.</p>
   </main>`;
 }
@@ -1093,14 +1125,22 @@ async function openEqGuide(back){
 }
 // "EQ starting points" quiz. First option is correct.
 const EQS_TEXT = [
-  {prompt:'Starting point: where do you high-pass the cymbals and overheads?', options:['Around 200 Hz','Around 40 Hz','Around 2 kHz'], explain:'Around 200 Hz. The kick and toms have their own mics, so the overheads don\'t need low end.'},
-  {prompt:'Your electric guitar is covering up the vocal. Where\'s the starting-point cut?', options:['2–4 kHz','60 Hz','10 kHz'], explain:'2–4 kHz is where words are clearest. A cut there on the guitar makes room for the vocal.'},
-  {prompt:'What does a cut around 500 Hz do on a kick, snare or tom?', options:['Takes out the boxy, cardboard sound','Adds thump','Adds sizzle'], explain:'Around 500 Hz is boxiness on drums. The starting point cuts it on kick, snare and toms.'},
-  {prompt:'Where does the starting point high-pass the lead vocal?', options:['200–250 Hz','40 Hz','1 kHz'], explain:'200–250 Hz (lower for a deep voice). Luke\'s is close: about 260 Hz.'},
-  {prompt:'Which instrument gets a boost around 600–700 Hz for growl?', options:['Bass guitar','Cymbals','Background vocals'], explain:'The bass. That growl is what lets you hear the bass line on small speakers and phones.'},
-  {prompt:'How do the background vocals sit behind the lead in the starting point?', options:['Cut 3–4 kHz and low-pass around 6 kHz','Boost 3–4 kHz','Turn off their high-pass'], explain:'Taking away some presence and top end tucks them behind the lead.'},
-  {prompt:'The guide\'s acoustic guitar table says to boost 60 Hz. Why doesn\'t Sound School follow that?', options:['It\'s copied from the bass table; the guide\'s picture high-passes the acoustic instead','Acoustics need lots of sub','60 Hz is where the strings buzz'], explain:'That row repeats the bass settings. The picture (and Luke) keep the acoustic out of the low end so the kick and bass have room.'},
-  {prompt:'Are these EQ settings rules you should always use?', options:['No, they\'re starting points: use your ears','Yes, always','Only on Sundays'], explain:'Every room, sound system and band is different. Start here, then listen and adjust.'}
+  {sec:'drums', prompt:'Starting point: where do you high-pass the cymbals and overheads?', options:['Around 200 Hz','Around 40 Hz','Around 2 kHz'], explain:'Around 200 Hz. The kick and toms have their own mics, so the overheads don\'t need low end.'},
+  {sec:'low', prompt:'Your electric guitar is covering up the vocal. Where\'s the starting-point cut?', options:['2–4 kHz','60 Hz','10 kHz'], explain:'2–4 kHz is where words are clearest. A cut there on the guitar makes room for the vocal.'},
+  {sec:'drums', prompt:'What does a cut around 500 Hz do on a kick, snare or tom?', options:['Takes out the boxy, cardboard sound','Adds thump','Adds sizzle'], explain:'Around 500 Hz is boxiness on drums. The starting point cuts it on kick, snare and toms.'},
+  {sec:'top', prompt:'Where does the starting point high-pass the lead vocal?', options:['200–250 Hz','40 Hz','1 kHz'], explain:'200–250 Hz (lower for a deep voice). Luke\'s is close: about 260 Hz.'},
+  {sec:'low', prompt:'Which instrument gets a boost around 600–700 Hz for growl?', options:['Bass guitar','Cymbals','Background vocals'], explain:'The bass. That growl is what lets you hear the bass line on small speakers and phones.'},
+  {sec:'top', prompt:'How do the background vocals sit behind the lead in the starting point?', options:['Cut 3–4 kHz and low-pass around 6 kHz','Boost 3–4 kHz','Turn off their high-pass'], explain:'Taking away some presence and top end tucks them behind the lead.'},
+  {sec:'low', prompt:'The guide\'s acoustic guitar table says to boost 60 Hz. Why doesn\'t Sound School follow that?', options:['It\'s copied from the bass table; the guide\'s picture high-passes the acoustic instead','Acoustics need lots of sub','60 Hz is where the strings buzz'], explain:'That row repeats the bass settings. The picture (and Luke) keep the acoustic out of the low end so the kick and bass have room.'},
+  {sec:'band', prompt:'Are these EQ settings rules you should always use?', options:['No, they\'re starting points: use your ears','Yes, always','Only on Sundays'], explain:'Every room, sound system and band is different. Start here, then listen and adjust.'},
+  {sec:'drums', prompt:'Starting point for the kick: what do you do with the Low Cut (high-pass)?', options:['Leave it off, or very low: the kick owns the low end','Set it around 200 Hz','Set it around 1 kHz'], explain:'Leave it off or very low. The kick and bass are the only channels that keep the low end.'},
+  {sec:'drums', prompt:'Where does the starting point high-pass the toms?', options:['Just under their note: about 120 Hz rack, 90 Hz floor','Around 400 Hz','Around 20 Hz'], explain:'Just under each tom\'s note, so they keep their tone but stay out of the kick\'s space.'},
+  {sec:'low', prompt:'Where does the starting point high-pass the acoustic guitar?', options:['Around 140 Hz (even higher in a full band)','Around 40 Hz','Around 1 kHz'], explain:'Around 140 Hz. The guitar\'s body lives higher than the bass, so its low end only gets in the way.'},
+  {sec:'top', prompt:'Why high-pass keys and pads around 200 Hz?', options:['Pads pile up in the low mids and blur the bass','To add sparkle','It makes them louder'], explain:'Pads fill the low mids fast. A high-pass keeps them from blurring the bass and kick.'},
+  {sec:'top', prompt:'On a loop or percussion track, what does the starting point keep?', options:['Its weight: high-pass low, around 45–60 Hz','Only the highs above 2 kHz','Nothing; mute it'], explain:'Keep the weight with a low high-pass, and go easy on boosts so it doesn\'t fight the kick.'},
+  {sec:'band', prompt:'With every starting point on, which channels keep their low end?', options:['The kick and the bass','The vocals and the keys','The cymbals'], explain:'Only the kick and bass live down there. Everything else is filtered out of their way, which is why the low end gets clearer.'},
+  {sec:'band', prompt:'Why are the flat and starting-point examples level-matched?', options:['So you hear the EQ, not a volume change: louder fools our ears','To make the EQ louder','It doesn\'t matter'], explain:'Louder always sounds "better" at first. Matching the level means you judge the EQ itself.'},
+  {sec:'band', prompt:'You\'ve set the starting points. What\'s next?', options:['Listen in the full band and adjust with your ears','Never touch them again','Boost everything 6 dB'], explain:'Starting points get you close fast. Then listen in the mix and adjust for this room, this band and this Sunday.'}
 ];
 
 /* ----- Fix the EQ: hands-on. One instrument with a hidden tone problem; fix it with the same EQ as the mixer. ----- */
@@ -1114,32 +1154,35 @@ const FIX_PROBS = {   // which instruments each problem makes sense on
   dull: ['vocals','acoustic','cymbals','snare','keys','bgv']
 };
 const fixHpRef = it => (it.eq.find(e=>e.type==='highpass')||{f:0}).f;
-// The problem filters, then your EQ (high-pass, low shelf, sweepable mid, high shelf). `store` keeps the live nodes.
+// The problem filters, then your M32 channel EQ (Low Cut, then LOW shelf, LO MID, HI MID, HIGH shelf). `store` keeps the live nodes.
+const fixBands = e => conEqList(e.eq, 0, e.eqOn);
 const fixChain = (probs, e, store) => (c,inp)=>{
   let n=inp; for(const p of probs) n=n.connect(eqNode(c,p.f));
   const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=e.hp||10;
-  const ls=eqNode(c,{type:'lowshelf',f:120,g:e.lo}), pk=eqNode(c,{type:'peaking',f:e.mf,g:e.mg,q:1.2}), hs=eqNode(c,{type:'highshelf',f:8000,g:e.hi});
-  if(store) store.nodes={hp,ls,pk,hs};
-  return n.connect(hp).connect(ls).connect(pk).connect(hs);
+  const bands=fixBands(e).map(x=>eqNode(c,x));
+  if(store) store.nodes={hp,bands};
+  return bands.reduce((m,x)=>m.connect(x), n.connect(hp));
 };
 function fixApply(q){
-  const n=q.state.nodes, e=q.state.bypass?{hp:0,lo:0,mg:0,mf:q.state.eq.mf,hi:0}:q.state.eq; if(!n) return; const t=A.ctx.currentTime;
-  n.hp.frequency.setTargetAtTime(e.hp||10,t,0.02); n.ls.gain.setTargetAtTime(e.lo,t,0.02); n.pk.gain.setTargetAtTime(e.mg,t,0.02);
-  n.pk.frequency.setTargetAtTime(e.mf,t,0.02); n.hs.gain.setTargetAtTime(e.hi,t,0.02);
+  const n=q.state.nodes, e=q.state.ch; if(!n) return; const t=A.ctx.currentTime;
+  n.hp.frequency.setTargetAtTime(e.hp||10,t,0.02);
+  fixBands(e).forEach((x,i)=>{ const b=n.bands[i]; b.frequency.setTargetAtTime(x.f,t,0.02); b.gain.setTargetAtTime(x.g,t,0.02); if(x.q) b.Q.setTargetAtTime(x.q,t,0.02); });
 }
 // What's left of the problem after your EQ, in dB at the worst point, over the part of the spectrum that matters for this instrument.
 function fixResidual(probs, e, it){
   const lo = ['kick','bass','toms'].includes(it.id) ? 50 : it.id==='cymbals' ? 300 : 100, from=Math.max(lo, (e.hp||0)*1.6), N=28;
   const fs=Float32Array.from({length:N},(_,i)=>from*Math.pow(10000/from,i/(N-1))), mag=new Float32Array(N), ph=new Float32Array(N), tot=new Float32Array(N);
-  const nodes=[...probs.map(p=>p.f), {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
-  for(const nd of nodes){ eqNode(A.ctx, nd).getFrequencyResponse(fs, mag, ph); for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
+  for(const nd of [...probs.map(p=>p.f), ...fixBands(e)]){ eqNode(A.ctx, nd).getFrequencyResponse(fs, mag, ph); for(let i=0;i<N;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
   return Math.max(...tot.map(Math.abs));
 }
-// The best fix with these controls (for "hear it fixed right"): a coarse search, good enough to demonstrate.
+// The best fix with these controls (for "hear it fixed right"): undo each problem with the matching band.
 function fixBest(probs, it){
-  const e={hp:fixHpRef(it),lo:0,mg:0,mf:1000,hi:0};
+  const e=lessonCh(), ref=fixHpRef(it); if(ref){ e.hpOn=true; e.hpF=ref; e.hp=ref; }
+  let mid=0;
   for(const p of probs){
-    if(p.f.type==='lowshelf') e.lo=-p.f.g; else if(p.f.type==='highshelf') e.hi=-p.f.g; else { e.mg=-p.f.g; e.mf=p.f.f; }
+    if(p.f.type==='lowshelf'){ e.eq.lf=-p.f.g; e.eq.lff=p.f.f; }
+    else if(p.f.type==='highshelf'){ e.eq.hf=-p.f.g; e.eq.hff=p.f.f; }
+    else { const [g,f,q]=mid++ ? ['hmg','hmf','hmq'] : ['lmg','lmf','lmq']; e.eq[g]=-p.f.g; e.eq[f]=p.f.f; e.eq[q]=p.f.q||1.4; }
   }
   return e;
 }
@@ -1157,37 +1200,30 @@ function fixQuestion(l){
     const open=pairs.filter(([a,b])=>its.some(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id)&&!u.has(`${EQG.song}:${x.id}`))), [a,b]=pick(open.length?open:pairs);
     it=fresh(its.filter(x=>FIX_PROBS[a].includes(x.id)&&FIX_PROBS[b].includes(x.id)), x=>`${EQG.song}:${x.id}`); probs=[mk(a,8),mk(b,8)];
   }
-  const state={ eq:{hp:0,lo:0,mg:0,mf:1000,hi:0}, bypass:false };
+  const state={ ch:lessonCh() };
   const cal=EQG.cal[it.id], song=songById(EQG.song);
   const src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6, loop:true }];
   const need = l===2;
   return { tool:'eqfix', song:EQG.song, dispUnit:'eq', it, probs, state, needHp:need, level:l,
     prompt: l===1 ? `This ${it.name.toLowerCase()} has a tone problem. Fix it with the EQ.` : l===2 ? `Fix the ${it.name.toLowerCase()}: find the tone problem, and set the high-pass where this instrument usually starts.` : `This ${it.name.toLowerCase()} has two tone problems. Fix both.`,
-    hint: 'Press Play (it loops), then move the EQ until it sounds natural. Use "EQ off" to compare.',
-    clips:[{label:'Play', spec:{src, chain:fixChain(probs, state.eq, state)}}], options:['Lock it in'], answer:0, explain:'' };
+    hint: 'Press Play (it loops), then shape it with the channel EQ until it sounds natural: drag a numbered point, or turn the Gain, Freq and Q knobs. Press EQ to hear it with and without.',
+    clips:[{label:'Play', spec:{src, chain:fixChain(probs, state.ch, state)}}], options:['Lock it in'], answer:0, explain:'' };
 }
 function vFixTool(q, answered){
-  const e=q.state.eq, g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`, mfPos=Math.round(Math.log(e.mf/100)/Math.log(80)*1000), dis=answered?'disabled':'';
-  const sl=(pp,label,min,max,step,val,txt)=>`<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="fixParam" data-p="${pp}" ${dis}><b id="fx-${pp}">${txt}</b></label>`;
-  return `<div class="slide">
-    <div id="fx-curve">${eqCurve(fixUserEq(e))}</div>
-    <div class="eqpanel" style="margin-top:6px">
-      ${sl('hp','High-pass',0,FIX_HPF.length-1,1,FIX_HPF.indexOf(e.hp),e.hp?hz(e.hp):'Off')}
-      ${sl('lo','Low (120 Hz)',-12,12,0.5,e.lo,g(e.lo))}
-      ${sl('mg','Mid',-12,12,0.5,e.mg,g(e.mg))}
-      ${sl('mf','Mid freq',0,1000,1,mfPos,hz(Math.round(e.mf/10)*10))}
-      ${sl('hi','High (8 kHz)',-12,12,0.5,e.hi,g(e.hi))}
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn ghost" data-act="fixBypass" aria-pressed="${q.state.bypass}" style="flex:1" ${dis}>${q.state.bypass?'EQ is off':'EQ off'}</button>
-      <button class="btn ghost" data-act="fixReset" style="flex:1" ${dis}>Flat</button>
-    </div>
-    <button class="btn block" data-act="fixLock" style="margin-top:12px" ${dis}>Lock in my EQ</button>
-  </div>`;
+  return `<div class="slide ${answered?'locked':''}" style="padding:12px">${vM32Eq('_lesson', q.state.ch, esc(q.it.name))}
+    <button class="btn block" data-act="fixLock" style="margin-top:12px" ${answered?'disabled':''}>Lock in my EQ</button></div>`;
 }
-const fixUserEq = e => [...(e.hp?[{type:'highpass',f:e.hp,q:0.7}]:[]), {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
+const fixUserEq = e => conEqList(e.eq, e.hp, e.eqOn);
+// A knob, button or drag on the lesson's M32 EQ.
+function lessonEqSet(q, p, v){
+  const L=UI.lesson; if(!L || L.picked!=null) return; const e=q.state.ch;
+  if(p==='hpF'){ e.hpF=v; e.hp=e.hpOn?v:0; } else { const [a,b]=p.split('.'); e[a][b]=v; }
+  fixApply(q);
+  const scr=document.getElementById('m32screen'); if(scr) scr.replaceChildren(frag(m32Graph(e)));
+  const kn=document.querySelector(`.knob[data-k="_lesson"][data-p="${p}"]`); if(kn) knobShow(kn, v);
+}
 function fixGrade(q){
-  const it=q.it, e={...q.state.eq}, res=fixResidual(q.probs, e, it), ref=fixHpRef(it);
+  const it=q.it, e=copyCh(q.state.ch), res=fixResidual(q.probs, e, it), ref=fixHpRef(it);
   const hpHigh = e.hp > Math.max(ref*1.6, 160);                       // filtering away the body of the instrument
   const hpOk = !q.needHp || (ref ? !!e.hp && Math.abs(Math.log2(e.hp/ref))<=0.6 : e.hp<=40);
   const ok = res<=4.5 && !hpHigh && hpOk;
@@ -1200,7 +1236,7 @@ function fixGrade(q){
     : `Not quite. It was ${names}: ${where}. The fix: ${fix}. Your EQ still leaves it about ${Math.round(res)} dB off.`;
   if(ref && hpOk && !hpHigh && (q.needHp || !ok)) why += ` Starting-point high-pass for ${it.name.toLowerCase()}: about ${hz(ref)}.`;
   why += ` Remember the ${it.name.toLowerCase()} starting point, and why: ${eqWhy(it)}`;
-  const song=songById(EQG.song), cal=EQG.cal[it.id], src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], flat={hp:0,lo:0,mg:0,mf:1000,hi:0};
+  const song=songById(EQG.song), cal=EQG.cal[it.id], src=[{ b:`${song.id}:${eqgCh(it)}`, db:cal.trim, off:cal.off, dur:6 }], flat=lessonCh();
   q.after=[{label:'with the problem', spec:{src, chain:fixChain(q.probs, flat)}}, {label:'with your EQ', spec:{src, chain:fixChain(q.probs, e)}}, {label:'fixed right', spec:{src, chain:fixChain(q.probs, fixBest(q.probs,it))}}];
   return {ok, why};
 }
@@ -1512,14 +1548,14 @@ function knob(k, p, label, val, min, max, text, log, dis){
     data-k="${k}" data-p="${p}" data-min="${min}" data-max="${max}" data-log="${log?1:0}" data-val="${val}">
     <div class="kdial"><i style="transform:rotate(${ang}deg)"></i></div><b class="kval">${text}</b><span>${label}</span></div>`;
 }
-function vM32Eq(k){
-  const C=UI.con, s=C.ch[k], e=s.eq, song=conSong();
+function vM32Eq(k, s=UI.con.ch[k], title){
+  const e=s.eq;
   const g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')}`, col=(b,inner)=>`<div class="mband" style="--b:${b.color}"><div class="mbh">${b.name}</div>${inner}</div>`;
   const bands = M32_BANDS.map(b=> b.id==='cut'
     ? col(b, `<button class="m32btn ${s.hpOn?'on':''}" data-act="conHpOn" data-k="${k}" aria-pressed="${s.hpOn}">ON</button>${knob(k,'hpF','FREQ',s.hpF,20,400,fmtHz(s.hpF),true,!s.hpOn)}<div class="mtype">12 dB/oct</div>`)
     : col(b, `${knob(k,'eq.'+b.g,'GAIN',e[b.g],-15,15,g(e[b.g]),false,!s.eqOn)}${knob(k,'eq.'+b.f,'FREQ',e[b.f],b.fr[0],b.fr[1],fmtHz(e[b.f]),true,!s.eqOn)}${b.q?knob(k,'eq.'+b.q,'Q',e[b.q],0.3,10,e[b.q].toFixed(1),true,!s.eqOn):'<div class="knob ghost"></div>'}<div class="mtype">${b.type}</div>`)).join('');
   return `<div class="m32eq" id="m32eq">
-    <div class="m32top"><button class="m32btn ${s.eqOn?'on':''}" data-act="conEqOn" data-k="${k}" aria-pressed="${s.eqOn}">EQ</button><span>${esc(song.name[k])}</span><button class="m32btn" data-act="conEqFlat" data-k="${k}">RESET</button></div>
+    <div class="m32top"><button class="m32btn ${s.eqOn?'on':''}" data-act="conEqOn" data-k="${k}" aria-pressed="${s.eqOn}">EQ</button><span>${title ?? esc(conSong().name[k])}</span><button class="m32btn" data-act="conEqFlat" data-k="${k}">RESET</button></div>
     <div class="m32screen" id="m32screen" data-k="${k}">${m32Graph(s)}</div>
     <p class="m32hint">Drag a numbered point: left/right for frequency, up/down for gain. Drag a knob up or down.</p>
     <div class="m32bands">${bands}</div>
@@ -1569,7 +1605,7 @@ function knobStep(kn, dpos){
   nv = log ? (nv>=1000?Math.round(nv/10)*10:nv>=100?Math.round(nv):Math.round(nv*10)/10) : (max-min<=2 ? Math.round(nv*100)/100 : Math.round(nv*2)/2);
   if(/q$|ratio|Ratio/.test(kn.dataset.p)) nv=Math.round(nv*10)/10;
   if(kn.dataset.p==='revDecay') nv=Math.round(nv*10)/10;
-  (kn.dataset.k==='_lesson' ? lessonKnob : conSetEq)(kn.dataset.k, kn.dataset.p, nv);
+  (kn.dataset.k==='_lesson' ? lessonKnob : conSetEq)(kn.dataset.k, kn.dataset.p, nv);   // lessonKnob hands EQ knobs to lessonEqSet
 }
 // Pointer handling for knobs and the EQ display.
 (()=>{
@@ -1581,11 +1617,13 @@ function knobStep(kn, dpos){
   document.addEventListener('pointermove', e=>{
     if(!drag) return;
     if(drag.kn){ const dy=drag.y-e.clientY; if(Math.abs(dy)>=1){ knobStep(drag.kn, dy/160); drag.y=e.clientY; } return; }
-    const k=drag.scr.dataset.k, s=UI.con.ch[k], r=drag.scr.querySelector('svg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*600, y=(e.clientY-r.top)/r.height*240;
+    const k=drag.scr.dataset.k, les=k==='_lesson', s=les ? lessonQ(UI.lesson).state.ch : UI.con.ch[k], r=drag.scr.querySelector('svg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*600, y=(e.clientY-r.top)/r.height*240;
+    const set = les ? (kk,p,v)=>lessonEqSet(lessonQ(UI.lesson),p,v) : conSetEq;
+    if(les && UI.lesson.picked!=null) return;
     const b=M32_BANDS.find(z=>z.id===drag.band), fx=XF(x), f = fx>=1000 ? Math.round(fx/10)*10 : Math.round(fx);
-    if(b.id==='cut'){ if(!s.hpOn) return; conSetEq(k,'hpF',Math.max(20,Math.min(400,f))); return; }
+    if(b.id==='cut'){ if(!s.hpOn) return; set(k,'hpF',Math.max(20,Math.min(400,f))); return; }
     if(!s.eqOn) return;
-    s.eq[b.f]=Math.max(b.fr[0],Math.min(b.fr[1],f)); conSetEq(k,'eq.'+b.g, Math.round(YG(y)*2)/2);
+    s.eq[b.f]=Math.max(b.fr[0],Math.min(b.fr[1],f)); set(k,'eq.'+b.g, Math.round(YG(y)*2)/2);
     const fk=document.querySelector(`.knob[data-k="${k}"][data-p="eq.${b.f}"]`); if(fk) knobShow(fk, s.eq[b.f]);
   });
   const end=()=>{ drag=null; };
@@ -1597,8 +1635,8 @@ function knobStep(kn, dpos){
     if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); knobStep(kn, -st); }
   });
   document.addEventListener('dblclick', e=>{ const kn=e.target.closest('.knob[data-p]'); if(!kn||kn.classList.contains('dis')) return;
-    if(kn.dataset.k==='_lesson') return;
-    const p=kn.dataset.p, d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) conSetEq(kn.dataset.k,p,d); });
+    const p=kn.dataset.p, les=kn.dataset.k==='_lesson'; if(les && !lessonQ(UI.lesson).state.ch) return;
+    const d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) (les ? lessonKnob : conSetEq)(kn.dataset.k,p,d); });
 })();
 /* ----- M32-style dynamics, FX and main bus screens ----- */
 // Transfer curve: input level (x) against output level (y), -60..0 dB, with a dot for the live input.
@@ -1938,7 +1976,9 @@ function vCompTool(q, answered){
 }
 // A knob on one of those screens moved.
 function lessonKnob(_, p, v){
-  const L=UI.lesson; if(!L || L.picked!=null) return; const q=lessonQ(L); q.state.P[p]=v;
+  const L=UI.lesson; if(!L || L.picked!=null) return; const q=lessonQ(L);
+  if(q.state.ch){ lessonEqSet(q, p, v); return; }
+  q.state.P[p]=v;
   const kn=document.querySelector(`.knob[data-k="_lesson"][data-p="${p}"]`); if(kn) knobShow(kn, v);
   if(q.tool==='gatefix'){ gateApply(q.state); const el=document.getElementById('gplot'); if(el) el.replaceChildren(frag(gatePlot(q))); }
   else { compApply(q.state); const c=document.getElementById('cplot'); if(c) c.replaceChildren(frag(dynCurve('comp',{...q.state.P,on:true},'dot-lesson'))); const b=document.getElementById('cbar'); if(b) b.replaceChildren(frag(compBar(q))); }
@@ -2921,6 +2961,16 @@ const GEN = {
   eqfix(l, s){ return EQG.cal ? fixQuestion(l) : GEN.eq(l, s, {}); },
   eqstart(l, s, o={}){
     const tag={song:EQG.song, dispUnit:'eq'};
+    if(o.sec){   // one section of the Starting points step
+      const sec=EQ_SECTIONS.find(x=>x.id===o.sec), only=sec.items.length?sec.items:null;
+      if(o.kind==='text' || !EQG.cal) return Object.assign(textQ(fresh(EQS_TEXT.filter(t=>t.sec===sec.id), t=>'t:'+t.prompt)), tag);
+      if(o.kind==='mix') return eqmixQ(l, only);
+      if(o.kind==='band') return Object.assign(abQ({ prompt:'Which is the whole band with every starting point on?', yes:eqBandSpec(true), no:eqBandSpec(false), yesName:'Starting points', noName:'Flat',
+        explain:L=>`${L} had every channel's starting point: a clearer low end (only the kick and bass down there), less mud, and the vocals sitting forward.` }), tag);
+      const it=fresh(EQ_START.filter(x=>EQG.cal[x.id] && (!only||only.includes(x.id))), x=>`${EQG.song}:${x.id}`);
+      return Object.assign(abQ({ prompt:`Which ${it.name.toLowerCase()} clip has the starting-point EQ?`, yes:eqgSpec(it,true), no:eqgSpec(it,false), yesName:'Starting point', noName:'Flat',
+        explain:L=>`${L} had it. Here's why each move helps: ${eqWhy(it)}` }), tag);
+    }
     if(EQG.cal && (o.kind==='mix' || (!o.kind && Math.random() < (l===1?0.3:0.5)))) return eqmixQ(l);   // set it yourself, in the band
     if(l===1 || !EQG.cal || Math.random()<0.25) return Object.assign(textQ(pick(EQS_TEXT)), tag);
     if(l===3 && EQG.cal.acoustic && Math.random()<0.4){
@@ -3672,9 +3722,9 @@ const UNITS = [
   ]}
 ];
 const LEVEL_NAMES = ['Learn','Easy','Medium','Hard'];
-const levelName = (u,l) => l==='sp' ? 'Starting points' : (u.levels||LEVEL_NAMES)[l];
+const levelName = (u,l) => l==='sp' ? (spDone() ? 'Starting points' : `Starting points ${spCount()}/${EQ_SECTIONS.length}`) : (u.levels||LEVEL_NAMES)[l];
 // EQ starting points is a required step in the EQ unit. Passing its quiz anywhere (the path or the Practice list) counts.
-const spDone = () => (S.ex && S.ex.eqstart || 0) >= 6;
+const spDone = () => (S.ex && S.ex.eqstart || 0) >= 6 || spCount()===EQ_SECTIONS.length;   // the old one-long-quiz finish still counts
 const unitNodes = u => u.id==='eq' ? [0,'sp',1,2,3] : [0,1,2,3];
 const passedNode = (u,l) => l==='sp' ? spDone() : passed(u,l);
 const unitById = id => UNITS.find(u=>u.id===id);
@@ -3734,6 +3784,9 @@ const EXERCISES = [
     plan:[['eqfix',1],['eqfix',1],['eqfix',2],['eqfix',2],['eqfix',3],['eqfix',3]] },
   { id:'eqmix', title:'Set it in the mix', mascot:'fenn', color:'#A8540A', blurb:'The band plays with its starting-point EQ, except one instrument. Set its EQ yourself and hear what it does for the mix.', units:['eq'], guide:true,
     plan:[['eqstart',1,{kind:'mix'}],['eqstart',1,{kind:'mix'}],['eqstart',2,{kind:'mix'}],['eqstart',2,{kind:'mix'}],['eqstart',3,{kind:'mix'}],['eqstart',3,{kind:'mix'}]] },
+  ...EQ_SECTIONS.map(x=>({ id:'sp-'+x.id, title:'Starting points: '+x.title, mascot:'fenn', color:'#A8540A', blurb:'', units:['eq'], guide:true, hidden:true,
+    plan: x.items.length ? [['eqstart',1,{sec:x.id,kind:'ab'}],['eqstart',1,{sec:x.id,kind:'text'}],['eqstart',2,{sec:x.id,kind:'mix'}],['eqstart',1,{sec:x.id,kind:'text'}]]
+                         : [['eqstart',1,{sec:x.id,kind:'band'}],['eqstart',1,{sec:x.id,kind:'text'}],['eqstart',2,{sec:x.id,kind:'mix'}],['eqstart',1,{sec:x.id,kind:'text'}]] })),
   { id:'eqstart', title:'EQ starting points', mascot:'fenn', color:'#A8540A', blurb:'Where to start EQ on each instrument, from MxU\'s Church Audio EQ Guide. Hear each one flat and with the starting point.', units:['eq'], guide:true,
     plan:[['eqstart',1],['eqstart',1],['eqstart',2],['eqstart',2],['eqstart',2],['eqstart',3],['eqstart',3],['eqstart',3]] },
   { id:'ourmix', title:'Our mix vs. Bethel', mascot:'sona', color:'#155E75', blurb:'Our Feb 15 mix next to Bethel\'s balance: hear the difference in tone and width.', units:['ours'],
@@ -3761,7 +3814,7 @@ const EXERCISES = [
 const exById = id => EXERCISES.find(x=>x.id===id);
 const exLink = id => `${location.origin}${location.pathname}?ex=${id}`;
 // Exercises that match the areas the placement check said to work on.
-const recommendedEx = () => { const weak=(S.placement&&S.placement.start)||[]; return EXERCISES.filter(x=>x.units.some(u=>weak.includes(u))).map(x=>x.id); };
+const recommendedEx = () => { const weak=(S.placement&&S.placement.start)||[]; return EXERCISES.filter(x=>!x.hidden && x.units.some(u=>weak.includes(u))).map(x=>x.id); };
 const sharedEx = (()=>{ try{ const id=new URLSearchParams(location.search).get('ex'); return exById(id) ? id : null; }catch(e){ return null; } })();
 let UI = startUI();
 let playTimer = null, playingKey = null;
@@ -4096,7 +4149,7 @@ function exCard(x, rec){
   </div>`;
 }
 function vExercises(){
-  const rec=recommendedEx(), list=[...EXERCISES].sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
+  const rec=recommendedEx(), list=EXERCISES.filter(x=>!x.hidden).sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
   return `<div class="sec-title" style="margin-top:26px">Exercises</div>
     <p style="color:var(--ink2);margin:4px 4px 10px;font-size:15px">Quick workouts you can do any time. Tap the link icon to send one to someone.</p>
     <div class="exgrid">${list.slice(0, UI.allEx?list.length:4).map(x=>exCard(x, rec.includes(x.id))).join('')}</div>
@@ -4186,8 +4239,12 @@ function vResult(){
       <h1 style="font-size:34px" class="ut">${r.correct===r.total?'Perfect!':'Nice work!'}</h1>
       <p style="color:var(--ink2);margin:6px 0 0">${x.title}: ${r.correct} of ${r.total} right.</p>
       ${r.exercise==='eqstart' ? `<p style="margin:8px 0 0"><b>${r.correct>=6 ? 'Starting points step complete. EQ · Easy is unlocked.' : 'Get 6 of 8 to finish the Starting points step and unlock EQ · Easy.'}</b></p>` : ''}
+      ${r.exercise.startsWith('sp-') ? `<p style="margin:8px 0 0"><b>${r.correct>=SP_PASS ? (spDone() ? 'All four sections done. EQ · Easy is unlocked.' : `Section saved: ${spCount()} of ${EQ_SECTIONS.length} done.`) : `Get ${SP_PASS} of ${r.total} to save this section.`}</b></p>` : ''}
       <div class="stats"><div class="stat"><b>${r.correct}/${r.total}</b><span>Correct</span></div><div class="stat"><b>+${r.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div></div>
-      <div class="row"><button class="btn" data-act="exStart" data-ex="${x.id}" style="flex:1">Go again</button><button class="btn ghost" data-act="home" style="flex:1">Home</button></div>
+      ${r.exercise.startsWith('sp-') ? (()=>{ const nxt=EQ_SECTIONS.find(z=>!spSecDone(z.id));
+        return `<div class="row">${r.correct>=SP_PASS ? (nxt ? `<button class="btn" data-act="spSec" data-s="${nxt.id}" style="flex:1">Next: ${nxt.title}</button>` : `<button class="btn" data-act="home" style="flex:1">Continue</button>`)
+          : `<button class="btn" data-act="exStart" data-ex="${x.id}" style="flex:1">Try again</button>`}<button class="btn ghost" data-act="spSec" data-s="" style="flex:1">All sections</button></div>`; })()
+      : `<div class="row"><button class="btn" data-act="exStart" data-ex="${x.id}" style="flex:1">Go again</button><button class="btn ghost" data-act="home" style="flex:1">Home</button></div>`}
     </main>`; }
   if(UI.result.placement) return vPlaceResult(UI.result);
   const r=UI.result, u=unitById(r.unit);
@@ -4514,6 +4571,7 @@ document.addEventListener('click', async e=>{
     case 'settings': go({screen:'settings'}); break;
     case 'begin': S.setup=true; save(); go(sharedEx ? {screen:'exIntro', ex:sharedEx} : {screen:'place'}); break;
     case 'exStart': openExercise(el.dataset.ex); break;
+    case 'spSec': { const id=el.dataset.s; if(UI.screen!=='eqguide'){ await openEqGuide('home'); UI.sp=true; } UI.sec=id||null; hush(); stopAll(); markPlaying(null); render(); window.scrollTo(0,0); break; }
     case 'exAll': UI.allEx=!UI.allEx; render(); break;
     case 'exShare': {
       const x=exById(el.dataset.ex), link=exLink(x.id);
@@ -4565,8 +4623,6 @@ document.addEventListener('click', async e=>{
       render(); break; }
     case 'mixSolo': { const q=lessonQ(UI.lesson); q.state.solo=!q.state.solo; if(q.state.others) q.state.others.gain.setTargetAtTime(q.state.solo?0:1, A.ctx.currentTime, 0.02);
       el.setAttribute('aria-pressed', q.state.solo); el.textContent = q.state.solo ? `Soloed: ${q.it.name}` : `Solo the ${q.it.name.toLowerCase()}`; break; }
-    case 'fixBypass': { const q=lessonQ(UI.lesson); q.state.bypass=!q.state.bypass; fixApply(q); el.setAttribute('aria-pressed',q.state.bypass); el.textContent=q.state.bypass?'EQ is off':'EQ off'; break; }
-    case 'fixReset': { const q=lessonQ(UI.lesson); Object.assign(q.state.eq,{hp:0,lo:0,mg:0,mf:1000,hi:0}); q.state.bypass=false; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
     case 'fixLock': {
       const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const {ok, why}=q.tool==='eqmix' ? eqmixGrade(q) : fixGrade(q); L.picked = ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why;
@@ -4617,7 +4673,8 @@ document.addEventListener('click', async e=>{
     case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
-    case 'conEqFlat': { const s=UI.con.ch[el.dataset.k], f=conStrip(0); Object.assign(s,{eq:f.eq, hp:0, hpOn:false, hpF:80, eqOn:true}); conApply(el.dataset.k); conRender(); break; }
+    case 'conEqFlat': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch=Object.assign(q.state.ch, lessonCh()); fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    { const s=UI.con.ch[el.dataset.k], f=conStrip(0); Object.assign(s,{eq:f.eq, hp:0, hpOn:false, hpF:80, eqOn:true}); conApply(el.dataset.k); conRender(); break; }
     case 'conDynOn': { const s=UI.con.ch[el.dataset.k], which=el.closest('.mpanel').querySelector('.mtag').textContent==='GATE'?'gate':'comp'; s[which].on=!s[which].on; conApply(el.dataset.k); conRender(); break; }
     case 'conDesOn': { const s=UI.con.ch[el.dataset.k]; s.des.on=!s.des.on; conApply(el.dataset.k); conRender(); break; }
     case 'conMainOn': { const M=UI.con.master; M[el.dataset.k]=!M[el.dataset.k]; conApply(); conRender(); break; }
@@ -4632,8 +4689,10 @@ document.addEventListener('click', async e=>{
     case 'conFxJump': document.getElementById(el.dataset.to||'con-fx')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'conLayer': UI.con.layer=el.dataset.l; conRender(); break;
     case 'conBtn': { const s=UI.con.ch[el.dataset.k]; s[el.dataset.p]=!s[el.dataset.p]; conApply(el.dataset.k); conRender(); break; }
-    case 'conEqOn': { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
-    case 'conHpOn': { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
+    case 'conEqOn': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch.eqOn=!q.state.ch.eqOn; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
+    case 'conHpOn': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson), e=q.state.ch; if(UI.lesson.picked!=null) break; e.hpOn=!e.hpOn; e.hp=e.hpOn?e.hpF:0; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
     case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
     case 'conMasterT': { const M=UI.con.master; M[el.dataset.p]=!M[el.dataset.p]; conApply(); conRender(); break; }
     case 'conCheck': UI.con.result=conScore(); conRender(); setTimeout(()=>document.querySelector('.notes')?.scrollIntoView({behavior:'smooth',block:'center'}),50); break;
@@ -4673,14 +4732,7 @@ document.addEventListener('input', e=>{
     const lb=document.getElementById('fitlbl'); if(lb) lb.textContent=`${st.v>0?'+':''}${st.v} dB`;
   }
   if(t.dataset.act==='console'){ S.console=t.value; save(); }
-  if(t.dataset.act==='fixParam'){
-    const q=lessonQ(UI.lesson), e=q.state.eq, pp=t.dataset.p, v=+t.value;
-    if(pp==='hp') e.hp=FIX_HPF[v]; else if(pp==='mf') e.mf=Math.round(100*Math.pow(80,v/1000)); else e[pp]=v;
-    if(q.state.bypass){ q.state.bypass=false; const b=document.querySelector('[data-act=fixBypass]'); if(b){ b.textContent='EQ off'; b.setAttribute('aria-pressed','false'); } }
-    fixApply(q);
-    const lb=document.getElementById('fx-'+pp); if(lb) lb.textContent = pp==='hp' ? (e.hp?hz(e.hp):'Off') : pp==='mf' ? hz(Math.round(e.mf/10)*10) : `${e[pp]>0?'+':''}${e[pp].toFixed(1).replace('.0','')} dB`;
-    const cv=document.getElementById('fx-curve'); if(cv) cv.replaceChildren(frag(eqCurve(fixUserEq(e))));
-  }
+
   if(t.dataset.act==='conParam'){
     const k=t.dataset.k, s=UI.con.ch[k], p=t.dataset.p, v=+t.value, g=x=>`${x>0?'+':''}${(+x).toFixed(1).replace('.0','')} dB`;
     let txt;
