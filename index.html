@@ -275,6 +275,30 @@ button:disabled{cursor:default}
 .mdb.gpk.pkclip{color:#FF5A4E}
 .eqpanel.m32wrap{display:block;padding:8px 0}
 .slide.locked .m32eq{pointer-events:none;opacity:.85}
+.hometab{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;gap:4px;padding:6px 10px calc(6px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.tabbar button{flex:1;max-width:160px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border:0;background:none;color:var(--ink2);font:inherit;font-size:12px;font-weight:800;border-radius:12px;cursor:pointer}
+.tabbar button svg{width:24px;height:24px}
+.tabbar button.on{color:var(--u,#3F3399);background:color-mix(in srgb,var(--u,#3F3399) 12%,transparent)}
+.nextcard{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:16px;margin-top:16px;display:grid;grid-template-columns:84px 1fr;gap:6px 14px;align-items:center;border-top:6px solid var(--u)}
+.nextcard .m{width:84px;height:84px}.nextcard .m img{width:100%;height:100%}
+.nextcard h2{margin:2px 0 0;font-size:24px}.nextcard p{margin:2px 0 0;color:var(--ink2);font-weight:700}
+.nextcard .kicker{color:var(--u);margin:0}
+.nextcard .btn{grid-column:1/-1;margin-top:8px;--u:inherit;background:var(--u)}
+.chapter{background:var(--card);border-radius:20px;box-shadow:var(--shadow);margin-top:12px;overflow:hidden}
+.chapter.open{padding-bottom:6px}
+.chapter .unit{box-shadow:none;margin:6px 10px 10px;border:1px solid var(--line)}
+.chead{width:100%;display:grid;grid-template-columns:40px 1fr 70px 22px;align-items:center;gap:10px;padding:14px 16px;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.cnum{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--chip);font-weight:800;font-family:'Fredoka',sans-serif;font-size:18px}
+.cnum svg{width:18px;height:18px}
+.chapter.locked .chead{opacity:.6}
+.ct b{display:block;font-size:17px}.ct span{font-size:13px;font-weight:700;color:var(--ink2)}
+.cbar{height:6px;border-radius:3px;background:var(--chip);overflow:hidden}.cbar i{display:block;height:100%;background:#1F7A3A}
+.chev{font-size:22px;font-weight:800;color:var(--ink2);text-align:center}
+.qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.qtile{background:var(--card);border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font:inherit;color:inherit;cursor:pointer;border-top:5px solid var(--u)}
+.qtile .m{width:64px;height:64px}.qt{display:flex;flex-direction:column;gap:3px}.qtile b{font-size:15px}.qtile span{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.3}
+@media (max-width:420px){ .qgrid{grid-template-columns:1fr} .qtile{flex-direction:row;text-align:left;gap:12px} .qtile .m{width:52px;height:52px;flex:none} .qtile b{display:block} }
 .readbtn{position:absolute;right:4px;bottom:4px;width:36px;height:36px;color:var(--u,var(--ink2))}.readbtn svg{width:22px;height:22px}
 .say .bubble:has(.readbtn){padding-right:44px}
 .say .m{width:84px;height:84px;flex:none}
@@ -433,6 +457,7 @@ const MASCOTS = Object.fromEntries(['sona','pip','fenn','kit','hugo','bram','ech
 const I = {
   play:'<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
   speak:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>',
   stop:'<svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -3959,26 +3984,85 @@ function findNext(){
   for(const maxL of [1,3]) for(let i=0;i<UNITS.length;i++) for(const l of unitNodes(UNITS[i])) if((l==='sp' || l<=maxL) && !passedNode(UNITS[i],l) && nodeOpen(i,l)) return {u:UNITS[i],l};
   return null;
 }
+// Home: three tabs. Learn is the path (in chapters), Practice is for jumping in, Me is progress and settings.
+const CHAPTERS = [
+  { id:'basics',  title:'The basics',            units:['found','gain','vol','ears'] },
+  { id:'tone',    title:'Shaping the tone',      units:['eq','phase','gate','comp','lim'] },
+  { id:'fx',      title:'Effects and the stream', units:['dly','verb','moreFx','live'] },
+  { id:'mixing',  title:'Mixing',                units:['mix','keys','mw','ours'] },
+  { id:'sunday',  title:'Sunday ready',          units:['final','run','bcast'] }
+];
+const QUICK = [
+  { ex:'eqfix',    title:'EQ training',  sub:'Find and fix a tone problem on a real channel' },
+  { ex:'quickmix', title:'Basic mixing', sub:'Faders up from zero: build a verse around the vocal' },
+  { ex:'gainset',  title:'Set the gain', sub:'Get every channel into the green before the band plays' }
+];
+let HOME_TAB = 'learn';
+const unitDone = u => unitNodes(u).every(l=>passedNode(u,l));
 function vHome(){
   setUnitColor();
-  const anyPassed = UNITS.some(u=>GEN[u.id] && [1,2,3].some(l=>passed(u,l))), next=findNext(), st=liveStreak();
-  return vTop() + `<main class="wrap">
-    <img class="teampic" src="img/team.webp" width="1100" height="553" alt="Sona the bat and the Sound School team: Fenn the fox, Echo the parrot, Hugo the koala, Verb the whale, Kit the meerkat, Bram the beaver, Penny the pigeon and Pip the mouse">
-    <section class="hero up">
-      <div class="bubble"><span class="bt">${st>0?`${st}-day streak. Keep it going!`:'Ready to train your ears?'}</span>
-        <p>${next?`Next up: <strong class="ut" style="--u:${next.u.color}">${next.u.title} · ${levelName(next.u,next.l)}</strong>`:'You finished everything, including the Sunday Mix. Keep your ears sharp with mixed practice!'}</p></div>
-    </section>
-    <div class="row" style="margin-top:14px">
-      ${next?`<button class="btn" data-act="open" data-u="${next.u.id}" data-l="${next.l}" style="--u:${next.u.color};flex:1">${next.l===0?I.book:I.play} Continue</button>`:''}
-      <button class="btn ghost" data-act="practice" ${anyPassed?'':'disabled'} style="flex:1">${I.bolt} Mixed practice</button>
-    </div>
-    <button class="btn ghost block" data-act="openConsole" style="margin-top:12px">${I.sliders} Open the mixing console</button>
+  const tab = UI.tab || HOME_TAB; HOME_TAB = tab;
+  const body = tab==='practice' ? vPracticeTab() : tab==='me' ? vMeTab() : vLearnTab();
+  const tabs = [['learn','Learn',I.book],['practice','Practice',I.bolt],['me','Me',I.me]];
+  return vTop() + `<main class="wrap hometab">${body}</main>
+    <nav class="tabbar" aria-label="Home">${tabs.map(([t,label,ic])=>`<button data-act="tab" data-t="${t}" aria-current="${t===tab?'page':'false'}" class="${t===tab?'on':''}">${ic}<span>${label}</span></button>`).join('')}</nav>`;
+}
+function vLearnTab(){
+  const next=findNext(), st=liveStreak();
+  const nextCard = next ? `<section class="nextcard" style="--u:${next.u.color}">
+      <div class="m" aria-hidden="true">${mascotArt(next.u.mascot,'happy')}</div>
+      <div class="nt"><span class="kicker ut">${st>0?`${st}-day streak · `:''}Next up</span><h2>${next.u.title}</h2><p>${levelName(next.u,next.l)} · with ${next.u.who.split(',')[0]}</p></div>
+      <button class="btn block" data-act="open" data-u="${next.u.id}" data-l="${next.l}">${next.l===0?I.book:I.play} Continue</button></section>`
+    : `<section class="nextcard" style="--u:#1F7A3A"><div class="m" aria-hidden="true">${mascotArt('sona','celebrating')}</div>
+      <div class="nt"><span class="kicker ut">All done</span><h2>You finished the path</h2><p>Keep your ears sharp in Practice.</p></div>
+      <button class="btn block" data-act="tab" data-t="practice">${I.bolt} Practice</button></section>`;
+  const cur = next ? CHAPTERS.find(c=>c.units.includes(next.u.id)) : null;
+  const chapters = CHAPTERS.map((c,ci)=>{
+    const idx=c.units.map(id=>UNITS.findIndex(u=>u.id===id)).filter(i=>i>=0), done=idx.filter(i=>unitDone(UNITS[i])).length, open=idx.some(i=>unitOpen(i));
+    const expanded = UI.chap ? UI.chap===c.id : c===cur, full=done===idx.length;
+    return `<section class="chapter ${expanded?'open':''} ${open?'':'locked'}">
+      <button class="chead" data-act="chap" data-c="${c.id}" aria-expanded="${expanded}">
+        <span class="cnum">${full?I.check:open?ci+1:I.lock}</span>
+        <span class="ct"><b>${c.title}</b><span>${done} of ${idx.length} units${!open?' · locked':full?' · complete':''}</span></span>
+        <span class="cbar" aria-hidden="true"><i style="width:${done/idx.length*100}%"></i></span>
+        <span class="chev" aria-hidden="true">${expanded?'−':'+'}</span></button>
+      ${expanded ? idx.map(i=>vUnit(UNITS[i],i,next)).join('') : ''}
+    </section>`;
+  }).join('');
+  return `${nextCard}
     ${!S.placement ? `<button class="btn ghost block" data-act="placeAgain" style="margin-top:12px">Not sure where to start? Take the 5-minute placement check</button>` : ''}
-    ${vExercises()}
-    <div class="sec-title" style="margin-top:28px">The path</div>
-    ${UNITS.map((u,i)=>vUnit(u,i,next)).join('')}
-    <p class="foot">Music: ${songList} multitracks, for RCC team training only.<br>Progress is saved on this device.</p>
-  </main>`;
+    <div class="sec-title">The path</div>
+    ${chapters}`;
+}
+function vPracticeTab(){
+  const anyPassed = UNITS.some(u=>GEN[u.id] && [1,2,3].some(l=>passed(u,l))), rec=recommendedEx();
+  const tiles = QUICK.map(q=>{ const x=exById(q.ex); return `<button class="qtile" data-act="exStart" data-ex="${x.id}" style="--u:${x.color}">
+      <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div><div class="qt"><b>${q.title}</b><span>${q.sub}</span></div></button>`; }).join('');
+  const list = EXERCISES.filter(x=>!x.hidden).sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
+  return `<div class="sec-title" style="margin-top:14px">Jump in</div>
+    <div class="qgrid">${tiles}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-act="practice" ${anyPassed?'':'disabled'} style="flex:1">${I.bolt} Mixed practice</button>
+      <button class="btn ghost" data-act="openConsole" style="flex:1">${I.sliders} Mixing console</button></div>
+    ${anyPassed?'':`<p class="foot" style="margin:6px 4px 0">Mixed practice opens after you pass your first level.</p>`}
+    <div class="sec-title" style="margin-top:26px">All exercises</div>
+    <p style="color:var(--ink2);margin:4px 4px 10px;font-size:15px">Quick workouts you can do any time. Tap the link icon to send one to someone.</p>
+    <div class="exgrid">${list.map(x=>exCard(x, rec.includes(x.id))).join('')}</div>`;
+}
+function vMeTab(){
+  const coreDone=UNITS.filter(unitDone).length, exDone=Object.keys(S.ex||{}).filter(id=>exById(id) && !exById(id).hidden).length;
+  return `<div class="stats" style="margin-top:16px">
+      <div class="stat"><b>${S.xp}</b><span>XP</span></div><div class="stat"><b>${liveStreak()}</b><span>Day streak</span></div><div class="stat"><b>${coreDone}/${UNITS.length}</b><span>Units</span></div></div>
+    <div class="panel" style="padding:4px 16px">
+      <div class="set"><div class="t"><b>Exercises tried</b><span>${exDone} of ${EXERCISES.filter(x=>!x.hidden).length}</span></div>
+        <button class="btn ghost" data-act="tab" data-t="practice" style="min-height:44px;padding:0 14px">Practice</button></div>
+      <div class="set"><div class="t"><b>Placement check</b><span>${S.placement?`Last result: ${S.placement.level} (${S.placement.correct}/${S.placement.total})`:'Find out where to start and skip what you know.'}</span></div>
+        <button class="btn ghost" data-act="placeAgain" style="min-height:44px;padding:0 14px">${S.placement?'Retake':'Take it'}</button></div>
+      <div class="set"><div class="t"><b>Settings</b><span>Read aloud, volume, your console${CLOUD&&ME.user?', account':''}</span></div>
+        <button class="btn ghost" data-act="settings" style="min-height:44px;padding:0 14px">${I.gear}</button></div>
+    </div>
+    <img class="teampic" src="img/team.webp" width="1100" height="553" alt="Sona the bat and the Sound School team: Fenn the fox, Echo the parrot, Hugo the koala, Verb the whale, Kit the meerkat, Bram the beaver, Penny the pigeon and Pip the mouse">
+    <p class="foot">Music: ${songList} multitracks, for RCC team training only.<br>${CLOUD&&ME.user?'Progress saves to your account.':'Progress is saved on this device.'}</p>`;
 }
 function vUnit(u,i,next){
   const open=unitOpen(i);
@@ -4627,6 +4711,9 @@ document.addEventListener('click', async e=>{
     case 'placeSkip': S.placement = S.placement || null; go({screen:'home'}); break;
     case 'placeAgain': go({screen:'place'}); break;
     case 'open': if(el.dataset.l==='sp'){ await openEqGuide('home'); UI.sp=true; render(); } else openLevel(el.dataset.u, +el.dataset.l); break;
+    case 'tab': HOME_TAB=el.dataset.t; if(UI.screen!=='home') go({screen:'home'}); else { UI.tab=HOME_TAB; render(); } window.scrollTo(0,0); break;
+    case 'chap': { const c=el.dataset.c, cur=(()=>{ const n=findNext(); return n ? CHAPTERS.find(x=>x.units.includes(n.u.id))?.id : null; })(), isOpen = UI.chap ? UI.chap===c : cur===c;
+      UI.chap = isOpen ? '_none' : c; render(); break; }
     case 'practice': stopAll(); await withAudio(startPractice); window.scrollTo(0,0); break;
     case 'slide': go(Object.assign({}, UI, {slide:Math.max(0,UI.slide+(+el.dataset.d))})); break;
     case 'learnDone': {
