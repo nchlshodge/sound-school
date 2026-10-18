@@ -299,6 +299,14 @@ button:disabled{cursor:default}
 .qtile{background:var(--card);border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font:inherit;color:inherit;cursor:pointer;border-top:5px solid var(--u)}
 .qtile .m{width:64px;height:64px}.qt{display:flex;flex-direction:column;gap:3px}.qtile b{font-size:15px}.qtile span{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.3}
 @media (max-width:420px){ .qgrid{grid-template-columns:1fr} .qtile{flex-direction:row;text-align:left;gap:12px} .qtile .m{width:52px;height:52px;flex:none} .qtile b{display:block} }
+.orderlist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}.orderlist li.ph{color:var(--ink2);list-style:none;margin-left:-22px}
+.ordbtn{font:inherit;text-align:left;width:100%;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 10px;cursor:pointer}
+.orderlist li.good .ordbtn{border-color:#1F7A3A}.orderlist li.bad .ordbtn{border-color:#B4421F}
+.ckrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:none;font:inherit;color:var(--ink);padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.ckrow:last-child{border-bottom:0}.ckrow.on span:last-child{color:var(--ink2);text-decoration:line-through}
+.ckbox{width:26px;height:26px;flex:none;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;color:#fff}.ckrow.on .ckbox{background:#1F7A3A;border-color:#1F7A3A}.ckbox svg{width:16px;height:16px}
+.ckcard{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:0;border-left:6px solid #2F7A2F;border-radius:18px;box-shadow:var(--shadow);padding:12px 14px;margin-top:16px;font:inherit;color:var(--ink);cursor:pointer;--u:#2F7A2F}
+.ckcard .m{width:56px;height:56px;flex:none}.ckcard b{font-size:17px}.ckcard span{font-size:13px;color:var(--ink2);font-weight:600}
 .stagerow{display:grid;grid-template-columns:1fr auto auto;gap:6px 8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .stagerow:last-of-type{border-bottom:0}.stagerow b{grid-column:1/-1;font-size:15px}
 .stagerow select{font:inherit;font-size:14px;padding:8px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-height:40px;width:100%}
@@ -2447,6 +2455,49 @@ const liveChannels = (song, off) => song.mix.filter(k=>soloSrc(song,k,off).rms >
 
 /* ----- Pastor walks up: a timing game ----- */
 /* ----- Set up the stage: pick the mic or DI for each source, set +48V, and patch it by the input list ----- */
+const ROUTINE_TEXT = { 1:[
+  {prompt:'What do you turn on last?', options:['The amps and powered speakers','The console','The stage box'], explain:'Speakers last on and first off, so they never pop.'},
+  {prompt:'What do you set first at soundcheck?', options:['Each channel\'s gain','The reverb','The main fader'], explain:'Gain first, with each person playing their loudest part. Everything else depends on it.'},
+  {prompt:'Why save a scene after soundcheck?', options:['So you can get everything back if something gets bumped or restarts','To make it louder','So the band can hear'], explain:'A saved scene is your safety net.'},
+  {prompt:'What\'s a line check?', options:['Checking every input passes signal on the right channel, before the band plays','Setting the final mix','Checking the stream'], explain:'One input at a time: talk into it or play it, and watch it land on the right channel.'},
+  {prompt:'Where should you be during the service?', options:['At the board, watching the stage and the run sheet','Backstage','In the lobby'], explain:'Most problems are caught early by someone who\'s watching.'}
+], 2:[
+  {prompt:'What order do you turn things off?', options:['Speakers first, then the console','Console first, then the speakers','All at once'], explain:'The reverse of power-on: speakers first, console last.'},
+  {prompt:'After gain, what comes next at soundcheck?', options:['The monitor mixes, so the band can hear','The livestream','The recording'], explain:'Musicians who can hear themselves play and sing better, and it changes what the house needs.'},
+  {prompt:'When should you put fresh batteries in the wireless packs?', options:['Before the service, during line check','When the mic dies','After the service'], explain:'Fresh batteries before every service. A dead pack mid-sermon is avoidable.'},
+  {prompt:'In the last 30 seconds before the service, what matters most?', options:['First mic ready, unused channels muted, recording and stream running','Re-EQ every channel','Turn the main up'], explain:'Set up the very first moment so it starts clean.'},
+  {prompt:'What do you do after the service, besides powering down?', options:['Write down anything that broke or needs fixing','Nothing','Reset every channel to flat'], explain:'Notes for next week stop the same problem from happening twice.'}
+], 3:[
+  {prompt:'The console restarted 10 minutes before the service. What saves you?', options:['Recalling the scene you saved after soundcheck','Redoing soundcheck from scratch','Turning the speakers off'], explain:'That\'s exactly why you save the scene.'},
+  {prompt:'You find a crackling cable during line check. What\'s the best move?', options:['Swap it now and set the bad one aside, labeled','Leave it and hope','Turn that channel down'], explain:'Fix it now and label the bad cable so nobody uses it next week.'},
+  {prompt:'A musician arrives late, after soundcheck. What do you do?', options:['Quick line check and gain on their channel before the service, then save the scene again','Skip their channel','Mix them by ear during the first song'], explain:'A 30-second check beats guessing in front of the whole church.'},
+  {prompt:'Why check the service order in Planning Center before you arrive?', options:['To know who\'s on stage, the input list and the moments to watch for','It\'s required','To change the songs'], explain:'Knowing the plan lets you get ready for each moment instead of reacting to it.'},
+  {prompt:'During a transition the pastor starts talking with the band still playing. What do you do first?', options:['Bring the pastor\'s mic up, then ease the band down under them','Mute the band instantly','Wait and see'], explain:'Words first. Then bring the band down so they sit under the voice.'}
+] };
+const ROUTINE_ORDER = {
+  morning: [['Check the service plan and input list','So you know who and what to expect.'],['Power on the console, then the speakers','Speakers last, so they never pop.'],['Line check every input','Find bad cables and wrong patches before the band plays.'],['Set each channel\'s gain','Everything else depends on healthy levels.'],['Build the monitor mixes','The band needs to hear before you balance the house.'],['Balance the house mix','A quick rough mix with the whole band.'],['Save the scene','Your safety net if anything gets bumped or restarts.'],['Last 30 seconds: first mic ready, extras muted, record and stream on','Start the service clean.']],
+  soundcheck: [['Turn on +48V where it\'s needed (fader down)','Condensers and active DIs need it; down first avoids a pop.'],['Line check each input','Make sure every source lands on the right channel.'],['Gain at the loudest part','So the big chorus won\'t clip.'],['Monitor mixes','Musicians hear themselves first.'],['House balance','Then build the mix in the room.']],
+  shutdown: [['Stop the recording','Save the service before anything else.'],['Mute everything','No pops or noise on the way down.'],['Power off the speakers and amps','Speakers first...'],['Power off the console','...console last.'],['Charge batteries and put mics away','Ready for next week.']]
+};
+function orderQ(l){
+  const set = l===1 ? pick(['soundcheck','shutdown']) : 'morning', all=ROUTINE_ORDER[set];
+  const steps = l===2 ? all.slice(1,7) : all;
+  return { tool:'order', level:l, set, steps, shuf:shuffle(steps.map((x,i)=>i)), picked:[], text:true, dispUnit:'routine',
+    prompt: set==='shutdown' ? 'Put the shutdown steps in order. Tap them first to last.' : set==='soundcheck' ? 'Put the soundcheck steps in order. Tap them first to last.' : 'Put Sunday morning in order. Tap the steps first to last.',
+    clips:[], options:['done'], answer:0, explain:'' };
+}
+function vOrderTool(q, answered){
+  const left=q.shuf.filter(i=>!q.picked.includes(i)), dis=answered?'disabled':'';
+  return `<div class="slide" style="padding:12px 14px">
+    <ol class="orderlist">${q.picked.map((i,n)=>`<li class="${answered?(i===n?'good':'bad'):''}"><button class="ordbtn on" data-act="orderUndo" data-n="${n}" ${dis}>${q.steps[i][0]}</button></li>`).join('') || '<li class="ph">Tap the first step below</li>'}</ol>
+    ${left.length && !answered ? `<div class="opts" style="margin-top:10px">${left.map(i=>`<button class="opt" data-act="orderPick" data-i="${i}">${q.steps[i][0]}</button>`).join('')}</div>` : ''}
+    ${!answered ? `<button class="btn block" data-act="orderLock" style="margin-top:12px" ${left.length?'disabled':''}>Check my order</button>` : ''}
+  </div>`;
+}
+function orderGrade(q){
+  const right=q.picked.filter((x,n)=>x===n).length, ok=right===q.steps.length;
+  return { ok, why: (ok ? 'That\'s the order. ' : `${right} of ${q.steps.length} in the right place. Here's the order: `) + q.steps.map((x,n)=>`${n+1}. ${x[0]}: ${x[1]}`).join(' ') };
+}
 const STAGE_DEV = ['Dynamic mic','Condenser mic','DI box (active)','Wireless handheld','Lapel or headset'];
 const STAGE_SRC = [
   { n:'Kick drum',     ok:['Dynamic mic'] },
@@ -3370,6 +3421,10 @@ const GEN = {
       explain:(wrong?`They were fighting each other, so the ${pair.where} was thin. Flip one and it fills back in. `:'They already work together: full and solid. ')+pair.why });
     return Object.assign(q, {song:ps.id, after:[{label: wrong?'fixed':'flipped (wrong)', spec: wrong?good:bad}]});
   },
+  routine(l, s, o={}){
+    if(o.kind==='order' || (!o.kind && Math.random()<0.35)) return orderQ(l);
+    return Object.assign(textQ(fresh(ROUTINE_TEXT[l], t=>'routine:'+t.prompt)), {dispUnit:'routine'});
+  },
   stage(l, s, o={}){
     if(o.kind==='set' || (!o.kind && l>=2 && Math.random()<0.4)) return stageQ(l===1?2:l);
     return Object.assign(textQ(fresh(STAGE_TEXT[l], t=>'stage:'+t.prompt)), {dispUnit:'stage'});
@@ -3809,6 +3864,16 @@ const UNITS = [
       demos:[{label:'Normal level',spec:()=>({src:BAND(D())})},{label:'15 dB quieter',spec:()=>({src:BAND(D()),gain:-15})}]},
     {t:'Loudness on the stream', p:['Streaming platforms measure loudness in LUFS and turn loud streams down. YouTube plays back at about -14 LUFS, so crushing the stream louder only costs you punch.','Keep true peaks under about -1 dBTP. Logic\'s Loudness Meter shows LUFS if you\'re checking a recording.']}
   ]},
+  { id:'routine', side:true, title:'Sunday Routine', mascot:'kit', who:'Kit the meerkat', color:'#2F7A2F', blurb:'From unlocking the doors to the last mic put away: the same steps every week, in the right order.', learn:[
+    {t:'Before you arrive', p:['Look at the service in Planning Center: the order of service, who\'s singing and playing, and the input list.','Knowing the plan is half of mixing well. Surprises are what make Sunday stressful.']},
+    {t:'Power on in order', p:['Console and processing first; amps and powered speakers last. Off is the reverse: speakers first, console last.','That way the speakers never hear the pop of gear turning on or off.']},
+    {t:'Line check', p:['Before the band plays, check every input by itself: scratch or talk into each mic, play each DI, and make sure it lands on the right channel.','Turn on +48V where it\'s needed and put fresh batteries in the wireless packs. A bad cable found now is easy; found during the first song, it\'s a scramble.']},
+    {t:'Soundcheck', p:['Gain first, while each person plays or sings their loudest part. Then the monitor mixes, so the band can hear. Then a quick house balance.','If a wedge or mic starts to ring, ring it out now, not during the service.']},
+    {t:'Save the scene', p:['When soundcheck is done, save it as a scene. If someone bumps a knob or the console restarts, you can get it all back.', onM32('open the Scenes screen and save to a new slot with a clear name, like the date.')]},
+    {t:'The last 30 seconds', p:['Right before the service: walk-in music down, the first mic up and ready, unused channels muted, recording and stream running.','Take a breath. You\'re ready.']},
+    {t:'During the service', p:['Stay at the board and watch the stage and the run sheet. Make small moves, ahead of time: up before a solo, up before the pastor\'s first word.','If something goes wrong, stay calm and work it out from the simplest thing.']},
+    {t:'After the service', p:['Stop the recording, mute everything, then power off: speakers first, console last.','Charge or swap batteries, put the mics away, and write down anything that broke or needs fixing for next week.']}
+  ]},
   { id:'eq', title:'EQ', mascot:'fenn', who:'Fenn the fennec fox', color:'#A8540A', blurb:'Find frequencies by ear in music and voices, and ring out feedback.', learn:[
     {t:'What EQ does', p:['EQ turns certain frequencies up or down.','Lows (20–250 Hz) are rumble and weight. Mids (250 Hz–4 kHz) are body and words. Highs (4–16 kHz) are air and sizzle.'],
       demos:[{label:'Flat',spec:()=>({src:PINK(D())})},{label:'Lows up',spec:()=>({src:PINK(D()),chain:fxEQ(100,12)})},{label:'Mids up',spec:()=>({src:PINK(D()),chain:fxEQ(1000,12)})},{label:'Highs up',spec:()=>({src:PINK(D()),chain:fxEQ(8000,12)})}]},
@@ -3974,7 +4039,7 @@ const unitById = id => UNITS.find(u=>u.id===id);
 const key = (u,l) => `${u.id}-${l}`;
 const passed = (u,l) => !!S.done[key(u,l)];
 // After the placement check, every core unit (Foundations through Mixing) is open; the rest unlock in order.
-const CORE_UNITS = ['found','stage','gain','vol','ears','eq','phase','gate','comp','lim','dly','verb','moreFx','live','mix','keys'];
+const CORE_UNITS = ['found','stage','gain','vol','ears','routine','eq','phase','gate','comp','lim','dly','verb','moreFx','live','mix','keys'];
 const prevMain = i => { for(let j=i-1;j>=0;j--) if(!UNITS[j].side) return UNITS[j]; return null; };
 const unitOpen = i => S.unlockAll || i===0 || passed(prevMain(i),1) || (!!S.placement && CORE_UNITS.includes(UNITS[i].id));
 // The placement check: one question per area at a medium level (two for Foundations and Mixing).
@@ -4043,6 +4108,8 @@ const EXERCISES = [
     plan:[['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}]] },
   { id:'ring',    title:'Ring it out',         mascot:'fenn',  color:'#A8540A', blurb:'Hear where feedback is ringing, then notch it out.', units:['eq'],
     plan:[['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ringout'}]] },
+  { id:'sundayorder', title:'Sunday in order', mascot:'kit', color:'#2F7A2F', blurb:'Power-on, line check, soundcheck, save the scene, shutdown: put the steps in the right order.', units:['routine'],
+    plan:[['routine',1,{kind:'order'}],['routine',1,{kind:'order'}],['routine',2,{kind:'order'}],['routine',3,{kind:'order'}]] },
   { id:'stageset', title:'Set up the stage', mascot:'bram', color:'#8A5A2B', blurb:'Pick the right mic or DI for each source, set phantom power, and patch it all by the input list.', units:['stage'],
     plan:[['stage',2,{kind:'set'}],['stage',2,{kind:'set'}],['stage',3,{kind:'set'}],['stage',3,{kind:'set'}]] },
   { id:'ride', title:'Ride the mix', mascot:'sona', color:'#3F3399', blurb:'Hands-on: a solo, a singer backing off the mic, a belted chorus. Move the fader at the right moment, then put it back.', units:['mix'],
@@ -4155,7 +4222,7 @@ function addReadButtons(){
 
 function render(){
   const s=UI.screen;
-  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : s==='console'?vConsole() : vSetup()));
+  app.replaceChildren(frag(s==='home'?vHome() : s==='learn'?vLearn() : s==='lesson'?vLesson() : s==='mixer'?vMixer() : s==='result'?vResult() : s==='settings'?vSettings() : s==='checklist'?vChecklist() : s==='place'?vPlaceIntro() : s==='exIntro'?vExIntro() : s==='sc'?vSoundcheck() : s==='signin'?vSignIn() : s==='pending'?vPending() : s==='authwait'?vAuthWait() : s==='team'?vTeam() : s==='eqguide'?vEqGuide() : s==='console'?vConsole() : vSetup()));
   addReadButtons(); autoRead();
   if(UI.loading) app.append(frag(`<div class="loading" role="status"><div>${mascot('sona')}<b class="disp" id="loadmsg" style="font-size:22px">Loading the band…</b></div></div>`));
 }
@@ -4175,7 +4242,7 @@ function findNext(){
 }
 // Home: three tabs. Learn is the path (in chapters), Practice is for jumping in, Me is progress and settings.
 const CHAPTERS = [
-  { id:'basics',  title:'The basics',            units:['found','stage','gain','vol','ears'] },
+  { id:'basics',  title:'The basics',            units:['found','stage','gain','vol','ears','routine'] },
   { id:'tone',    title:'Shaping the tone',      units:['eq','phase','gate','comp','lim'] },
   { id:'fx',      title:'Effects and the stream', units:['dly','verb','moreFx','live'] },
   { id:'mixing',  title:'Mixing',                units:['mix','keys','mw','ours'] },
@@ -4223,12 +4290,32 @@ function vLearnTab(){
     <div class="sec-title">The path</div>
     ${chapters}`;
 }
+const CHECKLIST = [
+  { t:'Before you arrive', items:['Look at the service in Planning Center: order, people, input list','Note any special moments: a video, a baptism, a guest speaker'] },
+  { t:'Power on', items:['Console and processing on','Amps and powered speakers on, last','Recording computer on and ready'] },
+  { t:'Line check', items:['+48V on for condensers and active DIs (fader down first)','Fresh batteries in every wireless pack','Each mic and DI lands on the right channel','Swap and label any bad cable'] },
+  { t:'Soundcheck', items:['Gain for each channel at the loudest part','Monitor mixes for the band','Quick house balance with the full band','Ring out anything that rings'] },
+  { t:'Ready', items:['Save the scene','Walk-in music playing','First mic up and ready, unused channels muted','Recording and stream running, levels checked'] },
+  { t:'After the service', items:['Stop and save the recording','Mute everything','Speakers off, then the console','Charge batteries, put mics away','Write down anything that broke for next week'] }
+];
+function vChecklist(){
+  setUnitColor('#2F7A2F');
+  const today=dayKey(0), ck = S.check && S.check.day===today ? S.check : (S.check={day:today, done:{}}), total=CHECKLIST.reduce((a,x)=>a+x.items.length,0), done=Object.values(ck.done).filter(Boolean).length;
+  return `<div class="lbar"><button class="iconbtn" data-act="home" aria-label="Back">${I.back}</button><h1 style="font-size:24px">Sunday checklist</h1></div>
+  <main class="wrap" style="padding-bottom:40px">
+    <div class="say">${mascot('kit','',done===total?'celebrating':'happy')}<div class="bubble"><span class="bt">${done===total?'All set. Have a great service!':`${done} of ${total} done`}</span><p>The same steps every week. Tap each one as you go; it starts fresh each day.</p></div></div>
+    ${CHECKLIST.map((sec,si)=>`<div class="sec-title">${sec.t}</div><div class="panel" style="padding:4px 12px">${sec.items.map((it,ii)=>{ const id=si+'.'+ii, on=!!ck.done[id];
+      return `<button class="ckrow ${on?'on':''}" data-act="ckItem" data-id="${id}" aria-pressed="${on}"><span class="ckbox">${on?I.check:''}</span><span>${it}</span></button>`; }).join('')}</div>`).join('')}
+    <button class="btn ghost block" data-act="ckReset" style="margin-top:18px">Start over</button>
+  </main>`;
+}
 function vPracticeTab(){
   const anyPassed = UNITS.some(u=>GEN[u.id] && [1,2,3].some(l=>passed(u,l))), rec=recommendedEx();
   const tiles = QUICK.map(q=>{ const x=exById(q.ex); return `<button class="qtile" data-act="exStart" data-ex="${x.id}" style="--u:${x.color}">
       <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div><div class="qt"><b>${q.title}</b><span>${q.sub}</span></div></button>`; }).join('');
   const list = EXERCISES.filter(x=>!x.hidden).sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
-  return `<div class="sec-title" style="margin-top:14px">Jump in</div>
+  return `<button class="ckcard" data-act="checklist"><div class="m tint" aria-hidden="true">${mascotArt('kit','happy')}</div><div class="qt"><b>Sunday checklist</b><span>Use it on Sunday morning: power-on to shutdown, step by step.</span></div></button>
+    <div class="sec-title" style="margin-top:14px">Jump in</div>
     <div class="qgrid">${tiles}</div>
     <div class="row" style="margin-top:12px">
       <button class="btn" data-act="practice" ${anyPassed?'':'disabled'} style="flex:1">${I.bolt} Mixed practice</button>
@@ -4325,6 +4412,7 @@ function vLesson(){
     : q.tool==='volfit' ? vFitTool(q, answered)
     : q.tool==='ride' ? vRideTool(q, answered)
     : q.tool==='stage' ? vStageTool(q, answered)
+    : q.tool==='order' ? vOrderTool(q, answered)
     : q.tool==='walkup' ? `<div class="slide" style="text-align:center">
         <p id="walkStatus" class="disp" style="font-size:20px;color:var(--ink);min-height:52px;margin:4px 0 14px">${answered?'Done.':q.state.running?'…':'Ready when you are.'}</p>
         ${q.state.running||answered ? `<div class="row"><button class="btn" data-act="walkMic" style="flex:1" ${q.state.mic!=null||answered?'disabled':''}>Pastor mic up</button>
@@ -4924,6 +5012,12 @@ document.addEventListener('click', async e=>{
       el.setAttribute('aria-pressed', st.mute); el.textContent = st.mute?'Muted':'Mute it'; break; }
     case 'fitLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const {ok, why}=fitGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; stopAll(); markPlaying(null); render(); break; }
+    case 'checklist': go({screen:'checklist'}); break;
+    case 'ckItem': { const ck=S.check, id=el.dataset.id; ck.done[id]=!ck.done[id]; save(); const y=window.scrollY; render(); window.scrollTo(0,y); break; }
+    case 'ckReset': S.check={day:dayKey(0), done:{}}; save(); render(); break;
+    case 'orderPick': { const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.picked.push(+el.dataset.i); render(); break; }
+    case 'orderUndo': { const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.picked.splice(+el.dataset.n); render(); break; }
+    case 'orderLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null || q.picked.length<q.steps.length) break; const {ok,why}=orderGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; render(); break; }
     case 'stage48': { const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; const r=q.rows[+el.dataset.i]; r.p48=!r.p48; el.classList.toggle('on', r.p48); el.setAttribute('aria-pressed', r.p48); break; }
     case 'stageLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) break; if(q.rows.some(r=>!r.dev)){ alert('Choose a mic or DI for every source first.'); break; }
       const {ok, why}=stageGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; render(); break; }
