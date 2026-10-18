@@ -299,6 +299,12 @@ button:disabled{cursor:default}
 .qtile{background:var(--card);border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font:inherit;color:inherit;cursor:pointer;border-top:5px solid var(--u)}
 .qtile .m{width:64px;height:64px}.qt{display:flex;flex-direction:column;gap:3px}.qtile b{font-size:15px}.qtile span{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.3}
 @media (max-width:420px){ .qgrid{grid-template-columns:1fr} .qtile{flex-direction:row;text-align:left;gap:12px} .qtile .m{width:52px;height:52px;flex:none} .qtile b{display:block} }
+.stagerow{display:grid;grid-template-columns:1fr auto auto;gap:6px 8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.stagerow:last-of-type{border-bottom:0}.stagerow b{grid-column:1/-1;font-size:15px}
+.stagerow select{font:inherit;font-size:14px;padding:8px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-height:40px;width:100%}
+.stagerow select:first-of-type{grid-column:1/2}
+.mb.p48{min-height:40px;padding:0 10px;font-size:12px}.mb.p48.on{background:#FF4136;border-color:#FF4136;color:#fff}
+.inlist{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px;font-size:14px}.inlist b{display:inline-block;min-width:22px}
 .ridetl{position:relative;height:40px;background:var(--chip);border-radius:10px;overflow:hidden}
 .ridetl i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
 .ridetl .rev{position:absolute;top:4px;bottom:4px;background:color-mix(in srgb,var(--u,#3F3399) 75%,transparent);border-radius:7px;display:flex;align-items:center;padding:0 6px;overflow:hidden}
@@ -2440,6 +2446,49 @@ function lineSpec(song, k, off, prob){
 const liveChannels = (song, off) => song.mix.filter(k=>soloSrc(song,k,off).rms > -50);
 
 /* ----- Pastor walks up: a timing game ----- */
+/* ----- Set up the stage: pick the mic or DI for each source, set +48V, and patch it by the input list ----- */
+const STAGE_DEV = ['Dynamic mic','Condenser mic','DI box (active)','Wireless handheld','Lapel or headset'];
+const STAGE_SRC = [
+  { n:'Kick drum',     ok:['Dynamic mic'] },
+  { n:'Snare',         ok:['Dynamic mic'] },
+  { n:'Overheads',     ok:['Condenser mic'] },
+  { n:'Guitar amp',    ok:['Dynamic mic'] },
+  { n:'Bass guitar',   ok:['DI box (active)'] },
+  { n:'Acoustic guitar', ok:['DI box (active)'] },
+  { n:'Keys (left)',   ok:['DI box (active)'] },
+  { n:'Tracks laptop', ok:['DI box (active)'] },
+  { n:'Lead vocal',    ok:['Wireless handheld','Dynamic mic'] },
+  { n:'Background vocal', ok:['Dynamic mic','Wireless handheld'] },
+  { n:'Pastor',        ok:['Lapel or headset','Wireless handheld'] }
+];
+const needs48 = d => d==='Condenser mic' || d==='DI box (active)';
+function stageQ(l){
+  const n = l===2 ? 5 : 7, srcs=shuffle(STAGE_SRC).slice(0,n), chans=shuffle(Array.from({length:16},(_,i)=>i+1)).slice(0,n).sort((a,b)=>a-b);
+  const rows=srcs.map((x,i)=>({ ...x, ch:chans[i], dev:'', p48:false, inp:'' }));
+  return { tool:'stage', level:l, rows, tag:'Stage plot', prompt: l===3 ? 'Set up the stage: pick the mic or DI for each source, set +48V, and patch each one to the stage box input from the input list.' : 'Set up the stage: pick the right mic or DI for each source, and set +48V where it\'s needed.',
+    hint:'The DIs on this stage are active, so they need +48V. Wireless receivers and dynamic mics don\'t.', clips:[], options:['done'], answer:0, explain:'' };
+}
+function vStageTool(q, answered){
+  const dis=answered?'disabled':'', inList = q.level===3 ? `<div class="slide" style="padding:12px 14px;margin-bottom:10px"><b>Input list</b> <span class="foot" style="display:inline">(from Planning Center)</span>
+    <div class="inlist">${[...q.rows].sort((a,b)=>a.ch-b.ch).map(r=>`<span><b>${r.ch}</b> ${r.n}</span>`).join('')}</div></div>` : '';
+  return `${inList}<div class="slide" style="padding:6px 12px">${q.rows.map((r,i)=>`<div class="stagerow">
+      <b>${r.n}</b>
+      <select data-act="stageDev" data-i="${i}" aria-label="Mic or DI for ${r.n}" ${dis}><option value="">Choose…</option>${STAGE_DEV.map(d=>`<option ${r.dev===d?'selected':''}>${d}</option>`).join('')}</select>
+      <button class="mb p48 ${r.p48?'on':''}" data-act="stage48" data-i="${i}" aria-pressed="${r.p48}" ${dis}>48V</button>
+      ${q.level===3?`<select data-act="stageInp" data-i="${i}" aria-label="Stage box input for ${r.n}" ${dis}><option value="">Input…</option>${Array.from({length:16},(_,k)=>`<option value="${k+1}" ${+r.inp===k+1?'selected':''}>In ${k+1}</option>`).join('')}</select>`:''}
+    </div>`).join('')}
+    <button class="btn block" data-act="stageLock" style="margin:12px 0 6px" ${dis}>Check my stage</button></div>`;
+}
+function stageGrade(q){
+  const bad=[];
+  for(const r of q.rows){ const why=[];
+    if(!r.ok.includes(r.dev)) why.push(r.dev ? `${r.dev} isn't the usual choice: use ${r.ok[0].toLowerCase()}` : `choose ${r.ok[0].toLowerCase()}`);
+    const want=needs48(r.dev||r.ok[0]); if(r.p48!==want) why.push(want ? '+48V needs to be on' : '+48V should be off');
+    if(q.level===3 && +r.inp!==r.ch) why.push(`the input list says input ${r.ch}`);
+    if(why.length) bad.push(`${r.n}: ${why.join('; ')}.`); }
+  const ok=!bad.length;
+  return { ok, why: ok ? 'Every source has the right mic or DI and phantom power'+(q.level===3?', and it\'s all patched by the input list':'')+'. Next you\'d line check each one.' : bad.join(' ') + ' Remember: condensers and active DIs need +48V; dynamic mics and wireless receivers don\'t.' };
+}
 /* ----- Ride the mix: something changes mid-song; move the fader at the right moment, then put it back ----- */
 const RIDE_KINDS = {
   solo:    { label:'Guitar solo',              need:+6, ev:0,  cue:'takes a solo', tip:'Bring the solo up a few dB as it starts, and back down when the singer comes back in.' },
@@ -2687,6 +2736,25 @@ const PHASE_TEXT = [
   {m32:true, prompt:'Where is the polarity button on the M32?', options:['In the channel\'s preamp/config section, marked Ø, near the 48V button','In the effects rack','On the main bus'], explain:'Select the channel and look in its config/preamp area for Ø. The X32 is laid out the same way.'}
 ];
 // Gain staging (first option is correct).
+const STAGE_TEXT = { 1:[
+  {prompt:'Which mic needs phantom power (+48V)?', options:['A condenser mic','A dynamic mic like an SM58','Neither'], explain:'Condensers (and active DI boxes) need +48V. Dynamic mics don\'t.'},
+  {prompt:'What does a DI box do?', options:['Turns an instrument\'s signal into a balanced mic-level signal for the snake','Adds reverb','Makes the mic louder'], explain:'A DI lets a bass, keyboard or acoustic travel down the snake cleanly, like a mic.'},
+  {prompt:'Where should a floor wedge be, compared with a cardioid vocal mic?', options:['Behind the mic, where it hears the least','Right in front of the mic','It doesn\'t matter'], explain:'Cardioid mics reject the back. A wedge there is least likely to feed back.'},
+  {prompt:'Which mic would you usually put on a guitar amp?', options:['A dynamic mic, right on the grille','A condenser across the room','A lapel mic'], explain:'A dynamic mic close to the speaker handles the volume and keeps out the rest of the stage.'},
+  {prompt:'What does the input list tell you?', options:['What plugs into each numbered input on the stage box','The song order','The monitor mixes'], explain:'Plug in by the list so every mic lands on the right channel.'}
+], 2:[
+  {prompt:'Before you switch +48V on a channel, what should you do?', options:['Pull the fader down or mute it','Turn the gain all the way up','Nothing'], explain:'Switching phantom power makes a pop. Keep it out of the speakers.'},
+  {prompt:'Where does the snare mic go?', options:['An inch or two over the rim, aimed at the center of the head','Under the drum, touching it','Above the cymbals'], explain:'Close and aimed at the center gives the crack without too much of the rest of the kit.'},
+  {prompt:'The guitar amp sounds too bright through the mic. What do you try?', options:['Move the mic from the center of the speaker toward the edge','Move it to the back of the amp','Add a second amp'], explain:'Center of the cone is brighter; toward the edge is darker and warmer.'},
+  {prompt:'The bass DI has a hum. What\'s a quick fix to try?', options:['Press the DI\'s ground lift switch','Turn the bass up','Add a high-pass at 500 Hz'], explain:'Hum is often a ground loop. The ground lift breaks it.'},
+  {prompt:'Stereo keys: how many DI channels?', options:['Two: left and right','One','Three'], explain:'Stereo needs two inputs. Many churches still pan them close to center (the room is mostly mono).'}
+], 3:[
+  {prompt:'An active DI isn\'t passing any signal. What\'s the likely cause?', options:['+48V is off on that channel','The fader is too high','The EQ is off'], explain:'Active DIs are powered by phantom power. No +48V, no signal.'},
+  {prompt:'Someone brings an old ribbon mic. What about phantom power?', options:['Leave +48V off for it: it can damage some ribbons','Turn +48V on','Double it'], explain:'Many vintage ribbons can be damaged by phantom power. Leave it off.'},
+  {prompt:'A vocal mic is the 9th line on the input list, but you hear it on channel 12. What happened?', options:['It\'s plugged into stage box input 12, not 9','The fader is broken','The singer is too loud'], explain:'Patch by the input list: the stage box number decides the channel.'},
+  {prompt:'Why are overheads usually condensers?', options:['They catch detail and cymbal shimmer from farther away','They\'re louder','They don\'t need power'], explain:'Condensers are more sensitive and detailed, which overheads need.'},
+  {prompt:'What should you do before the band arrives?', options:['Line check every input: make sure each one passes signal on the right channel','Set the final mix','Ring out every wedge at full volume'], explain:'Finding a bad cable or a wrong patch now saves a scramble later.'}
+] };
 const GAIN_TEXT = [
   {prompt:'On a digital console, where should a channel\'s peaks land at soundcheck?', options:['Around -18 to -6 dBFS: in the yellow, never red','Right at 0 dBFS','As low as possible'], explain:'Digital meters read in dBFS, and 0 is clipping. Peaks in the -18 to -6 range leave room (headroom) for louder moments.'},
   {prompt:'When do you set a singer\'s gain?', options:['At soundcheck, while they sing the loudest part','While they\'re talking','During the quietest verse'], explain:'Set it for the loudest moment so the big chorus doesn\'t clip.'},
@@ -3302,6 +3370,10 @@ const GEN = {
       explain:(wrong?`They were fighting each other, so the ${pair.where} was thin. Flip one and it fills back in. `:'They already work together: full and solid. ')+pair.why });
     return Object.assign(q, {song:ps.id, after:[{label: wrong?'fixed':'flipped (wrong)', spec: wrong?good:bad}]});
   },
+  stage(l, s, o={}){
+    if(o.kind==='set' || (!o.kind && l>=2 && Math.random()<0.4)) return stageQ(l===1?2:l);
+    return Object.assign(textQ(fresh(STAGE_TEXT[l], t=>'stage:'+t.prompt)), {dispUnit:'stage'});
+  },
   gain(l, s, o={}){
     const kind=o.kind, r=Math.random();
     const textBank = () => textQ(pick(GAIN_TEXT));
@@ -3702,6 +3774,16 @@ const UNITS = [
     {t:'Gain first, faders second', p:['Gain sets how much signal comes in. Set it so the loudest moments peak in the yellow, never the red.','The fader sets how loud that channel is in the mix. If your fader is way up and it\'s still quiet, check the gain.']},
     {t:'Our job on Sunday', p:['The best sound is the sound nobody notices. We help people hear the words and worship without distraction.','That means anticipating, making small moves, and staying calm when something goes wrong.']}
   ]},
+  { id:'stage', side:true, title:'Stage Setup', mascot:'bram', who:'Bram the beaver', color:'#8A5A2B', blurb:'Mics, DI boxes, phantom power and patching: get every input on stage to the right channel.', learn:[
+    {t:'Two kinds of mic', p:['A dynamic mic (like a Shure SM58 or SM57) is tough, needs no power and handles loud sources: vocals, drums, guitar amps.','A condenser mic hears more detail and needs phantom power (+48V). Use it for overheads, acoustic instruments and choirs.']},
+    {t:'Phantom power (+48V)', p:['Turn on +48V for condenser mics and active DI boxes. Dynamic mics don\'t need it. Old ribbon mics can be damaged by it, so leave it off for those.','Pull the fader down or mute the channel before you switch +48V, or you\'ll send a loud pop to the speakers.', onM32('the 48V button is in each channel\'s Config/Preamp section.')]},
+    {t:'Point it at the sound', p:['Most stage mics are cardioid: they hear the front and reject the back. Point the front at what you want, and keep floor wedges behind the mic, where it hears the least.','Closer is better: more of the instrument, less of everything else, and less feedback.']},
+    {t:'Where the drum mics go', p:['Kick: inside the port hole or near the beater for attack. Snare: an inch or two over the rim, aimed at the center of the head. Toms: the same idea.','Overheads: condensers above the kit, pointing down, to catch the cymbals and the whole picture. Hi-hat: pointed down at the hats, away from the snare.']},
+    {t:'Amps, bass, keys and acoustic', p:['Guitar amp: a dynamic mic right on the grille. Aim at the center of the speaker for a brighter sound, toward the edge for a darker one.','Bass, keys, tracks and acoustic guitar usually go through a DI box. Stereo keys and tracks need two DIs: left and right.']},
+    {t:'What a DI box does', p:['A DI turns an instrument\'s signal into a balanced, mic-level signal that can travel down the snake without noise.','An active DI needs +48V; a passive one doesn\'t. If you hear hum, try the DI\'s ground lift switch.']},
+    {t:'From the stage to your channel', p:['Each mic or DI plugs into a numbered input on the stage box. The snake carries it to the console, where it lands on a channel.','The input list (in Planning Center) says what goes in each number. Plug in by the list, label everything, and line check every input before the band arrives.']},
+    {t:'Cables', p:['XLR cables carry mics and DIs. Instrument (1/4-inch) cables go from an instrument to its amp or DI.','Wrap cables over-under so they lie flat and don\'t kink, and tape down anything people walk over.']}
+  ]},
   { id:'gain', title:'Gain Staging', mascot:'pip', who:'Pip the mouse', color:'#0E7490', blurb:'Healthy levels from the mic to the recording: the foundation of every mix.', learn:[
     {t:'What gain does', p:['A microphone puts out a tiny signal. The preamp gain turns it up to a healthy working level, and everything after it (EQ, compression, plugins, faders, the recording) depends on it.', onM32('the Gain knob in each channel\'s preamp section, with the input meter right beside it.')]},
     {t:'Healthy levels', p:['Digital meters read in dBFS, where 0 means clipping. At soundcheck, aim for peaks around -18 to -6 dBFS: in the yellow, never red.','That leaves headroom, a safety margin for the moment someone sings louder than they did at soundcheck.']},
@@ -3892,8 +3974,9 @@ const unitById = id => UNITS.find(u=>u.id===id);
 const key = (u,l) => `${u.id}-${l}`;
 const passed = (u,l) => !!S.done[key(u,l)];
 // After the placement check, every core unit (Foundations through Mixing) is open; the rest unlock in order.
-const CORE_UNITS = ['found','gain','vol','ears','eq','phase','gate','comp','lim','dly','verb','moreFx','live','mix','keys'];
-const unitOpen = i => S.unlockAll || i===0 || passed(UNITS[i-1],1) || (!!S.placement && CORE_UNITS.includes(UNITS[i].id));
+const CORE_UNITS = ['found','stage','gain','vol','ears','eq','phase','gate','comp','lim','dly','verb','moreFx','live','mix','keys'];
+const prevMain = i => { for(let j=i-1;j>=0;j--) if(!UNITS[j].side) return UNITS[j]; return null; };
+const unitOpen = i => S.unlockAll || i===0 || passed(prevMain(i),1) || (!!S.placement && CORE_UNITS.includes(UNITS[i].id));
 // The placement check: one question per area at a medium level (two for Foundations and Mixing).
 const PLACEMENT = [['found',1],['gain',1],['vol',2],['ears',1],['eq',2],['phase',1],['gate',2],['comp',1],['found',3],['lim',1],['dly',2],['verb',2],['live',2],['eq',1],['mix',2],['mix',3]];
 const EXPERIENCE = [
@@ -3960,6 +4043,8 @@ const EXERCISES = [
     plan:[['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}],['eq',1,{kind:'voice'}],['eq',2,{kind:'mic'}]] },
   { id:'ring',    title:'Ring it out',         mascot:'fenn',  color:'#A8540A', blurb:'Hear where feedback is ringing, then notch it out.', units:['eq'],
     plan:[['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ring'}],['eq',3,{kind:'ringout'}],['eq',3,{kind:'ringout'}]] },
+  { id:'stageset', title:'Set up the stage', mascot:'bram', color:'#8A5A2B', blurb:'Pick the right mic or DI for each source, set phantom power, and patch it all by the input list.', units:['stage'],
+    plan:[['stage',2,{kind:'set'}],['stage',2,{kind:'set'}],['stage',3,{kind:'set'}],['stage',3,{kind:'set'}]] },
   { id:'ride', title:'Ride the mix', mascot:'sona', color:'#3F3399', blurb:'Hands-on: a solo, a singer backing off the mic, a belted chorus. Move the fader at the right moment, then put it back.', units:['mix'],
     plan:[['mix',1,{kind:'ride'}],['mix',1,{kind:'ride'}],['mix',2,{kind:'ride'}],['mix',2,{kind:'ride'}],['mix',3,{kind:'ride'}],['mix',3,{kind:'ride'}]] },
   { id:'balance', title:'What\'s too loud?',   mascot:'sona',  color:'#3F3399', blurb:'Spot the channel that\'s out of balance in a full band.', units:['mix'],
@@ -4090,7 +4175,7 @@ function findNext(){
 }
 // Home: three tabs. Learn is the path (in chapters), Practice is for jumping in, Me is progress and settings.
 const CHAPTERS = [
-  { id:'basics',  title:'The basics',            units:['found','gain','vol','ears'] },
+  { id:'basics',  title:'The basics',            units:['found','stage','gain','vol','ears'] },
   { id:'tone',    title:'Shaping the tone',      units:['eq','phase','gate','comp','lim'] },
   { id:'fx',      title:'Effects and the stream', units:['dly','verb','moreFx','live'] },
   { id:'mixing',  title:'Mixing',                units:['mix','keys','mw','ours'] },
@@ -4239,6 +4324,7 @@ function vLesson(){
     ${q.tool==='gainset' ? vGainTool(q, answered)
     : q.tool==='volfit' ? vFitTool(q, answered)
     : q.tool==='ride' ? vRideTool(q, answered)
+    : q.tool==='stage' ? vStageTool(q, answered)
     : q.tool==='walkup' ? `<div class="slide" style="text-align:center">
         <p id="walkStatus" class="disp" style="font-size:20px;color:var(--ink);min-height:52px;margin:4px 0 14px">${answered?'Done.':q.state.running?'…':'Ready when you are.'}</p>
         ${q.state.running||answered ? `<div class="row"><button class="btn" data-act="walkMic" style="flex:1" ${q.state.mic!=null||answered?'disabled':''}>Pastor mic up</button>
@@ -4838,6 +4924,9 @@ document.addEventListener('click', async e=>{
       el.setAttribute('aria-pressed', st.mute); el.textContent = st.mute?'Muted':'Mute it'; break; }
     case 'fitLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) return;
       const {ok, why}=fitGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; stopAll(); markPlaying(null); render(); break; }
+    case 'stage48': { const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; const r=q.rows[+el.dataset.i]; r.p48=!r.p48; el.classList.toggle('on', r.p48); el.setAttribute('aria-pressed', r.p48); break; }
+    case 'stageLock': { const L=UI.lesson, q=lessonQ(L); if(L.picked!=null) break; if(q.rows.some(r=>!r.dev)){ alert('Choose a mic or DI for every source first.'); break; }
+      const {ok, why}=stageGrade(q); L.picked=ok?0:1; q.right=ok; if(ok) L.correct++; q.explain=why; render(); break; }
     case 'rideStart': { const q=lessonQ(UI.lesson); if(q.state.running || UI.lesson.picked!=null) break; if(!(await withAudio())) break; runRide(q); render(); break; }
     case 'walkStart': { const q=lessonQ(UI.lesson); if(!(await withAudio())) return; runWalkup(q); render(); break; }
     case 'walkMic': { const q=lessonQ(UI.lesson), st=q.state; if(!st.running||st.mic!=null) return;
@@ -4964,6 +5053,9 @@ document.addEventListener('input', e=>{
   const t=e.target;
   if(t.dataset.act==='vol'){ S.vol=+t.value; save(); if(A.master) A.master.gain.value=S.vol; }
 
+  if(t.dataset.act==='stageDev' || t.dataset.act==='stageInp'){
+    const q=lessonQ(UI.lesson), r=q.rows[+t.dataset.i]; if(t.dataset.act==='stageDev') r.dev=t.value; else r.inp=t.value;
+  }
   if(t.dataset.act==='rideFader'){
     const q=lessonQ(UI.lesson), st=q.state, k=t.dataset.k; st.fader[k]=+t.value;
     const nd=st.nodes[k]; if(nd && st.running) nd.gain.setTargetAtTime(db(st.fader[k]), A.ctx.currentTime, 0.015);
