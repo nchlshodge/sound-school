@@ -259,6 +259,7 @@ button:disabled{cursor:default}
 .prog{flex:1;height:16px;background:var(--chip);border-radius:999px;overflow:hidden}
 .prog i{display:block;height:100%;background:var(--u);border-radius:999px;transition:width .35s}
 .say{display:flex;gap:12px;align-items:flex-end;margin:10px 0 18px}
+.eqpanel.m32wrap{display:block;padding:8px 0}
 .slide.locked .m32eq{pointer-events:none;opacity:.85}
 .readbtn{position:absolute;right:4px;bottom:4px;width:36px;height:36px;color:var(--u,var(--ink2))}.readbtn svg{width:22px;height:22px}
 .say .bubble:has(.readbtn){padding-right:44px}
@@ -1598,6 +1599,9 @@ function knobShow(kn, v){
   kn.setAttribute('aria-valuetext', txt); kn.querySelector('.kval').textContent=txt;
   kn.querySelector('.kdial i').style.transform=`rotate(${-135+Math.max(0,Math.min(1,pos))*270}deg)`;
 }
+// Which EQ a knob or drag belongs to: the lesson's, a Sunday Mix channel ("_mix:<k>") or the console.
+const eqSetAny = (k, p, v) => k==='_lesson' ? lessonKnob(k, p, v) : k.startsWith('_mix:') ? mixEqSet(k.slice(5), p, v) : conSetEq(k, p, v);
+const eqChanOf = k => k==='_lesson' ? lessonQ(UI.lesson).state.ch : k.startsWith('_mix:') ? UI.mix.eq[k.slice(5)] : UI.con.ch[k];
 function knobStep(kn, dpos){
   const min=+kn.dataset.min, max=+kn.dataset.max, log=kn.dataset.log==='1', v=+kn.dataset.val;
   let pos=(log?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))+dpos; pos=Math.max(0,Math.min(1,pos));
@@ -1605,7 +1609,7 @@ function knobStep(kn, dpos){
   nv = log ? (nv>=1000?Math.round(nv/10)*10:nv>=100?Math.round(nv):Math.round(nv*10)/10) : (max-min<=2 ? Math.round(nv*100)/100 : Math.round(nv*2)/2);
   if(/q$|ratio|Ratio/.test(kn.dataset.p)) nv=Math.round(nv*10)/10;
   if(kn.dataset.p==='revDecay') nv=Math.round(nv*10)/10;
-  (kn.dataset.k==='_lesson' ? lessonKnob : conSetEq)(kn.dataset.k, kn.dataset.p, nv);   // lessonKnob hands EQ knobs to lessonEqSet
+  eqSetAny(kn.dataset.k, kn.dataset.p, nv);
 }
 // Pointer handling for knobs and the EQ display.
 (()=>{
@@ -1617,8 +1621,8 @@ function knobStep(kn, dpos){
   document.addEventListener('pointermove', e=>{
     if(!drag) return;
     if(drag.kn){ const dy=drag.y-e.clientY; if(Math.abs(dy)>=1){ knobStep(drag.kn, dy/160); drag.y=e.clientY; } return; }
-    const k=drag.scr.dataset.k, les=k==='_lesson', s=les ? lessonQ(UI.lesson).state.ch : UI.con.ch[k], r=drag.scr.querySelector('svg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*600, y=(e.clientY-r.top)/r.height*240;
-    const set = les ? (kk,p,v)=>lessonEqSet(lessonQ(UI.lesson),p,v) : conSetEq;
+    const k=drag.scr.dataset.k, les=k==='_lesson', s=eqChanOf(k), r=drag.scr.querySelector('svg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*600, y=(e.clientY-r.top)/r.height*240;
+    const set = eqSetAny;
     if(les && UI.lesson.picked!=null) return;
     const b=M32_BANDS.find(z=>z.id===drag.band), fx=XF(x), f = fx>=1000 ? Math.round(fx/10)*10 : Math.round(fx);
     if(b.id==='cut'){ if(!s.hpOn) return; set(k,'hpF',Math.max(20,Math.min(400,f))); return; }
@@ -1636,7 +1640,7 @@ function knobStep(kn, dpos){
   });
   document.addEventListener('dblclick', e=>{ const kn=e.target.closest('.knob[data-p]'); if(!kn||kn.classList.contains('dis')) return;
     const p=kn.dataset.p, les=kn.dataset.k==='_lesson'; if(les && !lessonQ(UI.lesson).state.ch) return;
-    const d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) (les ? lessonKnob : conSetEq)(kn.dataset.k,p,d); });
+    const d={ 'eq.lf':0,'eq.lmg':0,'eq.hmg':0,'eq.hf':0,'eq.lff':100,'eq.lmf':300,'eq.hmf':3000,'eq.hff':10000,'eq.lmq':1,'eq.hmq':1,hpF:80 }[p]; if(d!=null) eqSetAny(kn.dataset.k,p,d); });
 })();
 /* ----- M32-style dynamics, FX and main bus screens ----- */
 // Transfer curve: input level (x) against output level (y), -60..0 dB, with a dot for the live input.
@@ -3297,7 +3301,7 @@ function startMixer(level, songId, dest='house', unit=null, unitLevel=null){
 function startMixerInner(level, songId, dest, unit, unitLevel){
   UI = { screen:'mixer', mix:{ dest } };   // set first so the helpers below know the destination
   const song=songById(songId), ch=missionCh(song, level);
-  UI = { screen:'mixer', mix:{ dest, unit: unit || (dest==='broadcast'?'bcast':'final'), unitLevel: unitLevel ?? level, run: !!song.missions[level].run, runLog:[], level, song:songId, g:startFaders(song, level), mute:Object.fromEntries(ch.map(k=>[k,false])), hpf:Object.fromEntries(ch.map(k=>[k,0])), eq:Object.fromEntries(ch.map(k=>[k,{...EQ_FLAT}])), eqOpen:null, probs:{}, ref:false, result:null } };
+  UI = { screen:'mixer', mix:{ dest, unit: unit || (dest==='broadcast'?'bcast':'final'), unitLevel: unitLevel ?? level, run: !!song.missions[level].run, runLog:[], level, song:songId, g:startFaders(song, level), mute:Object.fromEntries(ch.map(k=>[k,false])), hpf:Object.fromEntries(ch.map(k=>[k,0])), eq:Object.fromEntries(ch.map(k=>[k,lessonCh()])), eqOpen:null, probs:{}, ref:false, result:null } };
 }
 const refFader = (song,k) => isTrap(song,k) ? FADER_MIN : styleRef(song,k);
 const refHpf = (song,k) => curStyle()==='modern' ? hpfRef(song,k) : 0;
@@ -3331,9 +3335,9 @@ function startMixerPlayback(){
 // Builds the whole board: every channel through its own high-pass and fader, plus a post-fader
 // send from every vocal into two stereo FX returns (Luke's setup: vocal reverb and vocal delay).
 // Channel EQ: low shelf (120 Hz), a sweepable mid, high shelf (8 kHz).
-const EQ_FLAT = {lo:0, mg:0, mf:1000, hi:0};
+const EQ_FLAT = { hpOn:false, hpF:80, hp:0, eqOn:true, eq:{ lf:0, lff:100, lmf:300, lmg:0, lmq:1, hmf:3000, hmg:0, hmq:1, hf:0, hff:10000 } };   // a flat M32 channel EQ
 const eqNode = (c, {type, f, g=0, q=0.9}) => { const b=c.createBiquadFilter(); b.type=type; b.frequency.value=f; b.gain.value=g; b.Q.value=q; return b; };
-const isFlat = e => !e || (Math.abs(e.lo)<0.25 && Math.abs(e.mg)<0.25 && Math.abs(e.hi)<0.25);
+const isFlat = e => !e || !e.eqOn || ['lf','lmg','hmg','hf'].every(g=>Math.abs(e.eq[g])<0.25);
 // Tone problems for Quick mix: each one is a filter, plus what to call it and how to fix it.
 const TONE_PROBS = [
   { id:'mud',   f:{type:'peaking',  f:300,  g:9, q:1.2}, name:'muddy',  fix:'cut around 250–400 Hz' },
@@ -3346,7 +3350,7 @@ const TONE_PROBS = [
 // How far a channel's sound still is from "fixed": the problem plus your EQ, measured across the spectrum.
 function eqResidual(prob, e){
   const fs=Float32Array.from({length:28},(_,i)=>60*Math.pow(200,i/27)), mag=new Float32Array(28), ph=new Float32Array(28), tot=new Float32Array(28);
-  const nodes=[prob, {type:'lowshelf',f:120,g:e.lo}, {type:'peaking',f:e.mf,g:e.mg,q:1.2}, {type:'highshelf',f:8000,g:e.hi}];
+  const nodes=[prob, ...conEqList(e.eq, 0, e.eqOn)];
   for(const nd of nodes){ eqNode(A.ctx, nd).getFrequencyResponse(fs, mag, ph); for(let i=0;i<28;i++) tot[i]+=20*Math.log10(mag[i]+1e-9); }
   return Math.max(...tot.map(Math.abs));   // the worst point: an untouched problem is ~9 dB off
 }
@@ -3357,10 +3361,10 @@ function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse, eqf=()=>E
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=hpf(k);
     let n=input.connect(hp);
     for(const pf of probs(k)) n=n.connect(eqNode(c, pf));                     // a hidden tone problem (Quick mix)
-    const e=eqf(k), lo=eqNode(c,{type:'lowshelf',f:120,g:e.lo}), mid=eqNode(c,{type:'peaking',f:e.mf,g:e.mg,q:1.2}), hi=eqNode(c,{type:'highshelf',f:8000,g:e.hi});
-    const g=c.createGain(); g.gain.value=gain(k); n.connect(lo).connect(mid).connect(hi).connect(g); g.connect(dest);
+    const bands=conEqList(eqf(k).eq, 0, eqf(k).eqOn).map(x=>eqNode(c,x));   // M32 channel EQ: LOW, LO MID, HI MID, HIGH
+    const g=c.createGain(); g.gain.value=gain(k); bands.reduce((m,x)=>m.connect(x), n).connect(g); g.connect(dest);
     if(analyse){ const an=c.createAnalyser(); an.fftSize=1024; g.connect(an); res.ans[k]=an; }
-    res.gains[k]=g; res.hp[k]=hp; res.eq[k]={lo,mid,hi}; return g;
+    res.gains[k]=g; res.hp[k]=hp; res.eq[k]=bands; return g;
   };
   const chs=missionCh(song, level);
   for(const k of chs){
@@ -3462,7 +3466,7 @@ function stopMixer(){
 }
 function updateGains(){ const t=A.ctx.currentTime;
   for(const k in MX.gains){ MX.gains[k].gain.setTargetAtTime(chanGain(k), t, 0.02); MX.hp[k].frequency.setTargetAtTime(chanHpf(k), t, 0.02);
-    const e=chanEq(k), q=MX.eq[k]; if(q){ q.lo.gain.setTargetAtTime(e.lo,t,0.02); q.mid.gain.setTargetAtTime(e.mg,t,0.02); q.mid.frequency.setTargetAtTime(e.mf,t,0.02); q.hi.gain.setTargetAtTime(e.hi,t,0.02); } } }
+    const e=chanEq(k), q=MX.eq[k]; if(q) conEqList(e.eq, 0, e.eqOn).forEach((x,i)=>{ q[i].frequency.setTargetAtTime(x.f,t,0.02); q[i].gain.setTargetAtTime(x.g,t,0.02); if(x.q) q[i].Q.setTargetAtTime(x.q,t,0.02); }); } }
 const meterBuf = new Float32Array(1024);
 function meterLoop(){
   for(const k in MX.ans){
@@ -4044,16 +4048,22 @@ function vLesson(){
 }
 
 function eqPanel(k, e){
-  const sl=(p,label,min,max,step,val,txt)=>`<label class="eqrow"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-act="eqParam" data-k="${k}" data-p="${p}"><b id="eq-${k}-${p}">${txt}</b></label>`;
-  const g=v=>`${v>0?'+':''}${(+v).toFixed(1).replace('.0','')} dB`, mfPos=Math.round(Math.log(e.mf/100)/Math.log(80)*1000);
-  return `<div class="eqpanel" data-k="${k}">
-    ${sl('lo','Low (120 Hz)',-12,12,0.5,e.lo,g(e.lo))}
-    ${sl('mg','Mid',-12,12,0.5,e.mg,g(e.mg))}
-    ${sl('mf','Mid freq',0,1000,1,mfPos,hz(Math.round(e.mf/10)*10))}
-    ${sl('hi','High (8 kHz)',-12,12,0.5,e.hi,g(e.hi))}
-    <button class="btn ghost" data-act="eqFlat" data-k="${k}" style="min-height:36px;padding:0 12px;font-size:14px">Flat</button>
-  </div>`;
+  const m=UI.mix; e.hp=m.hpf[k]||0; e.hpOn=e.hp>0; if(e.hpOn) e.hpF=e.hp;   // the Low Cut is the channel's HPF
+  return `<div class="eqpanel m32wrap" data-k="${k}">${vM32Eq('_mix:'+k, e, esc(mixSong().name[k]))}</div>`;
 }
+// A knob, button or drag on a Sunday Mix channel's M32 EQ.
+function mixEqSet(k, p, v){
+  const m=UI.mix, e=m.eq[k];
+  if(p==='hpF'){ e.hpF=v; e.hp=e.hpOn?v:0; m.hpf[k]=e.hp; const sel=document.querySelector(`select[data-act="hpf"][data-k="${k}"]`); if(sel) syncHpfSelect(sel, m.hpf[k]); }
+  else { const [a,b]=p.split('.'); e[a][b]=v; }
+  updateGains(); m.result=null;
+  const scr=document.getElementById('m32screen'); if(scr) scr.replaceChildren(frag(m32Graph(e)));
+  const kn=document.querySelector(`.knob[data-k="_mix:${k}"][data-p="${p}"]`); if(kn) knobShow(kn, v);
+  document.querySelector(`.eqbtn[data-k="${k}"]`)?.classList.toggle('on', !isFlat(e));
+}
+// The HPF menu shows the Low Cut's exact frequency when it's between the menu steps.
+const hpfOptions = hz => [...new Set([...HPF_STEPS, hz||0])].sort((a,b)=>a-b).map(f=>`<option value="${f}" ${f===hz?'selected':''}>${f?`HPF ${Math.round(f)}`:'HPF off'}</option>`).join('');
+function syncHpfSelect(sel, hz){ sel.replaceChildren(frag(hpfOptions(hz))); sel.value=String(hz); }
 function vMixer(){
   const m=UI.mix, song=mixSong(), bc=m.dest==='broadcast', txt=(bc?MISSION_TEXT_B:MISSION_TEXT)[m.level], bars=song.missions[m.level].bars, u=unitById(m.unit), r=m.result;
   setUnitColor('#3F3399');
@@ -4061,7 +4071,7 @@ function vMixer(){
     const lock = m.build && buildStepOf(song,m.level,k) > m.buildStep, v = m.ref ? refFader(song,k) : m.g[k], muted = !m.ref && m.mute[k], hz = m.ref ? refHpf(song,k) : m.hpf[k];
     return `<div class="ch ${muted||v<=FADER_MIN?'off':''} ${lock?'locked':''}" data-k="${k}">
       <div class="chn"><b>${song.name[k]}</b><span class="dbv">${lock?`Step ${buildStepOf(song,m.level,k)+1}`:muted?'Muted':fmtDb(v)}</span>
-        <select class="hpf" data-act="hpf" data-k="${k}" aria-label="High-pass filter for ${song.name[k]}" ${m.ref||lock?'disabled':''}>${HPF_STEPS.map(f=>`<option value="${f}" ${f===hz?'selected':''}>${f?`HPF ${f}`:'HPF off'}</option>`).join('')}</select></div>
+        <select class="hpf" data-act="hpf" data-k="${k}" aria-label="High-pass filter for ${song.name[k]}" ${m.ref||lock?'disabled':''}>${hpfOptions(hz)}</select></div>
       <div class="fd"><input type="range" min="${FADER_MIN}" max="${FADER_MAX}" step="0.5" value="${v}" data-act="fader" data-k="${k}" aria-label="${song.name[k]} fader" ${m.ref||lock?'disabled':''}>
         <div class="meter" aria-hidden="true"><i></i></div></div>
       <div class="chbtns"><button class="mute" data-act="mute" data-k="${k}" aria-pressed="${muted}" aria-label="Mute ${song.name[k]}" ${m.ref||lock?'disabled':''}>M</button>
@@ -4673,7 +4683,8 @@ document.addEventListener('click', async e=>{
     case 'conMute': { const s=UI.con.ch[el.dataset.k]; s.mute=!s.mute; conApply(); conRender(); break; }
     case 'conSolo': { const s=UI.con.ch[el.dataset.k]; s.solo=!s.solo; conApply(); conRender(); break; }
     case 'conToggle': { const s=UI.con.ch[el.dataset.k], [a,b]=el.dataset.p.split('.'); s[a][b]=!s[a][b]; conApply(el.dataset.k); conRender(); break; }
-    case 'conEqFlat': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch=Object.assign(q.state.ch, lessonCh()); fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    case 'conEqFlat': if(el.dataset.k.startsWith('_mix:')){ const k=el.dataset.k.slice(5); UI.mix.eq[k]=lessonCh(); UI.mix.hpf[k]=0; updateGains(); render(); break; }
+    if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch=Object.assign(q.state.ch, lessonCh()); fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
     { const s=UI.con.ch[el.dataset.k], f=conStrip(0); Object.assign(s,{eq:f.eq, hp:0, hpOn:false, hpF:80, eqOn:true}); conApply(el.dataset.k); conRender(); break; }
     case 'conDynOn': { const s=UI.con.ch[el.dataset.k], which=el.closest('.mpanel').querySelector('.mtag').textContent==='GATE'?'gate':'comp'; s[which].on=!s[which].on; conApply(el.dataset.k); conRender(); break; }
     case 'conDesOn': { const s=UI.con.ch[el.dataset.k]; s.des.on=!s.des.on; conApply(el.dataset.k); conRender(); break; }
@@ -4689,9 +4700,11 @@ document.addEventListener('click', async e=>{
     case 'conFxJump': document.getElementById(el.dataset.to||'con-fx')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'conLayer': UI.con.layer=el.dataset.l; conRender(); break;
     case 'conBtn': { const s=UI.con.ch[el.dataset.k]; s[el.dataset.p]=!s[el.dataset.p]; conApply(el.dataset.k); conRender(); break; }
-    case 'conEqOn': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch.eqOn=!q.state.ch.eqOn; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    case 'conEqOn': if(el.dataset.k.startsWith('_mix:')){ const e=UI.mix.eq[el.dataset.k.slice(5)]; e.eqOn=!e.eqOn; updateGains(); render(); break; }
+    if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson); if(UI.lesson.picked!=null) break; q.state.ch.eqOn=!q.state.ch.eqOn; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
     { const s=UI.con.ch[el.dataset.k]; s.eqOn=!s.eqOn; conApply(el.dataset.k); conRender(); break; }
-    case 'conHpOn': if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson), e=q.state.ch; if(UI.lesson.picked!=null) break; e.hpOn=!e.hpOn; e.hp=e.hpOn?e.hpF:0; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
+    case 'conHpOn': if(el.dataset.k.startsWith('_mix:')){ const k=el.dataset.k.slice(5), e=UI.mix.eq[k]; e.hpOn=!e.hpOn; e.hp=e.hpOn?e.hpF:0; UI.mix.hpf[k]=e.hp; updateGains(); render(); break; }
+    if(el.dataset.k==='_lesson'){ const q=lessonQ(UI.lesson), e=q.state.ch; if(UI.lesson.picked!=null) break; e.hpOn=!e.hpOn; e.hp=e.hpOn?e.hpF:0; fixApply(q); const keep=playingKey; render(); if(keep) markPlaying(keep, 9999); break; }
     { const s=UI.con.ch[el.dataset.k]; s.hpOn=!s.hpOn; s.hp=s.hpOn?s.hpF:0; conApply(el.dataset.k); conRender(); break; }
     case 'conSec': { UI.con.sec=+el.dataset.i; if(CON.playing){ conStop(); conStart(); } conRender(); break; }
     case 'conMasterT': { const M=UI.con.master; M[el.dataset.p]=!M[el.dataset.p]; conApply(); conRender(); break; }
@@ -4707,7 +4720,7 @@ document.addEventListener('click', async e=>{
     case 'mixRef': UI.mix.ref=!UI.mix.ref; updateGains(); render(); break;
     case 'mixPhone': UI.mix.phone=!UI.mix.phone; if(MX.full){ MX.full.gain.setTargetAtTime(UI.mix.phone?0:1, A.ctx.currentTime, 0.02); MX.phoneOut.gain.setTargetAtTime(UI.mix.phone?1:0, A.ctx.currentTime, 0.02); } render(); break;
     case 'eqToggle': UI.mix.eqOpen = UI.mix.eqOpen===el.dataset.k ? null : el.dataset.k; render(); break;
-    case 'eqFlat': UI.mix.eq[el.dataset.k]={...EQ_FLAT}; updateGains(); render(); break;
+    case 'eqFlat': UI.mix.eq[el.dataset.k]=lessonCh(); updateGains(); render(); break;
     case 'mixStyle': S.mixStyle=el.dataset.v; save(); UI.mix.ref=false; UI.mix.result=null; updateGains(); render(); break;
     case 'saveRef': saveReference(); if(UI.mix.result) UI.mix.result=scoreMix(); render(); break;
     case 'mixFinish': {
@@ -4756,18 +4769,13 @@ document.addEventListener('input', e=>{
     if(q.state.node) q.state.node.frequency.setTargetAtTime(f, A.ctx.currentTime, 0.02);
     const lb=document.getElementById('ringlbl'); if(lb) lb.textContent=hz(Math.round(f/10)*10);
   }
-  if(t.dataset.act==='hpf'){ UI.mix.hpf[t.dataset.k]=+t.value; updateGains(); }
+  if(t.dataset.act==='hpf'){ const k=t.dataset.k, v=+t.value, e=UI.mix.eq[k]; UI.mix.hpf[k]=v; if(e){ e.hpOn=v>0; if(v) e.hpF=v; e.hp=v; } updateGains(); if(UI.mix.eqOpen===k) render(); }
   if(t.dataset.act==='scGain'){
     const k=t.dataset.k, sc=UI.sc, v=+t.value; sc.gain[k]=v; const nd=sc.nodes&&sc.nodes[k];
     if(nd){ nd.g.gain.setTargetAtTime(db(v),A.ctx.currentTime,0.02); nd.post.gain.setTargetAtTime(db(nd.listen-v),A.ctx.currentTime,0.02); }
     const lb=document.getElementById('scg-'+k); if(lb) lb.textContent=`${v>0?'+':''}${v} dB`;
   }
-  if(t.dataset.act==='eqParam'){
-    const k=t.dataset.k, p=t.dataset.p, e=UI.mix.eq[k];
-    if(p==='mf'){ e.mf=Math.round(100*Math.pow(80,+t.value/1000)); } else e[p]=+t.value;
-    updateGains(); const lb=document.getElementById(`eq-${k}-${p}`); if(lb) lb.textContent = p==='mf' ? hz(Math.round(e.mf/10)*10) : `${e[p]>0?'+':''}${e[p].toFixed(1).replace('.0','')} dB`;
-    document.querySelector(`.eqbtn[data-k="${k}"]`)?.classList.toggle('on', !isFlat(e));
-  }
+
   if(t.dataset.act==='fader'){
     const k=t.dataset.k, m=UI.mix; m.g[k]=+t.value; updateGains();
     const row=t.closest('.ch'); row.querySelector('.dbv').textContent = m.mute[k]?'Muted':fmtDb(m.g[k]);
