@@ -4729,7 +4729,7 @@ function vTeam(){
   const T=UI.team, ago=t=>{ if(!t) return 'never'; const d=Math.floor((Date.now()-t)/864e5); return d<1?'today':d===1?'yesterday':`${d} days ago`; };
   const row=p=>`<div class="set"><div class="t"><b>${esc(p.name||p.email)}</b><span>${esc(p.email)}${p.church?' · church account':''}</span>
       ${p.ok?`<span>${p.xp} XP · ${p.levels} levels · ${p.units} of ${UNITS.length} units finished · active ${ago(p.seen)}</span>
-      <span>${p.ready?`Sunday-ready check passed ${p.ready}`:'Sunday-ready check not passed yet'} · ${p.signed?`signed off ${new Date(p.signed).toLocaleDateString()}`:'not signed off'}</span>
+      <span style="display:block">${p.ready?`Sunday-ready check passed ${p.ready}`:'Sunday-ready check not passed yet'} · ${p.signed?`signed off ${new Date(p.signed).toLocaleDateString()}`:'not signed off'}</span>
       <span style="margin-top:6px;display:block"><button class="btn ${p.signed?'ghost':''}" data-act="teamSignoff" data-uid="${esc(p.uid)}" style="min-height:36px;padding:0 12px;font-size:14px">${p.signed?'Undo sign-off':'Sign off: shadowed a service'}</button></span>`:''}</div>
       ${p.leader||p.church ? '' : p.ok ? `<button class="btn ghost" data-act="teamRevoke" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Remove</button>`
         : `<button class="btn" data-act="teamApprove" data-uid="${esc(p.uid)}" style="min-height:44px;padding:0 14px">Approve</button>`}</div>`;

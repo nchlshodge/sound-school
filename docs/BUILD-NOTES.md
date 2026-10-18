@@ -103,3 +103,12 @@ Old files for text that no longer exists are harmless. Delete `tts/` and rebuild
 ## M32 EQ in the games, and Starting points in sections (Oct 2026)
 - **Fix the EQ** and **Set it in the mix** use the console's M32 channel EQ (`vM32Eq('_lesson', q.state.ch)`): Low Cut, then LOW shelf, LO MID, HI MID and HIGH shelf, each with Gain, Freq and Q, plus the draggable curve and the EQ on/off and RESET buttons. The lesson channel has the same shape as a console channel (`lessonCh()`). Grading reads any mid band through `midCut`, `midBoost` and `hiCut`. The Sunday Mix mixer uses the same M32 EQ (`eqPanel` → `vM32Eq('_mix:'+k, …)`, `mixEqSet`). Its Low Cut and the channel's HPF menu are the same setting (`m.hpf`), which the filter scoring reads. `eqSetAny` routes knobs and drags to the lesson, the mixer or the console.
 - **Starting points** is split into four sections (`EQ_SECTIONS`): Drums, Bass and guitars, Keys/loops/vocals, The whole band. Each has a 4-question quick check, a hidden exercise `sp-<id>`, and needs 3 to pass. Progress saves per section, and the path shows "Starting points n/4". The old 8-question pass (`S.ex.eqstart >= 6`) still counts as done.
+
+## Volunteer-readiness additions (Oct 18, 2026)
+- **Ride the mix** (`rideQ`, tool `ride`, exercise `ride`, also in the Mixing unit). The song plays once with scripted events on a channel (`RIDE_KINDS`: solo, keys feature, singer backs off, belted chorus). The event's level change is built into the audio. It's scored on reaching the target in time (early is good), holding it, and returning. "Hear it ridden right" plays the ideal moves.
+- **Stage Setup** unit (`stage`, Bram, a side unit after Foundations) with lessons, `STAGE_TEXT`, and the **Set up the stage** game (`stageQ`): mic or DI per source, +48V, and on Hard, patching by an input list.
+- **Sunday Routine** unit (`routine`, Kit, a side unit at the end of The basics) with lessons, `ROUTINE_TEXT`, the **Sunday in order** game (`orderQ`), and the **Sunday checklist** screen (`vChecklist`, Practice tab). The checklist resets daily (`S.check`).
+- Side units (`side:true`) don't block the path: `unitOpen` looks back to the previous main unit (`prevMain`).
+- **Review** (`trackAnswer` → `S.stats[unit:level]`, `reviewPool`, `startReview`): weighted toward recent misses and skills not practiced lately.
+- **Sunday-ready check** (hidden exercise `sundayready`, 12 questions, `SR_PASS` = 10) sets `S.sundayReady`.
+- **Trainer sign-off**: `signoffs/{uid}` (leader write, self read) from the Team page, shown on Me.
