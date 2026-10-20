@@ -3,7 +3,7 @@
 (async()=>{
 window.SS_MAX_SONGS=99;   // keep every song loaded while listing lines
 await initAudio(); S.setup=true; const ra=S.readAloud; S.readAloud=false;
-for(const s of [...LISTED().map(x=>x.id),'rcc']) await withAudio(null,s);
+for(const s of LISTED().map(x=>x.id)) await withAudio(null,s);
 await prepEqGuide(); A.gateOk=await ensureGate(); prepGateFix();
 const lines={}, add=(who,text)=>{ if(text) lines[ttsId(who,text)]={who, text:sayable(text)}; };
 const con0=S.console;

@@ -616,6 +616,7 @@ function bumpStreak(){
    To add a song: encode its stems, then add an entry here.
    ============================================================ */
 const FX_NAME = { vrev:'Vocal reverb', vdly:'Vocal delay' };
+const RUN_SONG = 'lhc';   // the song the Sunday Service Run uses
 const TRAP_MSG = {
   click:'The click is only for the band\'s in-ears.',
   cues:'Cue tracks ("Verse 2!") are only for the band\'s in-ears.',
@@ -649,7 +650,9 @@ const SONGS = [
          {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1},{k:'count',name:'Count',trap:1},{k:'smpte',name:'SMPTE',trap:1} ],
     // Raw live mics have no built-in balance; this is a typical gospel live balance around Melinda.
     ref:{ kick:-2.3, snare:-3, toms:-9.5, hat:-9, oh:-5.5, bass:-9.5, acc:-10.5, gtr1:-14.5, gtr2:-15, keys:-7.5, b3:-13, tracks:-19.5,
-          melinda:0, corbin:-4.5, taylor:-0.5, chloe:-3 },
+          melinda:0, corbin:-4.5, taylor:-0.5, chloe:-3, mc:0 },
+    // Sunday Service Run: the band finishes (a two-bar fade), then the MC (our announcer's real mic) starts talking.
+    speaker:{ bar:49, voice:'mc', name:'MC (host)' }, run:{ songBars:[13,46], fade:[46,48] },
     xtra:['x_kick_in','x_kick_out','x_sn_top','x_sn_bot','x_bass_di','x_bass_amp'], anchor:'melinda', vocal:'melinda', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['melinda','corbin','taylor','chloe'], bgvs:['corbin','taylor','chloe'],
     win:{ verse:[12,16], gap:[18,20], full:[30,34,38,44,46] },
     groups:[ null,
@@ -659,7 +662,9 @@ const SONGS = [
     missions:{
       1:{ bars:[12,24], ch:['kick','hat','oh','bass','acc','keys','b3','tracks','melinda'] },
       2:{ bars:[28,44], start:{kick:9,snare:7,toms:8,hat:6,bass:9,gtr1:-12,keys:'off',tracks:12,melinda:-10,corbin:3,chloe:6}, traps:{crowd:-4,count:0} },
-      3:{ bars:[12,52] } }
+      3:{ bars:[12,52] },
+      4:{ bars:[12,52], run:true },
+      5:{ bars:[36,62], run:true, fade:[46,48], ch:['kick','snare','toms','hat','oh','bass','acc','gtr1','gtr2','keys','b3','tracks','melinda','corbin','taylor','chloe','mc','crowd','click'] } }
   },
   { id:'isg', title:'I\'m So Glad I Met Jesus', bpm:180, firstBar:16, clipBars:4, kind:'live recording',
     ch:[ {k:'kick',name:'Kick'},{k:'toms',name:'Toms'},{k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},
@@ -702,34 +707,6 @@ const SONGS = [
       1:{ bars:[27,35], ch:['drums','bass','acc','eg','keys','lead','bgv'] },
       2:{ bars:[35,43], start:{drums:7,loop:6,bass:-6,synth:'off',acc:4,eg:-8,eg2:6,eg3:'off',keys:5,keys2:-4,pad:8,piano:'off',lead:-9,bgv:5,bgv2:'off'} },
       3:{ bars:[3,105] } }
-  },
-  // hidden: not in the song lists or drills (to be replaced by another service); still powers the soundcheck, the Sunday run, tom gates and "Our mix vs. Bethel".
-  { id:'rcc', title:'RCC Sunday', bpm:136, firstBar:12, clipBars:3, kind:'our band, live (Feb 15, 2026)', lazy:true, hidden:true,
-    ch:[ {k:'kick',name:'Kick'},{k:'snare',name:'Snare'},{k:'snbot',name:'Snare bottom'},{k:'rack',name:'Rack tom'},{k:'floor',name:'Floor tom'},
-         {k:'hat',name:'Hi-hat'},{k:'oh',name:'Overheads'},{k:'bass',name:'Bass DI'},{k:'acc',name:'Acoustic'},{k:'keys',name:'Keys'},
-         {k:'vox3',name:'Vox 3 (lead)'},{k:'vox2',name:'Vox 2'},{k:'md',name:'MD'},
-         {k:'crowd',name:'Crowd mics',trap:1},{k:'click',name:'Click',trap:1} ],
-    xtra:['mb1','mb2','mb3'],   // 20 s of the board's stereo mix (Master Burn) from three songs, for "Our Mix vs. Bethel"
-    // Our own Sunday (the song just before the welcome, 42–47 min into the Feb 15 service). Balanced around Vox 3,
-    // measured over the full-band song (bars 28–118). Kick and snare are the replacement tracks; the rack tom is mostly spill.
-    ref:{ kick:-16, snare:-17.5, snbot:-19.5, rack:-16.5, floor:-22.5, hat:-22, oh:-22.5, bass:-28, acc:-14.5, keys:-28, vox3:0, vox2:4.5, md:-11, mc:0 },
-    // The MC starts talking at bar 153. The voice is our pastor's sermon mic (the MC's own mic isn't used).
-    speaker:{ bar:153, voice:'mc', name:'MC (host)' },
-    anchor:'vox3', vocal:'vox3', bed:'keys', drums:['kick','snare','hat'], bass:'bass', leads:['vox3','vox2','md'], bgvs:['vox2','md'],
-    win:{ verse:[12,15], gap:[14,16], full:[30,40,50,64,80,96,110] },
-    // Placeholder names to rename; Part H is the pad under the MC starting to talk (bar 153).
-    sections:[ {name:'Part A',bars:[12.0,20.06]}, {name:'Part B',bars:[20.06,27.02]}, {name:'Part C',bars:[27.02,60.26]}, {name:'Part D',bars:[60.26,84.5]}, {name:'Part E',bars:[84.5,91.49]}, {name:'Part F',bars:[91.49,125.06]}, {name:'Part G',bars:[125.06,148.0]}, {name:'Part H',bars:[148.0,170.1]} ],
-    groups:[ null,
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Keys:['keys'], Vocals:['vox3','vox2','md']},
-      {Drums:['kick','snare','snbot','rack','floor','hat','oh'], Bass:['bass'], Acoustic:['acc'], Keys:['keys'], 'Lead vocal':['vox3'], 'Other vocals':['vox2','md']},
-      {Kick:['kick'], Snare:['snare'], 'Bass DI':['bass'], Acoustic:['acc'], Keys:['keys'], 'Vox 3':['vox3'], 'Vox 2':['vox2'], MD:['md']} ],
-    missions:{
-      1:{ bars:[44,52], ch:['kick','snare','hat','oh','bass','acc','keys','vox3','vox2'] },
-      2:{ bars:[44,60], start:{kick:9,snare:6,bass:10,keys:8,vox3:-10,vox2:5,oh:-10,acc:'off'}, traps:{click:-4,crowd:-6} },
-      3:{ bars:[12,124] },
-      // Service Run challenge: the whole song (no loop), then the song ending into the MC speaking.
-      4:{ bars:[12,125], run:true },
-      5:{ bars:[104,170], run:true, ch:['kick','snare','snbot','rack','floor','hat','oh','bass','acc','keys','vox3','vox2','md','mc','crowd','click'] } }
   }
 ];
 function prepSong(s){
@@ -897,11 +874,11 @@ function loadSong(song, show){
     song.extras = Promise.all(extra.map(c=>one(c).catch(e=>console.warn(e)))).then(()=>{ song.extrasReady=true; });
     // Level measurements: once per device, then remembered.
     let saved=null; try{ saved=JSON.parse(localStorage.getItem(calKey(song))); }catch(e){}
-    if(saved && saved.cal && saved.comp){ Object.assign(song, {trim:saved.trim, vtrim:saved.vtrim, comp:saved.comp, cal:saved.cal}); if(saved.mbTrim!=null) song.mbTrim=saved.mbTrim; }
+    if(saved && saved.cal && saved.comp){ Object.assign(song, {trim:saved.trim, vtrim:saved.vtrim, comp:saved.comp, cal:saved.cal}); }
     else {
       if(show) setLoadMsg('Tuning up…');
       await calibrate(song);
-      try{ localStorage.setItem(calKey(song), JSON.stringify({trim:song.trim, vtrim:song.vtrim, comp:song.comp, cal:song.cal, mbTrim:song.mbTrim})); }catch(e){}
+      try{ localStorage.setItem(calKey(song), JSON.stringify({trim:song.trim, vtrim:song.vtrim, comp:song.comp, cal:song.cal})); }catch(e){}
     }
     song.ready=true;
   })().catch(e=>{ A.loading[song.id]=null; throw e; });
@@ -1014,7 +991,6 @@ async function calibrate(song){
   song.cal.hpf=await match({src:BAND(song,{},wb,0,true)}, band.rms);
   song.cal.luke=await match({src:VOCAL(song,wv),chain:fxLukeEq(song)}, voc.rms);
   song.cal.lowcut=await match({src:BAND(song,{},wb),chain:fxLowCut()}, band.rms);
-  if(song.xtra && song.xtra.includes('mb1')) await calOurs(song);
 }
 
 /* ----- EQ starting points -----
@@ -1907,7 +1883,7 @@ function gateSim(x, sr, P){
   return out;
 }
 /* ----- Fix the gate ----- */
-const GATE_SRCS = [['lhc','toms','Toms'],['lhc','kick','Kick'],['isg','toms','Toms'],['isg','kick','Kick'],['rcc','floor','Floor tom'],['rcc','rack','Rack tom']];
+const GATE_SRCS = [['lhc','toms','Toms'],['lhc','kick','Kick'],['isg','toms','Toms'],['isg','kick','Kick']];
 let FIXG = [];
 // Find 6-second stretches with clear hits and spill between them, on every loaded drum mic.
 function prepGateFix(){
@@ -2220,38 +2196,6 @@ function vStepsTool(q, answered){
       <div class="opts" role="group">${opts.map(o=>`<button class="opt" data-act="stepPick" data-i="${o.i}">${o.t}</button>`).join('')}</div></div>`;
 }
 
-/* ----- Our Mix vs. Bethel -----
-   Master Burn (our board's stereo mix, Feb 15) measured against Bethel's livestream: ours has more 125 Hz,
-   2–5 dB less from 500 Hz to 2 kHz, a little more 4 kHz, and much less stereo width in the mids.
-   These settings were fitted so our three clips land within about 2 dB of Bethel in each octave band. */
-const OURS_TONE = [{type:'lowshelf',f:150,g:-3.2},{type:'peaking',f:640,g:2.5,q:0.5},{type:'highshelf',f:4000,g:-2.1}];
-const OURS_WIDE = {type:'peaking', f:1370, g:8.5, q:0.4};   // boost on the side (L−R) signal only
-const OURS_VARIANTS = { ours:{tone:0,wide:0}, tone:{tone:1,wide:0}, wide:{tone:0,wide:1}, beth:{tone:1,wide:1}, half:{tone:0.5,wide:0.5} };
-const fxOurs = ({tone=0, wide=0}) => (c, inp) => {
-  let n=inp;
-  if(tone) for(const e of OURS_TONE) n=n.connect(eqNode(c,{...e, g:e.g*tone}));
-  if(!wide) return n;
-  // Mid/side: mid = (L+R)/2, side = (L−R)/2. Boost the side's mids, then L = mid+side, R = mid−side.
-  const sp=c.createChannelSplitter(2), mg=c.createChannelMerger(2), out=c.createGain();
-  const gn=v=>{ const g=c.createGain(); g.gain.value=v; return g; };
-  const mid=gn(1), side=gn(1), neg=gn(-1), sf=eqNode(c,{...OURS_WIDE, g:OURS_WIDE.g*wide});
-  n.connect(sp);
-  sp.connect(gn(0.5),0).connect(mid); sp.connect(gn(0.5),1).connect(mid);
-  sp.connect(gn(0.5),0).connect(side); sp.connect(gn(-0.5),1).connect(side);
-  side.connect(sf);
-  mid.connect(mg,0,0); sf.connect(mg,0,0);
-  mid.connect(mg,0,1); sf.connect(neg).connect(mg,0,1);
-  return mg.connect(out);
-};
-const MB = (n, off=0, dur=8) => [{ b:`rcc:mb${n}`, db:songById('rcc').mbTrim||0, off, dur }];
-// One clip of our mix, as recorded or with some of Bethel's balance, level-matched to the original.
-const OURS = (k, n=1+Math.floor(Math.random()*3), off=Math.floor(Math.random()*12)) =>
-  ({ src:MB(n,off), chain:fxOurs(OURS_VARIANTS[k]), gain:songById('rcc').cal.ours[k] });
-async function calOurs(song){
-  song.mbTrim=0; song.mbTrim = BAND_TARGET - (await measure({src:MB(1,4)})).rms;
-  const ref=(await measure({src:MB(1,4)})).rms; song.cal.ours={};
-  for(const [k,v] of Object.entries(OURS_VARIANTS)) song.cal.ours[k] = k==='ours' ? 0 : ref - (await measure({src:MB(1,4),chain:fxOurs(v)})).rms;
-}
 
 /* ----- sources ----- */
 const chDb = (song,k,extra=0) => song.trim + (song.ref[k]??0) + extra;
@@ -2957,7 +2901,7 @@ const FX_TYPES = {
     fx:()=> (c,inp)=>{ const p=c.createStereoPanner(); p.pan.value=0; lfo(c,0.5,0.9,p.pan); inp.connect(p); return p; } }
 };
 // Which instrument each effect usually lives on, per song.
-const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',rcc:'acc',gsg:'eg'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',rcc:'keys',gsg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',rcc:'keys',gsg:'pad'} };
+const FX_SRC = { guitar:{wwy:'eg',lhc:'gtr1',isg:'gtr2',gsg:'eg'}, keys:{wwy:'piano',lhc:'keys',isg:'keys',gsg:'keys'}, organ:{wwy:'organ',lhc:'b3',isg:'b3',gsg:'pad'} };
 const FX_ON = { chorus:['guitar','keys','vocal'], doubler:['vocal'], flanger:['guitar'], phaser:['keys','guitar'], tremolo:['guitar','keys'], rotary:['organ'], drive:['guitar'], pingpong:['vocal','guitar'], tape:['vocal','guitar'], digital:['vocal','guitar'], autopan:['keys'] };
 function fxSource(s, kind){
   const off=pickWin(s, kind==='vocal'?'verse':'full');
@@ -3509,34 +3453,6 @@ const GEN = {
     return Object.assign(abQ({ prompt:`Which ${it.name.toLowerCase()} clip has the starting-point EQ?`, yes:eqgSpec(it,true), no:eqgSpec(it,false), yesName:'Starting point', noName:'Flat',
       explain:L=>`${L} had it. Here's why each move helps: ${eqWhy(it)}` }), tag);
   },
-  ours(l, s){
-    if(!A.buf['rcc:mb1'] || !songById('rcc').cal.ours) return Object.assign(GEN.mw(l, s), {dispUnit:'mw'});   // our song isn't loaded (mixed practice)
-    const r=Math.random(), tag={song:'rcc', tag:'Our Feb 15 mix'};
-    const smile = L=>`${L} was our mix as recorded: extra boom around 125 Hz and a scooped middle (500 Hz–2 kHz), where the vocals, acoustic and keys live. Bethel's balance is fuller in the middle with less boom.`;
-    if(l===1){
-      if(r<0.3) return Object.assign(textQ(pick(OURS_TEXT[1])), tag);
-      return Object.assign(abQ({ prompt:'Which version has Bethel\'s balance? Listen for a fuller middle and less boom.',
-        yes:OURS('beth'), no:OURS('ours'), yesName:'Bethel\'s balance', noName:'Our mix',
-        explain:L=>`${L} had Bethel's tone and width: less boom, more vocal and instrument body in the middle, and more spread between the speakers.` }), tag);
-    }
-    if(l===2){
-      if(r<0.25) return Object.assign(textQ(pick(OURS_TEXT[2])), tag);
-      if(r<0.65){
-        const n=1+Math.floor(Math.random()*3), off=Math.floor(Math.random()*12), k=coin()?'tone':'wide';
-        const C=[{k:'tone',label:'Fuller middle, less boom',sub:'the tone moved toward Bethel'},{k:'wide',label:'Wider',sub:'more spread between left and right'},{k:'loud',label:'Just louder',sub:'nothing else changed'}];
-        return Object.assign(choiceQ({ prompt:'Here\'s our mix, then the same moment with one change. What changed? (Headphones help.)',
-          clips:[{label:'Our mix',spec:OURS('ours',n,off)},{label:'Changed',spec:OURS(k,n,off)}], choices:C, correct:C.find(c=>c.k===k),
-          explain: k==='tone' ? 'The tone changed: about 3 dB less boom below 150 Hz, more body around 600 Hz, and a little less 4 kHz. That\'s the move from our "smile" toward Bethel\'s balance. (Both clips were level-matched, so it was never just louder.)'
-            : 'It got wider: the guitars, keys and reverb spread out to the sides while the vocal stayed in the center. Bethel\'s mix has 3–7 dB more of that spread than ours from 250 Hz to 2 kHz.' }), tag);
-      }
-      return Object.assign(abQ({ prompt:'Headphones on: which version is wider?', yes:OURS('wide'), no:OURS('ours'), yesName:'Wider', noName:'Our mix',
-        explain:L=>`${L} was wider. The lead vocal stays in the center, but everything around it spreads out. On the board that's panning the keys, overheads and guitars, plus a stereo reverb return.` }), tag);
-    }
-    if(r<0.3) return Object.assign(textQ(pick(OURS_TEXT[3])), tag);
-    if(r<0.7) return Object.assign(abQ({ prompt:'Subtle: which version is a little closer to Bethel\'s balance?', yes:OURS('half'), no:OURS('ours'), yesName:'Halfway to Bethel', noName:'Our mix',
-      explain:L=>`${L} went halfway: about 1.5 dB less boom, a bit more middle and a little more width. Small moves like this are what fader rides and panning give you on a Sunday.` }), tag);
-    return Object.assign(abQ({ prompt:'Which version has the "smile curve": big lows, bright top, hollow middle?', yes:OURS('ours'), no:OURS('tone'), yesName:'Our mix (smile)', noName:'Bethel\'s tone', explain:smile }), tag);
-  },
   mw(l, s){
     const w=pickWin(s,'full'), wv=pickWin(s,'verse'), r=Math.random();
     const real = L=>`${L} gave the low end to the kick and bass alone. Luke Hendrickson calls this "sonic real estate": everything crowds into the 100–600 Hz "downtown," so filter out what doesn't belong there.`;
@@ -3763,17 +3679,6 @@ function textQ(q){
   return { prompt:q.prompt, clips:[], options:opts.map(o=>o.t), answer:opts.findIndex(o=>o.i===0), explain:q.explain, text:true };
 }
 // Our Mix vs. Bethel. First option is correct.
-const OURS_TEXT = {
-  1:[ {prompt:'Compared with Bethel\'s livestream, where is our mix (Feb 15) short?', options:['The middle, 500 Hz–2 kHz','The low end, around 100 Hz','The very top, above 8 kHz'], explain:'We\'re 2–5 dB under Bethel from 500 Hz to 2 kHz. That\'s where vocals, acoustic guitar and keys have their body.'},
-      {prompt:'How did our mix compare with Bethel\'s for loudness?', options:['About the same: around -13 LUFS with only 2–3 dB of movement','Much quieter','Much louder and clipping'], explain:'Both are about equally loud and compressed. The differences are tone and width, not loudness.'},
-      {prompt:'Our mix has big lows, a bright top and a scooped middle. What\'s that shape called?', options:['A smile curve','A flat response','A high-pass'], explain:'Drawn on an EQ, it looks like a smile. It sounds exciting at first, but the vocals lose body.'} ],
-  2:[ {prompt:'What does a "wider" mix mean?', options:['More of the sound is spread between the left and right speakers','Everything is louder','There\'s more bass'], explain:'Width is how much of the mix differs between the left and right sides. The lead vocal stays centered; instruments and reverb spread out.'},
-      {prompt:'Which of these makes our mix wider on the M32?', options:['Pan the keys and overheads wider and send the vocal reverb to a stereo return','Turn up the master fader','Add more bass'], explain:'Panning and stereo effects create width. Our keys, guitars and reverb sit almost in the center right now.'},
-      {prompt:'We have about 2 dB too much around 125 Hz. Which channels live there?', options:['Kick and bass','Hi-hat and cymbals','Vocals\' "s" sounds'], explain:'125 Hz is the body of the kick and bass. Pulling those faders down 1–2 dB is the first fix.'} ],
-  3:[ {prompt:'Our mix is hollow in the middle. What\'s the best first fix on a Sunday?', options:['Rebalance the faders: bass and kick down a little, acoustic and keys up','Boost 1 kHz on the master EQ by 5 dB','Turn the subs off'], explain:'Most of the missing middle is the balance between instruments. Fix it with faders first; reach for the master EQ last.'},
-      {prompt:'Our numbers came from Master Burn, the house mix. Why might it sound thinner than the room?', options:['The house mix is balanced around the sound already coming off the stage','The recorder removes the middle','Recordings are always quieter'], explain:'In the room, amps, drums and monitors add their own sound. The house mix makes up for that, so a recording of it can sound different from what people heard.'},
-      {prompt:'After rebalancing, the room still sounds a little bright. What gentle fix matches Bethel?', options:['A 1–2 dB cut around 4 kHz on the main bus','A 6 dB boost at 10 kHz','A high-pass at 500 Hz on the master'], explain:'We\'re 1–2 dB brighter than Bethel at 4 kHz. A small, wide cut is plenty.'} ] };
-// From Luke Hendrickson's Churchfront worship mixing masterclass. First option is correct.
 const MW_TEXT = [
   {prompt:'In Luke Hendrickson\'s approach, what should live in the low end of the mix?', options:['Kick and bass','Keys and acoustic guitar','Everything, as loud as possible'], explain:'Only kick and bass belong down there. High-pass everything else so those two have room.'},
   {prompt:'In what order does Luke build a mix?', options:['Drums, bass, guitars, then the vocal on its own, then the band back in','All the vocals first, then everything else at once','Whatever is loudest on stage first'], explain:'Drums, bass, acoustic and electrics until it feels glued. Then he solos the vocal and makes it great by itself before bringing the band back in.'},
@@ -3888,12 +3793,14 @@ function eqResidual(prob, e){
 function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse, eqf=()=>EQ_FLAT, probs=()=>[]}){
   const bars=mixBars(song, level), off=at(song,bars[0]), dur=(bars[1]-bars[0])*song.bar;
   const res={srcs:[], gains:{}, ans:{}, hp:{}, eq:{}}, send=c.createGain();
+  const fade=(song.missions[level]||{}).fade, out = fade ? c.createGain() : dest;   // the band finishing the song
+  if(fade){ out.connect(dest); const a=t0+(fade[0]-bars[0])*song.bar, z=t0+(fade[1]-bars[0])*song.bar; out.gain.setValueAtTime(1,a); out.gain.linearRampToValueAtTime(0.0001,z); }
   const strip=(k, input)=>{
     const hp=c.createBiquadFilter(); hp.type='highpass'; hp.Q.value=0.707; hp.frequency.value=hpf(k);
     let n=input.connect(hp);
     for(const pf of probs(k)) n=n.connect(eqNode(c, pf));                     // a hidden tone problem (Quick mix)
     const bands=conEqList(eqf(k).eq, 0, eqf(k).eqOn).map(x=>eqNode(c,x));   // M32 channel EQ: LOW, LO MID, HI MID, HIGH
-    const g=c.createGain(); g.gain.value=gain(k); bands.reduce((m,x)=>m.connect(x), n).connect(g); g.connect(dest);
+    const g=c.createGain(); g.gain.value=gain(k); bands.reduce((m,x)=>m.connect(x), n).connect(g); g.connect(k==='mc' ? dest : out);
     if(analyse){ const an=c.createAnalyser(); an.fftSize=1024; g.connect(an); res.ans[k]=an; }
     res.gains[k]=g; res.hp[k]=hp; res.eq[k]=bands; return g;
   };
@@ -3916,12 +3823,12 @@ function mixGraph(c, song, level, dest, gain, hpf, {loop, t0, analyse, eqf=()=>E
 }
 // What's happening in the run right now (and what's coming), by bar.
 function runCue(bar){
-  if(bar<16) return 'Soft opening: keys, acoustic and vocals.';
-  if(bar<20) return 'Get ready: the full band comes in at bar 20…';
-  if(bar<118) return 'Full band. Keep the vocals on top.';
-  if(bar<125) return 'The song is ending soon. Find the MC\'s fader and put your hand on it.';
-  if(bar<145) return 'The band drops out: keys pad and Vox 3.';
-  if(bar<153) return 'The MC is walking up to speak…';
+  const song=mixSong(), r=song.run||{}, f=r.fade||[999,999], sp=(song.speaker||{}).bar||999;
+  if(UI.mix.level===4) return bar<(r.songBars||[0])[0]+2 ? 'Here we go: keep the vocals on top the whole way.' : 'Full band. Keep the vocals on top, and ride the faders as the song moves.';
+  if(bar<f[0]-3) return 'The song is ending soon. Find the MC\'s fader and put your hand on it.';
+  if(bar<f[0]) return 'Last few bars…';
+  if(bar<f[1]) return 'The band finishes the song.';
+  if(bar<sp) return 'The MC is walking up to speak…';
   return 'The MC is speaking.';
 }
 function runSample(song, bars){
@@ -3946,27 +3853,21 @@ function finishRun(){
   clearInterval(MX.runTimer); clearTimeout(MX.runEnd); stopMixer();
   const song=mixSong(), log=m.runLog, chans=missionCh(song,m.level), notes=[], avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
   // 1. the song: balance over time, plus which channels drifted most
-  const songLog=log.filter(e=>e.bar>=20 && e.bar<124), errSum={};
+  const sb=(song.run&&song.run.songBars)||[0,9999], songLog=log.filter(e=>e.bar>=sb[0] && e.bar<sb[1]), errSum={};
   const bal=avg(songLog.map(e=>{ const b=balanceAt(song,e.eff,chans); for(const k in b.err) (errSum[k]=errSum[k]||[]).push(b.err[k]); return b.frac; }));
   for(const k in errSum){ const e=avg(errSum[k]); if(Math.abs(e)>4) notes.push({k, err:Math.abs(e), bad:Math.abs(e)>7, msg:`On average about ${Math.round(Math.abs(e))} dB too ${e>0?'loud':'quiet'} during the song`}); }
   // traps left open (click, crowd mics in the house)
   let leaks=0; for(const k of song.traps.filter(k=>chans.includes(k))){ const open=log.filter(e=>e.eff[k]>-30).length/Math.max(1,log.length); if(open>0.3){ leaks++; notes.push({k, bad:true, leak:1, msg:TRAP_MSG[k]+' Mute it.'}); } }
   let score=100*bal;
   if(m.level===5){
-    const sp=song.speaker, pad=log.filter(e=>e.bar>=126 && e.bar<152), talk=log.filter(e=>e.bar>=sp.bar+1);
-    // 2. the pad and Vox 3 after the band drops out
-    const padOk=avg(pad.map(e=> (e.eff.vox3>=styleRef(song,'vox3')-8 ? 0.5:0) + (Math.abs(e.eff.keys-styleRef(song,'keys'))<=8 ? 0.5:0)));
-    if(padOk<0.7) notes.push({k:'keys', bad:true, msg:'After the band dropped out, keep the keys pad and Vox 3 up: that moment still matters.'});
-    // 3. the MC's mic: up before the first word, but not open during the song
+    const sp=song.speaker, f=song.run.fade, talk=log.filter(e=>e.bar>=sp.bar+1);
+    // the MC's mic: up before the first word, but not open while the band is still playing
     const up=log.find(e=>e.eff.mc>-12), late = up ? (up.bar-sp.bar)*song.bar : Infinity;
-    let timing = !up ? 0 : up.bar<125 ? 0.5 : late<=0.35 ? 1 : Math.max(0, 1-late/3);
-    notes.unshift({k:'mc', good:timing===1, bad:timing<0.6, msg: !up ? 'The MC\'s mic never came up, so nobody heard them.' : up.bar<125 ? 'The MC\'s mic was open during the song. Bring it up as they walk up, not before.' : late<=0.35 ? `Mic up ${Math.abs(late).toFixed(1)} s before the first word. Nicely anticipated!` : `Mic up ${late.toFixed(1)} s after they started talking, so the first words were lost.`});
-    // 4. tuck the pad under the speaker, and keep the speaker at a good level
-    const tuck=avg(talk.map(e=> e.eff.keys<=FADER_MIN || e.eff.keys-styleRef(song,'keys')<=-6 ? 1 : 0));
+    let timing = !up ? 0 : up.bar<f[0] ? 0.5 : late<=0.35 ? 1 : Math.max(0, 1-late/3);
+    notes.unshift({k:'mc', good:timing===1, bad:timing<0.6, msg: !up ? 'The MC\'s mic never came up, so nobody heard them.' : up.bar<f[0] ? 'The MC\'s mic was open while the band was still playing. Bring it up as they walk up, not before.' : late<=0.35 ? 'Mic up right before the first word. Nice.' : `The MC\'s mic came up ${late.toFixed(1)} s after they started talking, so the first words were lost.`});
     const mcLvl=avg(talk.map(e=> Math.abs(e.eff.mc-styleRef(song,'mc'))<=6 ? 1 : 0));
-    if(tuck<0.7) notes.push({k:'keys', bad:true, msg:'Tuck the keys pad under the MC (about 6 dB or more) so the words are clear.'});
     if(mcLvl<0.7) notes.push({k:'mc', bad:true, msg:'Keep the MC\'s level steady once they\'re talking.'});
-    score = 100*(0.35*bal + 0.25*timing + 0.15*padOk + 0.15*tuck + 0.10*mcLvl);
+    score = 100*(0.4*bal + 0.4*timing + 0.2*mcLvl);
   }
   if(!notes.length) notes.push({k:song.anchor, good:true, msg:'Steady, balanced and on time. Sunday-ready!'});
   notes.sort((x,y)=>((y.leak||0)-(x.leak||0))||(y.bad-x.bad)||((y.err||0)-(x.err||0)));
@@ -4251,17 +4152,6 @@ const UNITS = [
       demos:[{label:'Eighth + dotted eighth',spec:()=>({src:VOX(D()),chain:LUKE_DELAY(D()),tail:2})},{label:'Stereo slap',spec:()=>({src:VOX(D()),chain:LUKE_SLAP()})}]},
     {t:'The loudest quiet mix', p:['Bethel\'s peak limits were 88 dB for the early service and 92 dB for the second. Big and clear at a moderate level comes from cutting the noise: stage volume near zero, a treated room, a focused PA.','In the Sunday Mix, switch the style to Modern worship to be scored this way.']}
   ]},
-  { id:'ours', title:'Our Mix vs. Bethel', mascot:'sona', who:'Sona, with our Feb 15 recording', color:'#155E75', blurb:'How our own Sunday mix compares with Bethel\'s livestream, and what to change.', learn:[
-    {t:'Measuring our own mix', p:['We took the board\'s stereo recording (Master Burn) from Feb 15 and measured three worship songs the same way we measured six songs from Bethel\'s livestream.','Good news first: we\'re just as loud and steady as Bethel (around -13 LUFS, moving only 2–3 dB). The differences are tone and width.'],
-      demos:[{label:'Song 1',spec:()=>OURS('ours',1,0)},{label:'Song 2',spec:()=>OURS('ours',2,0)},{label:'Song 3',spec:()=>OURS('ours',3,0)}]},
-    {t:'The smile curve', p:['Compared with Bethel, we have 1–3 dB more around 125 Hz (the body of the kick and bass), 2–5 dB less from 500 Hz to 2 kHz (vocals, acoustic, keys), and a little more at 4 kHz.','On an EQ that shape looks like a smile: big lows, bright top, hollow middle. Listen for the vocals and acoustic getting more body.'],
-      demos:[{label:'Our mix',spec:()=>OURS('ours',3,4)},{label:'Bethel\'s tone',spec:()=>OURS('tone',3,4)}]},
-    {t:'Width', p:['From 250 Hz to 2 kHz, Bethel\'s mix has 3–7 dB more spread between the left and right speakers. Ours sits almost all in the center.','Use headphones. The lead vocal stays in the middle; the instruments and reverb open up around it.'],
-      demos:[{label:'Our mix',spec:()=>OURS('ours',2,4)},{label:'Wider',spec:()=>OURS('wide',2,4)}]},
-    {t:'Both together', p:['Here\'s the same moment with Bethel\'s tone and width. Every clip in this unit is level-matched, so you\'re hearing balance, not volume.','These were made by processing the finished recording. On a Sunday you get there with faders and panning, which sounds even better.'],
-      demos:[{label:'Our mix',spec:()=>OURS('ours',1,6)},{label:'Bethel\'s balance',spec:()=>OURS('beth',1,6)}]},
-    {t:'What to change at the board', p:['1. Faders first: bass and kick down 1–2 dB, acoustic and keys up a little.','2. Pan the keys and overheads wider, and send the vocal reverb to a stereo return.','3. If it\'s still bright, cut 1–2 dB around 4 kHz on the main bus.',onM32('select a channel and use the Pan knob in the channel strip. Put the vocal reverb on a stereo FX return. For the main bus EQ, press Select on Main LR, then open the EQ page.')]}
-  ]},
   { id:'final', title:'The Sunday Mix', mascot:'sona', who:'Sona and the whole team', color:'#1E2235', blurb:'Put it all together: mix real multitracks on a real board.', levels:['Learn','Verse','Chorus','Song'], learn:[
     {t:'Your board', p:[()=>`You'll mix ${LISTED().length} real multitracks: ${songList()}. Most are raw live recordings: every drum mic, every singer, and more, like a real Sunday.`,'Move a fader to change how loud that channel is in the house. The meters show what each channel is doing.']},
     {t:'Build it from the drums', p:['Start with the drums: kick first, then snare, hi-hat and overheads, until the kit sounds like one instrument.','Lock the bass to the kick. Bring in the guitars, keys and tracks around them. Last, set the vocals on top.','Then ask yourself: can I understand every word? Does anything stick out?']},
@@ -4269,11 +4159,11 @@ const UNITS = [
     {t:'Two styles', p:['Gospel style keeps the band and choir energy strong. Modern worship style (the Bethel approach) keeps the vocals clearly on top and tucks the background vocals under.','In Modern worship, your high-pass filters count too: filter everything except the kick and bass.']},
     {t:'How you\'re scored', p:['I compare your balance to my reference mix. Only the balance counts, not how loud you turn everything up.','Score 70 or more to pass. After you submit, you can flip between your mix and mine. Each time you open a mission it switches songs, or you can pick one.']}
   ]},
-  { id:'run', title:'Sunday Service Run', mascot:'sona', who:'Sona and the whole team', color:'#9A3412', blurb:'Our own band: soundcheck, mix the whole song, then hand off to the MC.', levels:['Learn','Soundcheck','The song','Into speaking'], learn:[
-    {t:'A real Sunday', p:['This challenge uses a song from one of our own services, recorded off the board. You\'ll do what you\'d do on a Sunday, in order.']},
-    {t:'1. Soundcheck', p:['The band plays a chorus on a loop and the MC tests their mic. Set every channel\'s gain so its peaks land around -18 to -6 dBFS.','The MC\'s lav is recorded quietly, so it needs a lot more gain than the band.']},
-    {t:'2. The song', p:['The whole song plays once, start to finish: a soft opening, then the full band at bar 20. Ride the faders and EQ to keep the vocals on top the whole way. You\'re scored on how balanced it stays over time.']},
-    {t:'3. Into speaking', p:['When the song ends, the keys hold a pad under Vox 3, and then the MC walks up. Get their mic up before the first word, tuck the pad underneath, and keep the click and crowd mics out of the house.','In the last 30 seconds of the song, find the MC\'s fader and put your hand on it.']}
+  { id:'run', title:'Sunday Service Run', mascot:'sona', who:'Sona and the whole team', color:'#9A3412', blurb:'Soundcheck, mix the whole song, then hand off to the MC.', levels:['Learn','Soundcheck','The song','Into speaking'], learn:[
+    {t:'A real Sunday', p:['This challenge walks through a service the way it happens: soundcheck, the song, and the moment someone starts talking.']},
+    {t:'1. Soundcheck', p:['The band plays a chorus on a loop and the MC tests their mic. Set every channel\'s gain so its peaks land around -18 to -6 dBFS.','Speaking mics usually need a lot more gain than the band.']},
+    {t:'2. The song', p:['The song plays once, start to finish. Ride the faders and EQ to keep the vocals on top the whole way. You\'re scored on how balanced it stays over time.']},
+    {t:'3. Into speaking', p:['The band finishes the song, and then the MC walks up. Get their mic up right before the first word (not while the band is still playing), keep them steady, and keep the click and crowd mics out of the house.','In the last 30 seconds of the song, put your hand on the MC\'s fader so you\'re ready.']}
   ]},
   { id:'bcast', title:'The Livestream Mix', mascot:'penny', who:'Penny the pigeon', color:'#7A5900', blurb:'Mix for the people watching at home, the way Bethel mixes its broadcast.', levels:['Learn','Verse','Chorus','Song'], learn:[
     {t:'A different room', p:['The people in the sanctuary hear the speakers and the room. The people at home only hear your console, usually on a phone, a laptop or earbuds.','Luke Hendrickson says the broadcast and the room use the same approach at Bethel: same EQ and compression, same instruments, different tools to get there.']},
@@ -4351,8 +4241,6 @@ const EXERCISES = [
                          : [['eqstart',1,{sec:x.id,kind:'band'}],['eqstart',1,{sec:x.id,kind:'text'}],['eqstart',2,{sec:x.id,kind:'mix'}],['eqstart',1,{sec:x.id,kind:'text'}]] })),
   { id:'eqstart', title:'EQ starting points', mascot:'fenn', color:'#A8540A', blurb:'Where to start EQ on each instrument, from MxU\'s Church Audio EQ Guide. Hear each one flat and with the starting point.', units:['eq'], guide:true,
     plan:[['eqstart',1],['eqstart',1],['eqstart',2],['eqstart',2],['eqstart',2],['eqstart',3],['eqstart',3],['eqstart',3]] },
-  { id:'ourmix', title:'Our mix vs. Bethel', mascot:'sona', color:'#155E75', blurb:'Our Feb 15 mix next to Bethel\'s balance: hear the difference in tone and width.', units:['ours'],
-    plan:[['ours',1],['ours',1],['ours',2],['ours',2],['ours',2],['ours',3],['ours',3]] },
   { id:'volfit', title:'Fit it in the mix', mascot:'pip', color:'#0B7A73', blurb:'Hands-on: one channel is too loud or too quiet. Ride its fader until it fits in the band.', units:['vol'],
     plan:[['vol',1,{kind:'fit'}],['vol',1,{kind:'fit'}],['vol',2,{kind:'fit'}],['vol',2,{kind:'fit'}],['vol',3,{kind:'fit'}],['vol',3,{kind:'fit'}]] },
   { id:'volume',  title:'Volume ladder',       mascot:'pip',   color:'#0B7A73', blurb:'Climb from 6 dB changes down to 1 dB.', units:['vol'],
@@ -4502,7 +4390,7 @@ const CHAPTERS = [
   { id:'basics',  title:'The basics',            units:['found','stage','gain','vol','ears','routine'] },
   { id:'tone',    title:'Shaping the tone',      units:['eq','phase','gate','comp','lim'] },
   { id:'fx',      title:'Effects and the stream', units:['dly','verb','moreFx','live'] },
-  { id:'mixing',  title:'Mixing',                units:['mix','keys','mw','ours'] },
+  { id:'mixing',  title:'Mixing',                units:['mix','keys','mw'] },
   { id:'sunday',  title:'Sunday ready',          units:['final','run','bcast'] }
 ];
 const QUICK = [
@@ -4833,20 +4721,20 @@ function vExIntro(){
   </main>`;
 }
 function startSoundcheck(){
-  const song=songById('rcc'), off=at(song,60), n=Math.floor(8*song.bar*A.ctx.sampleRate), chs=[...song.mix,'mc'], raw={}, ideal={}, gain={};
+  const song=songById(RUN_SONG), off=at(song,song.win.full[0]), n=Math.floor(8*song.bar*A.ctx.sampleRate), chs=[...song.mix,'mc'], raw={}, ideal={}, gain={};
   // The loudest peak in the loop: the meter holds peaks for one full loop, like listening through a whole chorus.
   const peakOf=(b,o)=>{ let pk=0; const s0=Math.floor(o*b.sampleRate); for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=s0;i<s0+n&&i<d.length;i++) pk=Math.max(pk,Math.abs(d[i])); } return 20*Math.log10(pk+1e-9); };
   for(const k of chs){
-    raw[k] = k==='mc' ? peakOf(A.buf['speech:'+song.speaker.voice],0)-18 : peakOf(A.buf[`rcc:${k}`],off);   // the MC's lav is recorded quietly
+    raw[k] = k==='mc' ? peakOf(A.buf['speech:'+song.speaker.voice],0)-18 : peakOf(A.buf[`${song.id}:${k}`],off);   // the MC's lav is recorded quietly
     ideal[k]=-11-raw[k]; gain[k]=Math.round(ideal[k]+(coin()?1:-1)*(8+Math.random()*12));
   }
   UI = { screen:'sc', sc:{ chs, raw, ideal, gain, hist:{}, result:null } };
 }
 function scPlay(){
-  stopAll(); stopMixer(); const c=A.ctx, song=songById('rcc'), sc=UI.sc, off=at(song,60), dur=8*song.bar, t0=c.currentTime+0.05;
+  stopAll(); stopMixer(); const c=A.ctx, song=songById(RUN_SONG), sc=UI.sc, off=at(song,song.win.full[0]), dur=8*song.bar, t0=c.currentTime+0.05;
   const bus=c.createGain(); bus.connect(A.master); sc.nodes={}; sc.srcs=[]; sc.bus=bus;
   for(const k of sc.chs){
-    const isMc=k==='mc', b=isMc?A.buf['speech:'+song.speaker.voice]:A.buf[`rcc:${k}`], n=c.createBufferSource(); n.buffer=b; n.loop=true;
+    const isMc=k==='mc', b=isMc?A.buf['speech:'+song.speaker.voice]:A.buf[`${song.id}:${k}`], n=c.createBufferSource(); n.buffer=b; n.loop=true;
     n.loopStart=isMc?0:off; n.loopEnd=isMc?Math.min(8,b.duration):off+dur;
     const pre=c.createGain(); pre.gain.value=isMc?db(-18):1; n.connect(pre);
     const an=c.createAnalyser(); an.fftSize=4096; pre.connect(an);   // ~85 ms windows, read every 50 ms: no transient slips between
@@ -4871,7 +4759,7 @@ function scMeterLoop(){
   sc.timer=setInterval(tick, 50);   // keeps measuring even if the screen isn't redrawing
 }
 function finishSoundcheck(){
-  const sc=UI.sc, song=songById('rcc'), notes=[]; let ok=0;
+  const sc=UI.sc, song=songById(RUN_SONG), notes=[]; let ok=0;
   for(const k of sc.chs){ const h=sc.hist[k]||[], hold=h.length?Math.max(...h.map(x=>x[1])):-99, good=hold>=GAIN_ZONE[0]-2 && hold<=GAIN_ZONE[1]+1; if(good) ok++;
     notes.push({k, good, bad:!good, msg: good?`Healthy (${hold.toFixed(0)} dBFS)` : hold>GAIN_ZONE[1]+1 ? `Too hot (${hold>0?'+':''}${hold.toFixed(0)} dBFS): turn the gain down` : `Too low (${hold.toFixed(0)} dBFS): turn the gain up`}); }
   scStop(); const score=Math.round(100*ok/sc.chs.length); sc.result={score, notes:notes.sort((a,b)=>b.bad-a.bad)};
@@ -4879,7 +4767,7 @@ function finishSoundcheck(){
   render();
 }
 function vSoundcheck(){
-  const sc=UI.sc, song=songById('rcc'), r=sc.result, u=unitById('run'); setUnitColor(u.color);
+  const sc=UI.sc, song=songById(RUN_SONG), r=sc.result, u=unitById('run'); setUnitColor(u.color);
   const zl=(GAIN_ZONE[0]+60)/66*100, zw=(GAIN_ZONE[1]-GAIN_ZONE[0])/66*100;
   return `<div class="lbar"><button class="iconbtn" data-act="scQuit" aria-label="Leave soundcheck">${I.close}</button><h1 style="font-size:22px;flex:1">Soundcheck</h1></div>
   <main class="wrap" style="padding-bottom:40px">
@@ -5124,7 +5012,7 @@ async function openExercise(id){
     if(x.prep.includes('guide')) await prepEqGuide(); if(x.prep.includes('gate')){ A.gateOk=await ensureGate(); prepGateFix(); } UI.loading=false; startExercise(id); render(); }
   else if(x.needs==='gate'){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startExercise(id); render(); }
   else if(x.guide){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startExercise(id); render(); }
-  else await withAudio(()=>startExercise(id), x.plan.some(p=>p[0]==='ours')?'rcc':undefined);
+  else await withAudio(()=>startExercise(id));
   window.scrollTo(0,0);
 }
 function startPlacement(){
@@ -5203,8 +5091,8 @@ async function openLevel(id, l){
   stopAll(); stopMixer(); markPlaying(null);
   if(id==='run'){
     if(!(await withAudio())) return;
-    if(l===1) await withAudio(()=>startSoundcheck(), 'rcc');
-    else await withAudio(()=>startMixer(l===2?4:5, 'rcc', 'house', 'run', l), 'rcc');
+    if(l===1) await withAudio(()=>startSoundcheck(), RUN_SONG);
+    else await withAudio(()=>startMixer(l===2?4:5, RUN_SONG, 'house', 'run', l), RUN_SONG);
     window.scrollTo(0,0); return;
   }
   if(id==='final' || id==='bcast'){
@@ -5216,7 +5104,7 @@ async function openLevel(id, l){
     await withAudio(()=>startMixer(l, song.id, dest), song.id);
   } else if(id==='gate' || id==='comp'){ if(!(await withAudio(null,'lhc'))) return; if(!LOW_MEM) await withAudio(null,'isg'); A.gateOk=await ensureGate(); prepGateFix(); startLesson(id,l); render(); }
   else if(id==='eq'){ if(!(await withAudio(null, EQG.song))) return; UI.loading=true; render(); await prepEqGuide(); UI.loading=false; startLesson(id,l); render(); }
-  else await withAudio(()=>startLesson(id,l), id==='ours'?'rcc':undefined);
+  else await withAudio(()=>startLesson(id,l));
   window.scrollTo(0,0);
 }
 
@@ -5228,7 +5116,7 @@ document.addEventListener('click', async e=>{
     case 'play': {
       const k=el.dataset.k;
       if(playingKey===k){ stopAll(); markPlaying(null); return; }
-      if(!(await withAudio(null, UI.screen==='learn'&&UI.unit==='ours'?'rcc':undefined))) return;
+      if(!(await withAudio())) return;
       markPlaying(k, play(clipSpec(k)));
       if(UI.screen==='lesson'){ const q=lessonQ(UI.lesson); if(q.tool==='gainset') gainMeterLoop(q); if(q.tool==='gatefix'||q.tool==='compfix') dynToolLoop(q); }
       break; }

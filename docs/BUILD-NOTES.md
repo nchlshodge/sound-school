@@ -10,7 +10,6 @@ How Sound School's audio was prepared and how its reference mixes were measured.
 | `lhc` | Let's Have Church | Live multitrack, 50 mics | 170 | Bars 12–52 | 17.938 s / 56.471 s |
 | `isg` | I'm So Glad I Met Jesus | Live multitrack, same band and mic list | 180 | Bars 16–56 | 27.652 s / 53.333 s |
 | `gsg` | God So Good | Life.Church live stems (15 stereo stems, raw files in `stems/GodsoGoodLifeChurch/`, not in git) | 77.5 | The whole song (bar 1 = 0:00) | 0 s / 326.3 s |
-| `rcc` | RCC Sunday (Feb 15, 2026), **hidden** | RCC's own live multitrack (Google Drive). Not in the song lists or drills (`hidden:true`); it still powers the soundcheck, the Sunday run, the tom gates and "Our mix vs. Bethel" until it's replaced by another service. RCC Song 1 and 2 (`rcc1`, `rcc2`) were removed from the app; their stems are still in `stems/` and Storage. | 136 | Bars 12–170 (song into the MC) | 43:00–48:45 of the service recording |
 
 Bar numbers for the live songs count from the first click (`lhc` first click at 0.997 s, `isg` at 6.319 s). Tempo came from the median spacing of click-track onsets.
 
@@ -23,8 +22,6 @@ Bar numbers for the live songs count from the first click (`lhc` first click at 
 - Stereo pairs (overheads, guitars, keys, B3, tracks, crowd) are joined into stereo files.
 - Left out: ACC 2 and Loops Sub in `lhc` (empty), drum triggers, FOH mics. In `isg` the snare and count tracks are silent in the excerpt, so they're left off that song's board.
 - `x_*` files are the separate mics used by the Phase & Polarity drills.
-
-**RCC Sunday (`rcc`)** was pulled from the shared Drive folder with HTTP byte-range requests (only the 43:00–48:45 span of each WAV, not the full 25–30 GB). There are no real kick or snare-top mics on that board, so the drum channels use the KickReplace and SnareReplace tracks; the snare bottom mic is its own channel. The `mc` channel plays the real announcements mic (`stems/voices/mc.m4a`, MC 2 from the same service) from bar 153. Its reference mix is an estimate: no Bethel fit yet.
 
 **God So Good (`gsg`)** stems are printed at the record's balance (bar 1 starts at 0:00; the click lines up with that grid within 0.2 ms). Lead vocal, bass, synth bass and the three electrics are mono at 48 kbps; the rest stereo at 72 kbps (37 MB). The click, cue and count tracks aren't on the board. The cue track was used to find the song's sections (`sections` in `index.html`): cues that say the same word were grouped by comparing their sound, then named by matching against spoken section names and the arrangement. The names are a best guess; the boundaries are exact. The mixer can loop any section.
 
@@ -47,22 +44,8 @@ Average Bethel target (octave bands 63 Hz–8 kHz, dB relative to the total):
 ## Service Run and Soundcheck
 
 - **Soundcheck:** the chorus (bars 60–68) loops, and each channel's ideal gain puts the loudest peak in that loop at −11 dBFS. The meters hold the loudest peak over a full loop. Shorter holds missed snare transients and read 4–6 dB low.
-- **Into speaking:** scored 35% balance, 25% MC mic timing, 15% pad held, 15% pad tucked, 10% MC level, minus 25 per leak (click or crowd in the house).
+- **Into speaking:** scored 40% balance, 40% MC mic timing, 20% MC level, minus 25 per leak (click or crowd in the house).
 - **Quick mix / mixer EQ:** each channel has a 3-band EQ (low shelf 120 Hz, sweepable mid, high shelf 8 kHz). Quick mix plants one or two tone problems (mud, boxy, honk, harsh, boom, dull). A problem counts as fixed when the remaining error is within 3 dB at every frequency.
-
-## Our Mix vs. Bethel
-
-`stems/rcc/mb1–3.m4a` are 20 s of the board's stereo mix (Master Burn, Feb 15) from three worship songs: about 23:00, 37:00 and 44:00 into the service. Measured over 2.5 minutes of each song, against the Bethel averages above:
-
-- Loudness: −12.6 to −13.3 LUFS, peaks −0.3 dBFS, 2.1–2.5 dB short-term range (about the same as Bethel).
-- Tone: +1 to +3 dB at 125 Hz, −2 to −5 dB from 500 Hz to 2 kHz, +1 to +2 dB at 4 kHz.
-- Width: side minus mid 3–7 dB below Bethel from 250 Hz to 2 kHz.
-
-`OURS_TONE` (low shelf 150 Hz −3.2, peak 640 Hz +2.5 Q 0.5, high shelf 4 kHz −2.1) and `OURS_WIDE` (side-only peak 1370 Hz +8.5 Q 0.4) were fitted so the three clips land within about 2 dB of Bethel in each octave band. Every variant is level-matched at load.
-
-## Our other two songs and their sections
-
-The Feb 15 service has four click-tracked songs: 18:41–25:46, 31:30–39:20, 41:40–47:20 (`rcc`, RCC Sunday) and 1:42:30–1:54:35 after the sermon. The click runs at 136 BPM throughout with no accent, and no cue track was recorded during the songs, so sections were found from the arrangement: where the mix of instruments changes, snapped to the crash or kick hit at the change. Most land on 8- or 16-bar lengths. Sections that sound alike share a letter ("Part D (1)", "Part D (2)"); the names are placeholders until someone who knows the songs renames them. `rcc1` and `rcc2` use RCC Sunday's reference balance (same band, mics and board). Big songs (`rcc`, `rcc1`, `rcc2`, `gsg`) load only when opened.
 
 ## Speech
 
@@ -127,3 +110,6 @@ Leaders open **Team progress → Songs** (or Settings → Songs) to upload a chu
 - `prefetchFirstSong()` runs when Home renders. It downloads the first song's core files and the voices into the offline cache (no decoding), so "Loading the band…" is mostly decoding. It's skipped when Save-Data is on.
 - The voices load in parallel with the first song instead of before it.
 - The biggest remaining cost is audio: about 12 MB for the first song on a first visit (cached after that). Lowering the bitrate would cut it, but it would hurt what the app is training people to hear.
+
+## RCC recording removed (Oct 20, 2026)
+At the user's request, everything from the Feb 15, 2026 RCC service recording was deleted: the `rcc`, `rcc1` and `rcc2` stems (48 files, about 207 MB) from git and from Storage, and the "Our Mix vs. Bethel" unit and exercise (which used its board-mix clips). Only the two speaking voices remain (`stems/voices/pastor.m4a`, `mc.m4a`). The **Sunday Service Run** now runs on "Let's Have Church" (`RUN_SONG`). Its soundcheck uses that band plus the MC. "Into speaking" (mission 5, bars 36–62) fades the band out over bars 46–48 (`missions[5].fade`, applied in `mixGraph`), and the announcer starts at bar 49 (`speaker`). The run's cues and scoring read `song.run` (`songBars`, `fade`).
