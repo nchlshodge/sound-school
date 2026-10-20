@@ -4314,7 +4314,7 @@ const ttsHash = str => { let h1=0xdeadbeef, h2=0x41c6ce57; for(let i=0;i<str.len
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return (h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); };
 const ttsId = (who, text) => ttsHash(who+'|'+sayable(text));
-let TTS_SET=null, ttsRun=0, ttsNode=null;
+let TTS_SET=null, ttsRun=0;
 const ttsReady = () => TTS_SET ? Promise.resolve(TTS_SET) : fetch('tts/index.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(a=>TTS_SET=new Set(a));
 function speakDevice(id, text){
   return new Promise(done=>{
@@ -4324,9 +4324,12 @@ function speakDevice(id, text){
       if(i===parts.length-1){ u.onend=done; u.onerror=done; } speechSynthesis.speak(u); });
   });
 }
-async function speakRecorded(id){
+const ttsNodes = new Set();   // every voice clip that's playing, so moving on can stop them all
+async function speakRecorded(id, run){
   const data=await fetchAudio(`tts/${id}.m4a`, false), b=await A.ctx.decodeAudioData(data);
-  return new Promise(done=>{ const n=A.ctx.createBufferSource(); n.buffer=b; const g=A.ctx.createGain(); g.gain.value=1.4; n.connect(g).connect(A.master); n.onended=done; ttsNode=n; n.start(); });
+  if(run!==ttsRun) return;   // you moved on while this line was still downloading: don't play it over the new one
+  return new Promise(done=>{ const n=A.ctx.createBufferSource(); n.buffer=b; const g=A.ctx.createGain(); g.gain.value=1.4; n.connect(g).connect(A.master);
+    n.onended=()=>{ ttsNodes.delete(n); g.disconnect(); done(); }; ttsNodes.add(n); n.start(); });
 }
 // Read pieces of text one after another; a newer call (or hush) stops an older one.
 async function speakAll(segs){
@@ -4334,12 +4337,12 @@ async function speakAll(segs){
   for(const {who,text} of segs){
     if(run!==ttsRun || !text) continue;
     const id=ttsId(who,text);
-    if(TTS_SET.has(id) && A.ctx){ try{ if(A.ctx.state!=='running') await A.ctx.resume(); await speakRecorded(id); continue; }catch(e){} }
+    if(TTS_SET.has(id) && A.ctx){ try{ if(A.ctx.state!=='running') await A.ctx.resume(); if(run!==ttsRun) continue; await speakRecorded(id, run); continue; }catch(e){} }
     if(run===ttsRun) await speakDevice(who, text);
   }
 }
 const speak = (id, text) => speakAll([{who:id, text}]);
-const hush = () => { ttsRun++; if(TTS) speechSynthesis.cancel(); if(ttsNode){ try{ ttsNode.stop(); }catch(e){} ttsNode=null; } };
+const hush = () => { ttsRun++; if(TTS) speechSynthesis.cancel(); for(const n of ttsNodes){ try{ n.stop(); }catch(e){} } ttsNodes.clear(); };
 const textOf = el => el ? el.innerText.replace(/\s+/g,' ').trim() : '';
 // What this screen reads, in pieces (so shared lines like hints only need one recording), and who reads it.
 function readable(){
@@ -5261,7 +5264,7 @@ document.addEventListener('click', async e=>{
     case 'quit': if(confirm('Quit this lesson? Your answers so far won\'t be saved.')) go({screen:'home'}); break;
     case 'unlock': S.unlockAll=!S.unlockAll; save(); render(); break;
     case 'readToggle': S.readAloud=!S.readAloud; save(); if(!S.readAloud) hush(); else speak('sona','Hi! I\'ll read the lessons to you. Each of us has our own voice.'); render(); break;
-    case 'readAloud': { if((TTS && speechSynthesis.speaking) || ttsNode){ hush(); break; } if(!(await withAudio())) break; speakAll(readable()); break; }
+    case 'readAloud': { if((TTS && speechSynthesis.speaking) || ttsNodes.size){ hush(); break; } if(!(await withAudio())) break; speakAll(readable()); break; }
     case 'hello': { const m=el.dataset.m, u=UNITS.find(x=>x.mascot===m); speak(m, `Hi, I'm ${u.who.split(',')[0]}. ${u.id==='found'?'I\'m your guide.':`I teach ${u.title}.`}`); break; }
     case 'reset': if(confirm('Reset all your Sound School progress on this device?')){ Object.assign(S,{xp:0,streak:0,lastDay:null,done:{},placement:null}); save(); render(); } break;
     case 'resetRefs': if(confirm('Go back to the built-in reference mixes?')){ S.refs={}; save(); applySavedRefs(); render(); } break;
