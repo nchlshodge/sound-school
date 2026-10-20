@@ -120,3 +120,10 @@ Leaders open **Team progress → Songs** (or Settings → Songs) to upload a chu
 - **Compressing and saving:** `encodeStem` compresses to AAC in an .m4a in the browser (WebCodecs plus mp4-muxer from jsDelivr, loaded only here), falling back to 16-bit WAV. Files go to Storage at `stems/custom/<id>/<k>.m4a` (leader write only, audio, < 80 MB). The song is saved to Firestore at `songs/<id>` as a `spec` JSON string, plus `rev`.
 - **Loading:** `loadCustomSongs` runs after sign-in, adds those songs to the front of SONGS and reads `config/songs.hidden`. A leader's trainer-mode "make this the reference mix" on a custom song saves it to Firestore for everyone (rev bump → new calibration key).
 - **Testing without signing in:** run locally (not signed in), a song works on this device until reload, using blob URLs.
+
+## Loading (Oct 20, 2026)
+- The Firebase compat scripts are `defer`red. `cloudInit` runs on DOMContentLoaded, so the first screen doesn't wait for them (about 0.3 s to the sign-in screen on a normal visit).
+- `songFiles(song)` splits each song into **core** channels (loaded and decoded before "ready") and **extras**: traps (click, cues, count, smpte, crowd) and the `x_*` mic pairs. Extras load in the background (`song.extras` / `song.extrasReady`); until then those channels just play silence. The Phase unit waits for `extrasReady`.
+- `prefetchFirstSong()` runs when Home renders. It downloads the first song's core files and the voices into the offline cache (no decoding), so "Loading the band…" is mostly decoding. It's skipped when Save-Data is on.
+- The voices load in parallel with the first song instead of before it.
+- The biggest remaining cost is audio: about 12 MB for the first song on a first visit (cached after that). Lowering the bitrate would cut it, but it would hurt what the app is training people to hear.
