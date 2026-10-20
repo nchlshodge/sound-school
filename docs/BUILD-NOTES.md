@@ -112,3 +112,11 @@ Old files for text that no longer exists are harmless. Delete `tts/` and rebuild
 - **Review** (`trackAnswer` → `S.stats[unit:level]`, `reviewPool`, `startReview`): weighted toward recent misses and skills not practiced lately.
 - **Sunday-ready check** (hidden exercise `sundayready`, 12 questions, `SR_PASS` = 10) sets `S.sundayReady`.
 - **Trainer sign-off**: `signoffs/{uid}` (leader write, self read) from the Team page, shown on Me.
+
+## Your own songs (leaders) (Oct 20, 2026)
+Leaders open **Team progress → Songs** (or Settings → Songs) to upload a church's own stems and to hide built-in songs from the team.
+- **Add a song** (`vSongAdd`): shows the export rules, then the title, BPM and files. `analyzeStems` decodes the files at 48 kHz, checks length, silence and clipping, and guesses roles from file names (`ROLE_GUESS`, editable, including "Leave it out").
+- **Building the song:** `buildSongSpec` produces everything a song needs. Channel keys come from the role (kick, snare, bass, acc, eg, keys, lv1, bgv1…), so colors, high-pass coaching and grouping all work. It also builds groups, missions (with a messy mission-2 start), windows (full band, verse, gap, from per-bar activity) and a starting balance from each stem's active level against the lead vocal (`ROLE_LVL`, capped at +10 dB).
+- **Compressing and saving:** `encodeStem` compresses to AAC in an .m4a in the browser (WebCodecs plus mp4-muxer from jsDelivr, loaded only here), falling back to 16-bit WAV. Files go to Storage at `stems/custom/<id>/<k>.m4a` (leader write only, audio, < 80 MB). The song is saved to Firestore at `songs/<id>` as a `spec` JSON string, plus `rev`.
+- **Loading:** `loadCustomSongs` runs after sign-in, adds those songs to the front of SONGS and reads `config/songs.hidden`. A leader's trainer-mode "make this the reference mix" on a custom song saves it to Firestore for everyone (rev bump → new calibration key).
+- **Testing without signing in:** run locally (not signed in), a song works on this device until reload, using blob URLs.
