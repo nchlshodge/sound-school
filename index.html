@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firebasestorage.googleapis.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
@@ -466,10 +468,10 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 </head>
 <body>
 <div id="app"></div>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 <script>
 /* ============================================================
    Sound School: ear training for the RCC sound team.
@@ -806,6 +808,14 @@ const db = x => Math.pow(10, x/20);
 const A = { ctx:null, buf:{}, ready:null, loading:{}, nodes:[], irs:{} };
 const BAND_TARGET = -21.4, VOCAL_TARGET = -27.3;   // every song's full band and solo vocal are level-matched to these (dB RMS)
 
+let PREFETCHED=false;
+function prefetchFirstSong(){
+  if(PREFETCHED || A.ready || (navigator.connection && navigator.connection.saveData)) return; PREFETCHED=true;
+  const go=async()=>{ try{ const song=firstSong(), {core}=songFiles(song);
+    for(const c of core){ if(A.ready) return; await fetchAudio(c.url || `${song.dir||'stems/'+song.id}/${c.file||c.k+'.m4a'}`).catch(()=>{}); }
+    for(const v of VOICES) await fetchAudio(voicePath(v), true).catch(()=>{}); }catch(e){} };
+  (window.requestIdleCallback || (f=>setTimeout(f,1500)))(go);
+}
 function initAudio(){
   if(A.ready) return A.ready;
   if(!A.ctx){
@@ -827,7 +837,7 @@ function initAudio(){
     A.buf.hum = normalize(arrToBuffer(Float32Array.from({length:n}, (_,i)=>{ const t=i/sr, w=2*Math.PI*60*t; return 0.5*Math.sin(w)+0.3*Math.sin(2*w)+0.25*Math.sin(3*w)+0.12*Math.sign(Math.sin(w))*Math.abs(Math.sin(5*w)); })), 1);
     // Speaking voices, both real and from the Feb 15 service (private like the song stems): the pastor's sermon mic (Lav 1) and the announcements mic (MC 2).
     A.speechDb = {};
-    await Promise.all(VOICES.map(async v=>{
+    const voices = Promise.all(VOICES.map(async v=>{
       const data=await fetchAudio(voicePath(v), true), b=await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
       A.buf['speech:'+v]=b;
       // loudness of the speaking parts only (skip the pauses), so every voice plays at the vocal-drill level
@@ -836,7 +846,7 @@ function initAudio(){
       e.sort((a,c)=>a-c); const loud=e.slice(Math.floor(e.length*0.3)), ms=loud.reduce((a,c)=>a+c,0)/loud.length;
       A.speechDb[v] = VOCAL_TARGET + 3 - 10*Math.log10(ms+1e-12);
     }));
-    await loadSong(firstSong(), true);
+    await Promise.all([voices, loadSong(firstSong(), true)]);   // in parallel: neither waits for the other
     // The other small songs load one at a time after a pause, so they don't slow down the first one. Big ones load when opened.
     if(!LOW_MEM) setTimeout(async()=>{ for(const s of SONGS.slice(1).filter(s=>!s.lazy)) await loadSong(s).catch(e=>console.warn(e)); }, 4000);
   })().catch(e=>{ A.ready=null; throw e; });
@@ -867,17 +877,24 @@ function freeSongs(keep){
     if(typeof EQG!=='undefined' && EQG.song===s.id) EQG.cal=null;   // the EQ guide is measured again next time
     if(typeof FIXG!=='undefined') FIXG=FIXG.filter(w=>w.song!==s.id); }
 }
+// Which files a song needs right away, and which can follow.
+function songFiles(song){
+  const all=[...song.ch, ...(song.xtra||[]).map(k=>({k}))], later=c=>c.trap || (/^x_/.test(c.k));
+  return { core: all.filter(c=>!later(c)), extra: all.filter(later) };
+}
 function loadSong(song, show){
   song.used=Date.now();
   if(A.loading[song.id]) return A.loading[song.id];
   freeSongs(song);
   return A.loading[song.id] = (async()=>{
     let n=0;
-    await Promise.all([...song.ch, ...(song.xtra||[]).map(k=>({k}))].map(async c=>{
-      const data = await fetchAudio(c.url || `${song.dir||'stems/'+song.id}/${c.file||c.k+'.m4a'}`);
-      A.buf[`${song.id}:${c.k}`] = await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad));
-      if(show) setLoadMsg(`Loading "${song.title}"… ${++n} of ${song.ch.length}`);
-    }));
+    const one = async c=>{ const data = await fetchAudio(c.url || `${song.dir||'stems/'+song.id}/${c.file||c.k+'.m4a'}`);
+      A.buf[`${song.id}:${c.k}`] = await new Promise((ok,bad)=>A.ctx.decodeAudioData(data, ok, bad)); };
+    // The channels the drills use come first; the click, cues, crowd mics and extra mic pairs follow in the background
+    // (until they arrive they just play silence). Our Master Burn clips are needed for calibration, so they stay first.
+    const {core, extra} = songFiles(song);
+    await Promise.all(core.map(async c=>{ await one(c); if(show) setLoadMsg(`Loading "${song.title}"… ${++n} of ${core.length}`); }));
+    song.extras = Promise.all(extra.map(c=>one(c).catch(e=>console.warn(e)))).then(()=>{ song.extrasReady=true; });
     // Level measurements: once per device, then remembered.
     let saved=null; try{ saved=JSON.parse(localStorage.getItem(calKey(song))); }catch(e){}
     if(saved && saved.cal && saved.comp){ Object.assign(song, {trim:saved.trim, vtrim:saved.vtrim, comp:saved.comp, cal:saved.cal}); if(saved.mbTrim!=null) song.mbTrim=saved.mbTrim; }
@@ -3103,7 +3120,7 @@ const PAIRS = [
   { a:'x_bass_di', b:'x_bass_amp',name:'bass (DI + amp)',                  needsFlip:false, where:'low end',
     why:'This DI and amp mic already line up. Flipping one would cancel the low end. Sometimes the right move is to leave it alone.' }
 ];
-const pairSongs = () => readySongs().filter(s=>s.xtra && A.buf[`${s.id}:x_kick_in`]);
+const pairSongs = () => readySongs().filter(s=>s.xtra && s.extrasReady && A.buf[`${s.id}:x_kick_in`]);
 // Both mics of a pair, with or without one flipped. Level-matched so the pair plays at a normal level.
 function pairSrc(song, pair, flipped, off){
   const a=soloSrc(song,pair.a,off), b=soloSrc(song,pair.b,off), lift=-6;
@@ -4496,7 +4513,7 @@ const QUICK = [
 let HOME_TAB = 'learn';
 const unitDone = u => unitNodes(u).every(l=>passedNode(u,l));
 function vHome(){
-  setUnitColor();
+  setUnitColor(); prefetchFirstSong();
   const tab = UI.tab || HOME_TAB; HOME_TAB = tab;
   const body = tab==='practice' ? vPracticeTab() : tab==='me' ? vMeTab() : vLearnTab();
   const tabs = [['learn','Learn',I.book],['practice','Practice',I.bolt],['me','Me',I.me]];
@@ -5506,7 +5523,8 @@ document.addEventListener('keydown', e=>{
 });
 
 applySavedRefs();
-cloudInit();
+// The Firebase scripts are deferred: they finish loading right after this, before DOMContentLoaded.
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', cloudInit); else cloudInit();
 render();
 </script>
 </body>
