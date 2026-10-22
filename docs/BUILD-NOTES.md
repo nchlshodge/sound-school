@@ -113,3 +113,6 @@ Leaders open **Team progress → Songs** (or Settings → Songs) to upload a chu
 
 ## RCC recording removed (Oct 20, 2026)
 At the user's request, everything from the Feb 15, 2026 RCC service recording was deleted: the `rcc`, `rcc1` and `rcc2` stems (48 files, about 207 MB) from git and from Storage, and the "Our Mix vs. Bethel" unit and exercise (which used its board-mix clips). Only the two speaking voices remain (`stems/voices/pastor.m4a`, `mc.m4a`). The **Sunday Service Run** now runs on "Let's Have Church" (`RUN_SONG`). Its soundcheck uses that band plus the MC. "Into speaking" (mission 5, bars 36–62) fades the band out over bars 46–48 (`missions[5].fade`, applied in `mixGraph`), and the announcer starts at bar 49 (`speaker`). The run's cues and scoring read `song.run` (`songBars`, `fade`).
+
+## Mixing requires EQ, Gates and Compression (Oct 22, 2026)
+`MIX_REQ` (eq, gate, comp) at `MIX_REQ_LEVELS` (Easy and Medium) must be passed before anything in `MIX_GATED` opens (Mixing, Modern Worship, Sunday Mix, Service Run, Livestream Mix). That includes the exercises `MIX_GATED_EX` (Quick mix, Ride the mix). This applies even after the placement check; trainer mode bypasses it. Locked cards list what's left (`mixReqList`). While locked, the Practice tab's "Basic mixing" tile is swapped for Compression. The mixing console sandbox stays open.

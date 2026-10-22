@@ -313,6 +313,7 @@ button:disabled{cursor:default}
 .ckrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:none;font:inherit;color:var(--ink);padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
 .ckrow:last-child{border-bottom:0}.ckrow.on span:last-child{color:var(--ink2);text-decoration:line-through}
 .ckbox{width:26px;height:26px;flex:none;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;color:#fff}.ckrow.on .ckbox{background:#1F7A3A;border-color:#1F7A3A}.ckbox svg{width:16px;height:16px}
+.excard.locked{opacity:.55}
 .badge{width:40px;height:40px;border-radius:50%;background:#1F7A3A;color:#fff;display:grid;place-items:center;font-weight:800}
 .ckcard{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:0;border-left:6px solid #2F7A2F;border-radius:18px;box-shadow:var(--shadow);padding:12px 14px;margin-top:16px;font:inherit;color:var(--ink);cursor:pointer;--u:#2F7A2F}
 .ckcard .m{width:56px;height:56px;flex:none}.ckcard b{font-size:17px}.ckcard span{font-size:13px;color:var(--ink2);font-weight:600}
@@ -4186,7 +4187,12 @@ const passed = (u,l) => !!S.done[key(u,l)];
 // After the placement check, every core unit (Foundations through Mixing) is open; the rest unlock in order.
 const CORE_UNITS = ['found','stage','gain','vol','ears','routine','eq','phase','gate','comp','lim','dly','verb','moreFx','live','mix','keys'];
 const prevMain = i => { for(let j=i-1;j>=0;j--) if(!UNITS[j].side) return UNITS[j]; return null; };
-const unitOpen = i => S.unlockAll || i===0 || passed(prevMain(i),1) || (!!S.placement && CORE_UNITS.includes(UNITS[i].id));
+// Everyone works through EQ, Gates and Compression (Easy and Medium) before any mixing opens, even after the placement check.
+const MIX_REQ = ['eq','gate','comp'], MIX_REQ_LEVELS = [1,2], MIX_GATED = ['mix','mw','final','run','bcast'], MIX_GATED_EX = ['quickmix','ride'];
+const mixReady = () => S.unlockAll || MIX_REQ.every(id=>MIX_REQ_LEVELS.every(l=>passed(unitById(id),l)));
+const mixReqList = () => MIX_REQ.map(id=>{ const u=unitById(id); return `${u.title}: ${MIX_REQ_LEVELS.map(l=>`${levelName(u,l)} ${passed(u,l)?'✓':'✗'}`).join(', ')}`; }).join(' · ');
+const mixLocked = id => MIX_GATED.includes(id) && !mixReady();
+const unitOpen = i => !mixLocked(UNITS[i].id) && (S.unlockAll || i===0 || passed(prevMain(i),1) || (!!S.placement && CORE_UNITS.includes(UNITS[i].id)));
 // The placement check: one question per area at a medium level (two for Foundations and Mixing).
 const PLACEMENT = [['found',1],['gain',1],['vol',2],['ears',1],['eq',2],['phase',1],['gate',2],['comp',1],['found',3],['lim',1],['dly',2],['verb',2],['live',2],['eq',1],['mix',2],['mix',3]];
 const EXPERIENCE = [
@@ -4459,7 +4465,8 @@ function vChecklist(){
 }
 function vPracticeTab(){
   const anyPassed = UNITS.some(u=>GEN[u.id] && [1,2,3].some(l=>passed(u,l))), rec=recommendedEx();
-  const tiles = QUICK.map(q=>{ const x=exById(q.ex); return `<button class="qtile" data-act="exStart" data-ex="${x.id}" style="--u:${x.color}">
+  const quick = mixReady() ? QUICK : QUICK.map(q=>q.ex==='quickmix' ? { ex:'compfix', title:'Compression', sub:'Fix a squashed or jumpy vocal, watching the meter' } : q);
+  const tiles = quick.map(q=>{ const x=exById(q.ex); return `<button class="qtile" data-act="exStart" data-ex="${x.id}" style="--u:${x.color}">
       <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div><div class="qt"><b>${q.title}</b><span>${q.sub}</span></div></button>`; }).join('');
   const list = EXERCISES.filter(x=>!x.hidden).sort((a,b)=>(rec.includes(b.id)-rec.includes(a.id)));
   return `<button class="ckcard" data-act="checklist"><div class="m tint" aria-hidden="true">${mascotArt('kit','happy')}</div><div class="qt"><b>Sunday checklist</b><span>Use it on Sunday morning: power-on to shutdown, step by step.</span></div></button>
@@ -4504,7 +4511,7 @@ function vUnit(u,i,next){
       return `<button class="node ${done?'done':''} ${!ok?'lock':''} ${isNext?'next':''}" data-act="open" data-u="${u.id}" data-l="${l}" ${ok?'':'disabled'} aria-label="${u.title} ${levelName(u,l)}${done?', complete':''}${ok?'':', locked'}">
         <span class="dot">${icon}</span>${levelName(u,l)}</button>`;
     }).join('')}</div>
-    ${!open?`<p class="foot" style="margin:10px 0 0">Pass ${UNITS[i-1].title} · ${levelName(UNITS[i-1],1)} to unlock</p>`:''}
+    ${!open?`<p class="foot" style="margin:10px 0 0">${mixLocked(u.id) ? `Mixing opens after EQ, Gates and Compression (Easy and Medium). ${mixReqList()}` : `Pass ${prevMain(i).title} · ${levelName(prevMain(i),1)} to unlock`}</p>`:''}
   </section>`;
 }
 
@@ -4694,12 +4701,12 @@ function vPlaceIntro(){
   </main>`;
 }
 function exCard(x, rec){
-  const best=(S.ex||{})[x.id];
-  return `<div class="excard" style="--u:${x.color}">
-    <button class="exmain" data-act="exStart" data-ex="${x.id}" aria-label="Start ${x.title}">
+  const best=(S.ex||{})[x.id], lock=MIX_GATED_EX.includes(x.id) && !mixReady();
+  return `<div class="excard ${lock?'locked':''}" style="--u:${x.color}">
+    <button class="exmain" data-act="exStart" data-ex="${x.id}" aria-label="${lock?'Locked: ':'Start '}${x.title}">
       <div class="m tint" aria-hidden="true">${mascotArt(x.mascot,'happy')}</div>
       <div class="ext"><b>${x.title}</b><span>${x.blurb}</span>
-        <em>${rec?'Recommended for you · ':''}${x.mixer?'Mixer':(x.plan.length+' questions')}${best!=null&&!x.mixer?` · best ${best}/${x.plan.length}`:''}</em></div>
+        <em>${lock?'Opens after EQ, Gates and Compression':`${rec?'Recommended for you · ':''}${x.mixer?'Mixer':(x.plan.length+' questions')}${best!=null&&!x.mixer?` · best ${best}/${x.plan.length}`:''}`}</em></div>
     </button>
     <button class="iconbtn exshare" data-act="exShare" data-ex="${x.id}" aria-label="Copy a link to ${x.title}">${I.share}</button>
   </div>`;
@@ -5007,7 +5014,9 @@ function startExercise(id){
   UI = { screen:'lesson', lesson:{ exercise:id, plan:x.plan, n:x.plan.length, i:0, qs:[], picked:null, correct:0, seed:Math.floor(Math.random()*SONGS.length) } };
 }
 async function openExercise(id){
-  const x=exById(id); stopAll(); stopMixer(); markPlaying(null);
+  const x=exById(id);
+  if(MIX_GATED_EX.includes(id) && !mixReady()){ alert(`Mixing opens after you finish EQ, Gates and Compression (Easy and Medium).\n\n${mixReqList()}`); go({screen:'home'}); return; }
+  stopAll(); stopMixer(); markPlaying(null);
   if(x.mixer){ if(!(await withAudio())) return; const song=pick(readySongs());
     await withAudio(()=>{ startMixer(1, song.id, 'house'); const chs=shuffle(missionCh(song,1).filter(k=>!FX.includes(k)&&!song.traps.includes(k))).slice(0, coin()?1:2);
       UI.mix.quick=true; UI.mix.build=false; UI.mix.probs=Object.fromEntries(chs.map(k=>[k, pick(TONE_PROBS)])); }, song.id); }
